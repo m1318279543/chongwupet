@@ -39,6 +39,7 @@
             {{ isFav ? '❤️ 已收藏' : '🤍 收藏' }}
           </el-button>
           <el-button size="large" type="primary" round @click="showAppoint = true">📅 立即预约</el-button>
+          <el-button size="large" round class="ai-ask" @click="askAi">🤖 问 AI</el-button>
         </div>
       </div>
     </div>
@@ -277,6 +278,13 @@ async function loadFavStatus() {
   } catch (e) {}
 }
 
+/** 唤起全站 AI 助手，并带上当前宠物作为上下文 */
+function askAi() {
+  const p = pet.value || {}
+  const q = `我在看「${p.petName}」（${p.breed || '品种未知'}，¥${p.price || '价格面议'}），它适合什么样的家庭？养它每月大概要花多少？`
+  window.dispatchEvent(new CustomEvent('pet-ai-open', { detail: { q } }))
+}
+
 async function toggleFav() {
   if (!userStore.token) {
     ElMessage.info('请先登录后再收藏')
@@ -354,7 +362,11 @@ onMounted(loadPet)
     h3 { font-size: 16px; color: #303133; margin: 0 0 8px; }
     p { color: #606266; line-height: 1.8; }
   }
-  .actions { display: flex; gap: 16px; margin-top: 32px; }
+  .actions { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap;
+    .ai-ask { background: linear-gradient(135deg, #fff7f1, #fff); border-color: #ffb27a; color: #e2600f; font-weight: 600;
+      &:hover { background: #fff1e6; border-color: #ff8c42; color: #d2550a; }
+    }
+  }
 }
 
 /* 健康与服务档案 */

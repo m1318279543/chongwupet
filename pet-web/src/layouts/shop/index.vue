@@ -137,6 +137,9 @@
 
     <!-- 登录注册对话框 -->
     <AuthDialog ref="authRef" @success="onAuthSuccess" />
+
+    <!-- 全站 AI 智能助手（悬浮球） -->
+    <AiAssistant />
   </div>
 </template>
 
@@ -148,6 +151,7 @@ import { ArrowDown, ShoppingCart } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import AuthDialog from '@/components/AuthDialog.vue'
+import AiAssistant from '@/components/AiAssistant.vue'
 
 const route = useRoute()
 const router = useRouter()

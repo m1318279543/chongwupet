@@ -14,6 +14,35 @@
 
     <!-- 问卷 -->
     <section v-if="!result" class="quiz-wrap">
+      <!-- AI 一句话自动填答 -->
+      <div class="ai-fill">
+        <div class="ai-fill-head">
+          <span class="ai-fill-badge">✨ AI 自动填答</span>
+          <h3>懒得答 10 道题？说一句话就行</h3>
+          <p>描述你的居住环境、作息、预算和偏好，AI 会自动识别并填好问卷</p>
+        </div>
+        <div class="ai-fill-row">
+          <el-input
+            v-model="aiText"
+            size="large"
+            clearable
+            maxlength="120"
+            placeholder="例如：我住小户型，上班忙，预算 3000，想养只安静好照顾的猫"
+            @keyup.enter="aiFill"
+          />
+          <el-button type="primary" size="large" round :loading="aiFilling" @click="aiFill">
+            {{ aiFilling ? 'AI 解析中…' : '智能填答' }}
+          </el-button>
+        </div>
+        <div v-if="aiHint" class="ai-fill-result">
+          <span class="ai-fill-ok">✓ {{ aiHint }}</span>
+          <el-button v-if="allDone" type="primary" link @click="submit">直接查看匹配结果 →</el-button>
+        </div>
+        <div class="ai-fill-tags">
+          <span v-for="t in aiExamples" :key="t" class="ai-fill-tag" @click="aiText = t; aiFill()">{{ t }}</span>
+        </div>
+      </div>
+
       <!-- 顶部进度条 -->
       <div class="quiz-card">
         <div class="quiz-top">
@@ -190,12 +219,55 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { recommendPet } from '@/api/pet/petMatch'
+import { aiParse } from '@/api/pet/petAi'
 
 const router = useRouter()
+
+/* ---------- AI 一句话自动填答 ---------- */
+const aiText = ref('')
+const aiFilling = ref(false)
+const aiHint = ref('')
+const aiExamples = [
+  '小户型上班族，预算 3000 想养猫',
+  '家里有小孩，想养温顺的狗',
+  '第一次养，想省心安静的小宠物'
+]
+
+async function aiFill() {
+  const text = aiText.value.trim()
+  if (!text) {
+    ElMessage.warning('先用一句话说说你的情况')
+    return
+  }
+  aiFilling.value = true
+  aiHint.value = ''
+  try {
+    const res = await aiParse(text)
+    const data = (res && res.data) || {}
+    const a = data.answers || {}
+    let filled = 0
+    Object.keys(answers).forEach((k) => {
+      const v = a[k]
+      if (v !== undefined && v !== null && String(v) !== '') {
+        answers[k] = String(v)
+        filled++
+      }
+    })
+    const how = data.source === 'ai' ? '大模型解析' : '本地规则解析'
+    aiHint.value = `已识别「${data.summary || '你的需求'}」，自动填好 ${filled}/10 项 · ${how}`
+    qIndex.value = allQuestions.length - 1
+    await nextTick()
+    document.querySelector('.quiz-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  } catch (e) {
+    ElMessage.error('解析失败，请重试或手动答题')
+  } finally {
+    aiFilling.value = false
+  }
+}
 
 const totalPets = ref(96)
 const loading = ref(false)
@@ -525,6 +597,94 @@ function dimColor(v) {
   padding: 0 16px 40px;
   position: relative;
   z-index: 2;
+}
+/* AI 一句话自动填答 */
+.ai-fill {
+  background: linear-gradient(135deg, #fff7f1, #fff);
+  border: 1px solid #ffe0cc;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.09);
+}
+.ai-fill-head h3 {
+  margin: 8px 0 4px;
+  font-size: 18px;
+  color: #303133;
+}
+.ai-fill-head p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.6;
+}
+.ai-fill-badge {
+  display: inline-block;
+  font-size: 12px;
+  color: #ff6b35;
+  background: #fff1e6;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-weight: 600;
+}
+.ai-fill-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ai-fill-row :deep(.el-input) {
+  flex: 1;
+}
+.ai-fill-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.ai-fill-ok {
+  color: #67c23a;
+  background: #f0f9eb;
+  border-radius: 10px;
+  padding: 5px 10px;
+}
+.ai-fill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ai-fill-tag {
+  font-size: 12px;
+  color: #606266;
+  background: #fff;
+  border: 1px dashed #e4e7ed;
+  border-radius: 14px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ai-fill-tag:hover {
+  color: #ff6b35;
+  border-color: #ffb27a;
+  background: #fff7f1;
+}
+@media (max-width: 640px) {
+  .ai-fill {
+    padding: 16px;
+    border-radius: 14px;
+  }
+  .ai-fill-head h3 {
+    font-size: 16px;
+  }
+  .ai-fill-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ai-fill-row :deep(.el-button) {
+    width: 100%;
+  }
 }
 .quiz-card {
   background: #fff;

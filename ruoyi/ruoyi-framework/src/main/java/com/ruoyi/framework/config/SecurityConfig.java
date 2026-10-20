@@ -117,6 +117,8 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.GET, "/pet/issue/doctor/**").permitAll()
                     // AI 宠物智能匹配问卷：游客可提交问卷（登录后用协同过滤增强）
                     .requestMatchers(HttpMethod.POST, "/pet/match/recommend").permitAll()
+                    // 全站 AI 助手：游客可用（服务端有 IP 限流）
+                    .requestMatchers(HttpMethod.POST, "/pet/ai/chat", "/pet/ai/parse").permitAll()
                     // 静态资源，可匿名访问
                     .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**.html", "/**.css", "/**.js", "/profile/**").permitAll()
                     .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**", "/druid/**").permitAll()

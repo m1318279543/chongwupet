@@ -48,6 +48,29 @@
       </span>
     </div>
 
+    <!-- AI 经营洞察 -->
+    <section class="ai-insight">
+      <div class="ai-insight-head">
+        <div class="ai-title">
+          <span class="ai-badge">🤖 AI 洞察</span>
+          <h3>智能经营分析</h3>
+          <p>自动读取近 {{ days }} 天的预约、订单、咨询与取消数据，给出结论和行动建议</p>
+        </div>
+        <el-button type="primary" round :loading="aiLoading" @click="loadInsight">
+          {{ aiText ? '重新生成' : '生成分析' }}
+        </el-button>
+      </div>
+      <div v-if="aiText" class="ai-body" :class="{ rule: aiSource !== 'ai' }">
+        <p class="ai-text">{{ aiText }}</p>
+        <span class="ai-source">
+          {{ aiSource === 'ai' ? '由大模型基于真实业务数据生成 · 仅供参考' : '模型通道繁忙，本次由本地规则生成' }}
+        </span>
+      </div>
+      <p v-else class="ai-empty">
+        点击「生成分析」，AI 会总结本期表现、指出关键问题，并给出可执行的运营建议。
+      </p>
+    </section>
+
     <!-- KPI -->
     <section class="kpi-grid">
       <div v-for="k in kpis" :key="k.key" class="kpi-card" :style="{ '--accent': k.color }">
@@ -140,6 +163,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
 import { LineChart, BarChart, PieChart } from 'echarts/charts'
 import {
@@ -151,6 +175,7 @@ import {
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getDashboardAll, getDashboardRealtime } from '@/api/pet/dashboard'
+import { aiInsight } from '@/api/pet/petAi'
 
 echarts.use([
   LineChart,
@@ -168,6 +193,26 @@ echarts.use([
 const days = ref(30)
 const loading = ref(false)
 const refreshing = ref(false)
+
+/* ---------- AI 经营洞察 ---------- */
+const aiLoading = ref(false)
+const aiText = ref('')
+const aiSource = ref('')
+
+async function loadInsight() {
+  if (aiLoading.value) return
+  aiLoading.value = true
+  try {
+    const res = await aiInsight(days.value)
+    const data = (res && res.data) || {}
+    aiText.value = data.insight || '暂时没有拿到分析结果，请稍后重试。'
+    aiSource.value = data.source || 'rule'
+  } catch (e) {
+    ElMessage.error(e?.message || 'AI 分析失败，请稍后重试')
+  } finally {
+    aiLoading.value = false
+  }
+}
 const autoRefresh = ref(true)
 const intervalSec = ref(30)
 const updatedAt = ref('')
@@ -826,6 +871,70 @@ onUnmounted(() => {
   border-radius: 14px;
   padding: 3px 12px;
   color: #606266;
+}
+
+/* AI 经营洞察 */
+.ai-insight {
+  background: linear-gradient(135deg, #fff7f1 0%, #ffffff 60%);
+  border: 1px solid #ffe0cc;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.07);
+}
+.ai-insight-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.ai-insight .ai-title h3 {
+  margin: 6px 0 3px;
+  font-size: 17px;
+  color: #303133;
+}
+.ai-insight .ai-title p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #909399;
+}
+.ai-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff6b35;
+  background: #fff1e6;
+  border-radius: 10px;
+  padding: 2px 9px;
+}
+.ai-body {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 12px;
+  border-left: 3px solid #ff8c42;
+}
+.ai-body.rule {
+  border-left-color: #e6a23c;
+}
+.ai-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: #4a4a4a;
+  white-space: pre-wrap;
+}
+.ai-source {
+  display: block;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #b0b3b8;
+}
+.ai-empty {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #a0a3a8;
 }
 
 .kpi-grid {
