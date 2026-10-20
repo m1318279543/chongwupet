@@ -34,4 +34,7 @@ public interface PetMatchMapper
 
     /** 总记录数（用于统计） */
     public int countPetMatchRecord();
+
+    /** 匹配统计：总数 / 无匹配数 / 今日次数 */
+    public Map<String, Object> selectMatchStat();
 }

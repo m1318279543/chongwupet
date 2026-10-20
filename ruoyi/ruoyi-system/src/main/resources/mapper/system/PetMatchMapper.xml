@@ -12,6 +12,8 @@
         <result property="topScore"     column="top_score"     />
         <result property="resultPets"   column="result_pets"   />
         <result property="resultDetail" column="result_detail" />
+        <result property="matchStatus"  column="match_status"  />
+        <result property="diagnosis"    column="diagnosis"     />
         <result property="algorithm"    column="algorithm"     />
         <result property="delFlag"      column="del_flag"      />
         <result property="createTime"   column="create_time"   />
@@ -62,18 +64,23 @@
 
     <insert id="insertPetMatchRecord" parameterType="PetMatchRecord" useGeneratedKeys="true" keyProperty="recordId">
         insert into pet_match_record
-        (user_id, user_name, answers, top_pet_id, top_pet_name, top_score, result_pets, result_detail, algorithm, create_time)
+        (user_id, user_name, answers, top_pet_id, top_pet_name, top_score, result_pets, result_detail,
+         match_status, diagnosis, algorithm, create_time)
         values
-        (#{userId}, #{userName}, #{answers}, #{topPetId}, #{topPetName}, #{topScore}, #{resultPets}, #{resultDetail}, #{algorithm}, sysdate())
+        (#{userId}, #{userName}, #{answers}, #{topPetId}, #{topPetName}, #{topScore}, #{resultPets}, #{resultDetail},
+         #{matchStatus}, #{diagnosis}, #{algorithm}, sysdate())
     </insert>
 
     <select id="selectPetMatchRecordList" parameterType="PetMatchRecord" resultMap="PetMatchRecordResult">
         select record_id, user_id, user_name, answers, top_pet_id, top_pet_name, top_score,
-               result_pets, result_detail, algorithm, del_flag, create_time
+               result_pets, result_detail, match_status, diagnosis, algorithm, del_flag, create_time
         from pet_match_record
         where del_flag = '0'
         <if test="userName != null and userName != ''">
             and user_name like concat('%', #{userName}, '%')
+        </if>
+        <if test="matchStatus != null and matchStatus != ''">
+            and match_status = #{matchStatus}
         </if>
         <if test="params.beginTime != null and params.beginTime != ''">
             and create_time &gt;= #{params.beginTime}
@@ -86,7 +93,7 @@
 
     <select id="selectPetMatchRecordById" parameterType="Long" resultMap="PetMatchRecordResult">
         select record_id, user_id, user_name, answers, top_pet_id, top_pet_name, top_score,
-               result_pets, result_detail, algorithm, del_flag, create_time
+               result_pets, result_detail, match_status, diagnosis, algorithm, del_flag, create_time
         from pet_match_record where record_id = #{recordId}
     </select>
 
@@ -103,5 +110,13 @@
 
     <select id="countPetMatchRecord" resultType="int">
         select count(*) from pet_match_record where del_flag = '0'
+    </select>
+
+    <select id="selectMatchStat" resultType="java.util.LinkedHashMap">
+        select count(*) as total,
+               sum(case when match_status = '1' then 1 else 0 end) as emptyCount,
+               sum(case when date(create_time) = curdate() then 1 else 0 end) as todayCount
+        from pet_match_record
+        where del_flag = '0'
     </select>
 </mapper>

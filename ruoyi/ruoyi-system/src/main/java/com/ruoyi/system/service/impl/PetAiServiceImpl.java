@@ -1273,7 +1273,23 @@ public class PetAiServiceImpl implements IPetAiService
             List<Map<String, Object>> list = (List<Map<String, Object>>) obj;
             if (list.isEmpty())
             {
-                return null;
+                // 无匹配：把后端诊断出的原因与建议直接告诉用户，而不是沉默
+                StringBuilder sb = new StringBuilder();
+                Object summary = res.get("summary");
+                sb.append(summary == null ? "按当前条件暂时没有合适的宠物。" : String.valueOf(summary));
+                Object diag = res.get("diagnosis");
+                if (diag instanceof Map)
+                {
+                    Object tips = ((Map<String, Object>) diag).get("tips");
+                    if (tips instanceof List)
+                    {
+                        for (Object t : (List<Object>) tips)
+                        {
+                            sb.append("\n· ").append(String.valueOf(t));
+                        }
+                    }
+                }
+                return sb.toString().trim();
             }
             StringBuilder sb = new StringBuilder();
             String summary = String.valueOf(res.getOrDefault("summary", ""));

@@ -127,7 +127,15 @@
       <div v-if="!result.recommendations.length" class="empty-result">
         <div class="emoji">🐾</div>
         <h3>暂时没有符合条件的宠物</h3>
-        <p>可以适当放宽预算或宠物类型偏好后再试一次。</p>
+        <p v-if="result.diagnosis && result.diagnosis.tips && result.diagnosis.tips.length" class="empty-tips">
+          <span v-for="(t, i) in result.diagnosis.tips" :key="i">· {{ t }}</span>
+        </p>
+        <p v-else>可以适当放宽预算或宠物类型偏好后再试一次。</p>
+        <div v-if="result.diagnosis && result.diagnosis.total" class="empty-stat">
+          本次共比对了 {{ result.diagnosis.total }} 只在售宠物
+          <em v-if="result.diagnosis.byBudget">，其中 {{ result.diagnosis.byBudget }} 只超出预算</em>
+          <em v-if="result.diagnosis.byPrefer">，{{ result.diagnosis.byPrefer }} 只类型不符</em>
+        </div>
         <el-button type="primary" round @click="restart">重新填写</el-button>
       </div>
 
@@ -1174,6 +1182,24 @@ function dimColor(v) {
   color: #909399;
   font-size: 13px;
   margin: 0 0 18px;
+}
+.empty-result .empty-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 460px;
+  margin: 0 auto 14px;
+  line-height: 1.7;
+  color: #606266;
+}
+.empty-result .empty-stat {
+  font-size: 12px;
+  color: #a8abb2;
+  margin-bottom: 22px;
+}
+.empty-result .empty-stat em {
+  font-style: normal;
+  color: #e6a23c;
 }
 .foot-note {
   text-align: center;

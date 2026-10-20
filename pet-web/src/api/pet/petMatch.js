@@ -19,6 +19,14 @@ export function listMatchRecord(query) {
   });
 }
 
+// 匹配统计（总数 / 无匹配数 / 今日次数）
+export function getMatchStat() {
+  return request({
+    url: "/pet/match/stat",
+    method: "get",
+  });
+}
+
 // 删除匹配记录
 export function delMatchRecord(recordIds) {
   return request({

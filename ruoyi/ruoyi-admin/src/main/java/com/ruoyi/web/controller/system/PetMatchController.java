@@ -58,12 +58,12 @@ public class PetMatchController extends BaseController
         return success(matchService.selectRecordById(recordId));
     }
 
-    /** 累计匹配次数 */
+    /** 累计匹配次数 / 无匹配次数 / 今日次数 */
     @PreAuthorize("@ss.hasPermi('pet:match:list')")
     @GetMapping("/stat")
     public AjaxResult stat()
     {
-        return success(matchService.countRecords());
+        return success(matchService.stat());
     }
 
     /** 批量删除 */

@@ -2,7 +2,13 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="80px">
       <el-form-item label="用户" prop="userName">
-        <el-input v-model="queryParams.userName" placeholder="用户名 / 游客" clearable style="width: 180px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.userName" placeholder="用户名 / 游客" clearable style="width: 150px" @keyup.enter="handleQuery" />
+      </el-form-item>
+      <el-form-item label="匹配结果" prop="matchStatus">
+        <el-select v-model="queryParams.matchStatus" placeholder="全部" clearable style="width: 120px" @change="handleQuery">
+          <el-option label="已匹配" value="0" />
+          <el-option label="无匹配" value="1" />
+        </el-select>
       </el-form-item>
       <el-form-item label="时间范围">
         <el-date-picker
@@ -24,8 +30,10 @@
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5"><el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain icon="Delete" @click="handleClean">清空</el-button></el-col>
-      <el-col :span="6" style="line-height: 32px; color: #909399; font-size: 13px">
-        累计智能匹配 <b style="color: #ff6b35">{{ total }}</b> 次 · 算法：规则引擎 + 协同过滤 + 人气加权
+      <el-col :span="10" style="line-height: 32px; color: #909399; font-size: 13px">
+        累计智能匹配 <b style="color: #ff6b35">{{ stat.total }}</b> 次 ·
+        其中无匹配 <b class="stat-empty">{{ stat.empty }}</b> 次（{{ stat.emptyRate }}%）·
+        今日 <b>{{ stat.today }}</b> 次
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
@@ -48,12 +56,20 @@
       </el-table-column>
       <el-table-column label="首推宠物" min-width="180">
         <template #default="scope">
-          <div class="top-name">{{ scope.row.topPetName || '—' }}</div>
-          <div class="sub-id">匹配度 {{ scope.row.topScore }}%</div>
+          <template v-if="scope.row.matchStatus === '1'">
+            <el-tag type="danger" effect="plain" size="small">未匹配到宠物</el-tag>
+          </template>
+          <template v-else>
+            <div class="top-name">{{ scope.row.topPetName || '—' }}</div>
+            <div class="sub-id">匹配度 {{ scope.row.topScore }}%</div>
+          </template>
         </template>
       </el-table-column>
-      <el-table-column label="推荐组合" min-width="240" show-overflow-tooltip>
-        <template #default="scope"><span class="result-text">{{ scope.row.resultPets || '—' }}</span></template>
+      <el-table-column label="推荐组合 / 未匹配原因" min-width="260" show-overflow-tooltip>
+        <template #default="scope">
+          <span v-if="scope.row.matchStatus === '1'" class="empty-reason">{{ emptyReason(scope.row.diagnosis) }}</span>
+          <span v-else class="result-text">{{ scope.row.resultPets || '—' }}</span>
+        </template>
       </el-table-column>
       <el-table-column label="时间" align="center" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
@@ -76,7 +92,8 @@
             <div class="d-user">{{ current.userName || '游客' }}<span v-if="current.userId">（ID: {{ current.userId }}）</span></div>
             <div class="d-time">{{ parseTime(current.createTime) }} · {{ current.algorithm }}</div>
           </div>
-          <el-tag type="warning" effect="dark">首推 {{ current.topPetName }} · {{ current.topScore }}%</el-tag>
+          <el-tag v-if="current.matchStatus === '1'" type="danger" effect="dark">未匹配到宠物</el-tag>
+          <el-tag v-else type="warning" effect="dark">首推 {{ current.topPetName }} · {{ current.topScore }}%</el-tag>
         </div>
 
         <div class="d-block">
@@ -89,7 +106,23 @@
           </div>
         </div>
 
-        <div class="d-block">
+        <!-- 无匹配：展示归因诊断，便于选品/定价 -->
+        <div v-if="current.matchStatus === '1'" class="d-block">
+          <div class="d-title">🔍 未匹配诊断</div>
+          <div class="diag-grid">
+            <div class="diag-cell"><span>在售候选</span><b>{{ diagOf(current.diagnosis).total || 0 }}</b></div>
+            <div class="diag-cell"><span>类型不符</span><b>{{ diagOf(current.diagnosis).byPrefer || 0 }}</b></div>
+            <div class="diag-cell"><span>不适合有小孩</span><b>{{ diagOf(current.diagnosis).byKids || 0 }}</b></div>
+            <div class="diag-cell"><span>超出预算</span><b>{{ diagOf(current.diagnosis).byBudget || 0 }}</b></div>
+            <div class="diag-cell" v-if="diagOf(current.diagnosis).lowestPrice">
+              <span>在售最低价</span><b>¥{{ Number(diagOf(current.diagnosis).lowestPrice).toLocaleString('zh-CN') }}</b>
+            </div>
+            <div class="diag-cell"><span>用户购宠预算</span><b>¥{{ Number(diagOf(current.diagnosis).budget || 0).toLocaleString('zh-CN') }}</b></div>
+          </div>
+          <div v-for="(t, i) in diagOf(current.diagnosis).tips || []" :key="i" class="diag-tip">· {{ t }}</div>
+        </div>
+
+        <div v-else class="d-block">
           <div class="d-title">🎯 推荐结果（Top 5）</div>
           <div v-for="(p, i) in topList(current.resultDetail)" :key="i" class="top-item">
             <span class="rank" :class="{ first: i === 0 }">{{ i + 1 }}</span>
@@ -107,7 +140,7 @@
 <script setup name="MatchRecord">
 import { ref, reactive, getCurrentInstance } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { listMatchRecord, delMatchRecord, cleanMatchRecord } from "@/api/pet/petMatch";
+import { listMatchRecord, delMatchRecord, cleanMatchRecord, getMatchStat } from "@/api/pet/petMatch";
 
 const { proxy } = getCurrentInstance();
 
@@ -124,8 +157,11 @@ const dateRange = ref([]);
 const queryParams = reactive({
   pageNum: 1,
   pageSize: 10,
-  userName: ""
+  userName: "",
+  matchStatus: ""
 });
+
+const stat = ref({ total: 0, matched: 0, empty: 0, today: 0, emptyRate: 0 });
 
 const LABELS = {
   home: { small: "小户型/合租", apartment: "普通住宅", house: "大房子/带院子" },
@@ -187,9 +223,35 @@ function topList(detail) {
   return Array.isArray(arr) ? arr : [];
 }
 
+// 无匹配诊断
+function diagOf(s) {
+  return parseJson(s) || {};
+}
+
+// 列表里的一行原因摘要
+function emptyReason(diag) {
+  const d = diagOf(diag);
+  if (!d.total) return "宠物库无在售个体";
+  if (d.byBudget && d.lowestPrice) {
+    return `预算不足：在售最低 ¥${Number(d.lowestPrice).toLocaleString("zh-CN")}，用户预算 ¥${Number(d.budget || 0).toLocaleString("zh-CN")}`;
+  }
+  if (d.byPrefer) return `偏好类型下无符合其余条件的在售宠物（类型不符 ${d.byPrefer} 只）`;
+  if (d.byKids) return `有小孩家庭条件下无合适个体（${d.byKids} 只不适合儿童）`;
+  return "当前条件组合过严，无匹配结果";
+}
+
+function loadStat() {
+  getMatchStat()
+    .then((res) => {
+      stat.value = res.data || stat.value;
+    })
+    .catch(() => {});
+}
+
 function getList() {
   loading.value = true;
   const params = { ...queryParams };
+  if (!params.matchStatus) delete params.matchStatus;
   if (dateRange.value && dateRange.value.length === 2) {
     params.params = { beginTime: dateRange.value[0], endTime: dateRange.value[1] };
   }
@@ -211,6 +273,7 @@ function handleQuery() {
 
 function resetQuery() {
   queryParams.userName = "";
+  queryParams.matchStatus = "";
   dateRange.value = [];
   proxy.resetForm("queryRef");
   handleQuery();
@@ -234,6 +297,7 @@ function handleDelete(row) {
     .then(() => {
       ElMessage.success("删除成功");
       getList();
+      loadStat();
     })
     .catch(() => {});
 }
@@ -244,11 +308,13 @@ function handleClean() {
     .then(() => {
       ElMessage.success("已清空");
       getList();
+      loadStat();
     })
     .catch(() => {});
 }
 
 getList();
+loadStat();
 </script>
 
 <style scoped>
@@ -376,5 +442,40 @@ getList();
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.stat-empty {
+  color: #f56c6c;
+}
+.empty-reason {
+  color: #f56c6c;
+  font-size: 12px;
+}
+.diag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.diag-cell {
+  background: #fef4f4;
+  border: 1px solid #fde2e2;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.diag-cell span {
+  font-size: 12px;
+  color: #909399;
+}
+.diag-cell b {
+  font-size: 17px;
+  color: #f56c6c;
+}
+.diag-tip {
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.9;
 }
 </style>

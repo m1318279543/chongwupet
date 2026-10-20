@@ -28,4 +28,7 @@ public interface IPetMatchService
 
     /** 累计匹配次数 */
     public int countRecords();
+
+    /** 匹配统计（总数 / 无匹配数 / 今日次数） */
+    public Map<String, Object> stat();
 }

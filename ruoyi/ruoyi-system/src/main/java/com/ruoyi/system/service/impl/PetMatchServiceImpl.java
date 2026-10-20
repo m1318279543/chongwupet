@@ -9,11 +9,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.system.domain.PetCategory;
 import com.ruoyi.system.domain.PetMatchRecord;
+import com.ruoyi.system.mapper.PetCategoryMapper;
 import com.ruoyi.system.mapper.PetMatchMapper;
 import com.ruoyi.system.service.IPetMatchService;
 
@@ -36,8 +40,45 @@ public class PetMatchServiceImpl implements IPetMatchService
 {
     private static final int TOP_N = 8;
 
+    private static final Logger log = LoggerFactory.getLogger(PetMatchServiceImpl.class);
+
     @Autowired
     private PetMatchMapper matchMapper;
+
+    @Autowired
+    private PetCategoryMapper categoryMapper;
+
+    /** 品类ID -> 名称缓存（用于无匹配原因提示） */
+    private volatile Map<Integer, String> categoryNames;
+
+    private String preferName(int categoryId)
+    {
+        if (categoryId <= 0)
+        {
+            return null;
+        }
+        if (categoryNames == null)
+        {
+            Map<Integer, String> m = new HashMap<>();
+            try
+            {
+                for (PetCategory c : categoryMapper.selectPetCategoryList(new PetCategory()))
+                {
+                    if (c.getCategoryId() != null)
+                    {
+                        m.put(c.getCategoryId().intValue(), c.getCategoryName());
+                    }
+                }
+                categoryNames = m;
+            }
+            catch (Exception e)
+            {
+                log.warn("读取宠物品类失败：{}", e.getMessage());
+                return null;
+            }
+        }
+        return categoryNames.get(categoryId);
+    }
 
     @Override
     public Map<String, Object> recommend(Map<String, Object> answers)
@@ -70,6 +111,12 @@ public class PetMatchServiceImpl implements IPetMatchService
         }
 
         List<Map<String, Object>> scored = new ArrayList<>();
+        // 未匹配诊断：按「类型 -> 有小孩 -> 预算」顺序归因，互斥计数（每只宠物只记第一个命中的拦截条件）
+        int byPrefer = 0;
+        int byKids = 0;
+        int byBudget = 0;
+        // 通过类型/小孩筛选后的最低价，用于给"预算不够"的提示
+        double cheapestCandidate = Double.MAX_VALUE;
         for (Map<String, Object> p : pets)
         {
             Long petId = toLong(p.get("petId"));
@@ -80,14 +127,21 @@ public class PetMatchServiceImpl implements IPetMatchService
             // —— 硬性条件：偏好类型 / 有小孩 / 购宠预算 ——
             if (pf.prefer > 0 && categoryId != pf.prefer)
             {
+                byPrefer++;
                 continue;
             }
             if (pf.kids && kidFriendly == 0)
             {
+                byKids++;
                 continue;
+            }
+            if (price > 0)
+            {
+                cheapestCandidate = Math.min(cheapestCandidate, price);
             }
             if (price > pf.budget)
             {
+                byBudget++;
                 continue;
             }
 
@@ -183,26 +237,128 @@ public class PetMatchServiceImpl implements IPetMatchService
         result.put("candidateCount", pets.size());
         result.put("matchedCount", scored.size());
         result.put("recommendations", scored);
-        result.put("summary", buildSummary(scored, pf));
+        // 无匹配时给出归因诊断，前端据此提示用户；有匹配时为 null
+        Map<String, Object> diagnosis = null;
+        if (scored.isEmpty())
+        {
+            diagnosis = buildDiagnosis(pf, pets, byPrefer, byKids, byBudget, cheapestCandidate);
+            result.put("diagnosis", diagnosis);
+        }
+        result.put("summary", buildSummary(scored, pf, diagnosis));
         result.put("generatedAt", new Date());
-        result.put("recordId", saveRecord(safeAnswers, pf, scored));
+        result.put("recordId", saveRecord(safeAnswers, pf, scored, diagnosis, pets.size()));
         return result;
     }
 
-    /** 保存问卷记录（失败不影响推荐结果） */
-    private Long saveRecord(Map<String, Object> answers, Profile pf, List<Map<String, Object>> scored)
+    /**
+     * 无匹配诊断：按「类型 -> 有小孩 -> 预算」的漏斗定位真正的卡点。
+     *
+     * 注意不能只看淘汰数量多少：类型过滤掉 75 只、只剩 21 只猫都超预算时，
+     * 根因是预算而不是类型（类型本身是有货的），所以用"过滤后是否还有候选"判断。
+     */
+    private Map<String, Object> buildDiagnosis(Profile pf, List<Map<String, Object>> pets,
+            int byPrefer, int byKids, int byBudget, double cheapestCandidate)
     {
-        if (scored.isEmpty())
+        int afterPrefer = pets.size() - byPrefer;
+        int afterKids = afterPrefer - byKids;
+        String rootCause;
+        if (pets.isEmpty())
         {
-            return null;
+            rootCause = "empty";
         }
+        else if (afterPrefer <= 0)
+        {
+            rootCause = "prefer";
+        }
+        else if (afterKids <= 0)
+        {
+            rootCause = "kids";
+        }
+        else
+        {
+            rootCause = "budget";
+        }
+
+        Map<String, Object> d = new LinkedHashMap<>();
+        d.put("rootCause", rootCause);
+        d.put("total", pets.size());
+        d.put("byPrefer", byPrefer);
+        d.put("byKids", byKids);
+        d.put("byBudget", byBudget);
+        d.put("budget", pf.budget);
+        d.put("prefer", pf.prefer);
+        d.put("lowestPrice", cheapestCandidate == Double.MAX_VALUE ? null : cheapestCandidate);
+
+        String preferredName = preferName(pf.prefer);
+        List<String> tips = new ArrayList<>();
+        String summary;
+        if ("empty".equals(rootCause))
+        {
+            summary = "当前宠物库暂时没有在售个体，可以稍后再试。";
+            tips.add("当前没有在售宠物，请稍后再试或联系客服");
+        }
+        else if ("prefer".equals(rootCause))
+        {
+            String name = preferredName == null ? "所选类型" : "「" + preferredName + "」";
+            summary = "你偏好的" + name + "目前没有在售个体，所以没有匹配结果。";
+            tips.add(name + "当前没有在售个体，把宠物类型改为「不限」即可看到其他推荐");
+        }
+        else if ("kids".equals(rootCause))
+        {
+            summary = "在有小孩的前提下，当前在售个体都不适合儿童家庭，所以没有匹配结果。";
+            tips.add("在售个体里没有标注「适合儿童」的" + (preferredName == null ? "宠物" : preferredName)
+                    + "，建议先咨询客服了解性情温和的个体");
+        }
+        else
+        {
+            int low = cheapestCandidate == Double.MAX_VALUE ? 0 : (int) Math.ceil(cheapestCandidate);
+            summary = "在售最低价约 ¥" + low + "，高于你的购宠预算 ¥" + (int) pf.budget
+                    + (byPrefer > 0 ? "（你偏好的类型里没有更便宜的选择）" : "") + "。";
+            tips.add("符合你其他条件的宠物最低价约 ¥" + low + "，比你的购宠预算 ¥" + (int) pf.budget
+                    + " 高 ¥" + Math.max(0, low - (int) pf.budget) + "，可适当上调预算");
+            if (byPrefer > 0)
+            {
+                tips.add("如不愿加预算，可把宠物类型改为「不限」，兔、仓鼠等品类价格更低");
+            }
+            tips.add("也可以咨询客服，看看近期是否有同类但价格更低的个体");
+        }
+        tips.add("本次测评已记录，我们会参考大家的需求调整在售品类");
+        d.put("tips", tips);
+        d.put("summary", summary);
+        return d;
+    }
+
+    /**
+     * 保存问卷记录（失败不影响推荐结果）
+     *
+     * 注意：无论是否匹配到宠物都要落库 —— 无匹配的问卷同样是有效需求数据，
+     * 后台可以据此看到"用户想要什么但店里没有"，用于选品与定价。
+     */
+    private Long saveRecord(Map<String, Object> answers, Profile pf, List<Map<String, Object>> scored,
+            Map<String, Object> diagnosis, int candidateCount)
+    {
         try
         {
-            Map<String, Object> top = scored.get(0);
             PetMatchRecord record = new PetMatchRecord();
             record.setUserId(pf.userId);
             record.setUserName(pf.userName);
             record.setAnswers(JSON.toJSONString(answers));
+            record.setAlgorithm(pf.hasHistory ? "规则引擎+协同过滤+人气" : "规则引擎+人气");
+
+            if (scored.isEmpty())
+            {
+                // 无匹配：保留 userId / 问卷 / 诊断，首推字段留空
+                record.setMatchStatus("1");
+                record.setTopPetName("");
+                record.setResultPets("无匹配");
+                record.setDiagnosis(diagnosis == null ? null : JSON.toJSONString(diagnosis));
+                record.setResultDetail("[]");
+                matchMapper.insertPetMatchRecord(record);
+                return record.getRecordId();
+            }
+
+            Map<String, Object> top = scored.get(0);
+            record.setMatchStatus("0");
             record.setTopPetId(toLong(top.get("petId")));
             record.setTopPetName(str(top, "petName"));
             record.setTopScore(num(top, "score"));
@@ -225,21 +381,23 @@ public class PetMatchServiceImpl implements IPetMatchService
             }
             record.setResultPets(names.toString());
             record.setResultDetail(JSON.toJSONString(brief));
-            record.setAlgorithm(pf.hasHistory ? "规则引擎+协同过滤+人气" : "规则引擎+人气");
             matchMapper.insertPetMatchRecord(record);
             return record.getRecordId();
         }
         catch (Exception e)
         {
+            log.warn("保存智能匹配记录失败：{}", e.getMessage());
             return null;
         }
     }
 
-    private String buildSummary(List<Map<String, Object>> scored, Profile pf)
+    private String buildSummary(List<Map<String, Object>> scored, Profile pf, Map<String, Object> diagnosis)
     {
         if (scored.isEmpty())
         {
-            return "按当前条件暂时没有合适的宠物，建议放宽预算或类型偏好后重试。";
+            // 与诊断共用同一段文案，避免"总结说预算、建议说类型"的口径矛盾
+            Object s = diagnosis == null ? null : diagnosis.get("summary");
+            return s == null ? "按当前条件暂时没有合适的宠物，建议放宽预算或类型偏好后重试。" : String.valueOf(s);
         }
         Map<String, Object> top = scored.get(0);
         StringBuilder sb = new StringBuilder();
@@ -503,6 +661,42 @@ public class PetMatchServiceImpl implements IPetMatchService
     public int countRecords()
     {
         return matchMapper.countPetMatchRecord();
+    }
+
+    @Override
+    public Map<String, Object> stat()
+    {
+        Map<String, Object> raw = matchMapper.selectMatchStat();
+        Map<String, Object> out = new LinkedHashMap<>();
+        long total = raw == null ? 0L : (long) toDouble(raw.get("total"));
+        long empty = raw == null ? 0L : (long) toDouble(raw.get("emptyCount"));
+        long today = raw == null ? 0L : (long) toDouble(raw.get("todayCount"));
+        out.put("total", total);
+        out.put("matched", total - empty);
+        out.put("empty", empty);
+        out.put("today", today);
+        out.put("emptyRate", total == 0 ? 0D : round(empty * 100D / total, 1));
+        return out;
+    }
+
+    private static double toDouble(Object v)
+    {
+        if (v == null)
+        {
+            return 0D;
+        }
+        if (v instanceof Number)
+        {
+            return ((Number) v).doubleValue();
+        }
+        try
+        {
+            return Double.parseDouble(v.toString());
+        }
+        catch (Exception e)
+        {
+            return 0D;
+        }
     }
 
     // ==================== 工具方法 ====================

@@ -23,6 +23,10 @@ public class PetMatchRecord extends BaseEntity
     private String resultPets;
     /** 推荐明细 JSON */
     private String resultDetail;
+    /** 匹配状态（0=有匹配结果，1=没有匹配到宠物） */
+    private String matchStatus;
+    /** 无匹配诊断 JSON（各条件淘汰数 / 缺口价位 / 建议） */
+    private String diagnosis;
     private String algorithm;
     private String delFlag;
 
@@ -114,6 +118,26 @@ public class PetMatchRecord extends BaseEntity
     public void setResultDetail(String resultDetail)
     {
         this.resultDetail = resultDetail;
+    }
+
+    public String getMatchStatus()
+    {
+        return matchStatus;
+    }
+
+    public void setMatchStatus(String matchStatus)
+    {
+        this.matchStatus = matchStatus;
+    }
+
+    public String getDiagnosis()
+    {
+        return diagnosis;
+    }
+
+    public void setDiagnosis(String diagnosis)
+    {
+        this.diagnosis = diagnosis;
     }
 
     public String getAlgorithm()
