@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetInfoMapper">
+
+    <resultMap type="PetInfo" id="PetInfoResult">
+        <result property="petId"     column="pet_id"     />
+        <result property="categoryId"  column="category_id"   />
+        <result property="petName"  column="pet_name"   />
+        <result property="breed"  column="breed"   />
+        <result property="age"  column="age"   />
+        <result property="gender"  column="gender"   />
+        <result property="price"  column="price"   />
+        <result property="image"  column="image"   />
+        <result property="status"  column="status"   />
+        <result property="description"  column="description"   />
+        <result property="likeCount"  column="like_count"   />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy"   column="update_by"   />
+        <result property="updateTime" column="update_time" />
+        <result property="remark"     column="remark"      />
+    </resultMap>
+
+    <sql id="selectPetInfoVo">
+        select pet_id, category_id, pet_name, breed, age, gender, price, image, status, description, like_count, create_by, create_time, update_by, update_time, remark
+        from pet_info
+    </sql>
+
+    <select id="selectPetInfoList" parameterType="PetInfo" resultMap="PetInfoResult">
+        <include refid="selectPetInfoVo"/>
+        <where>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="petName != null and petName != ''">
+                AND pet_name like concat('%', #{petName}, '%')
+            </if>
+            <if test="breed != null and breed != ''">
+                AND breed like concat('%', #{breed}, '%')
+            </if>
+            <if test="age != null and age != ''">
+                AND age like concat('%', #{age}, '%')
+            </if>
+            <if test="gender != null and gender != ''">
+                AND gender like concat('%', #{gender}, '%')
+            </if>
+            <if test="price != null">
+                AND price = #{price}
+            </if>
+            <if test="image != null and image != ''">
+                AND image like concat('%', #{image}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status like concat('%', #{status}, '%')
+            </if>
+            <if test="description != null and description != ''">
+                AND description like concat('%', #{description}, '%')
+            </if>
+        </where>
+        order by pet_id desc
+    </select>
+
+    <select id="selectPetInfoByPetId" parameterType="Long" resultMap="PetInfoResult">
+        <include refid="selectPetInfoVo"/>
+        where pet_id = #{petId}
+    </select>
+
+    <insert id="insertPetInfo" parameterType="PetInfo" useGeneratedKeys="true" keyProperty="petId">
+        insert into pet_info(
+            <if test="categoryId != null">category_id,</if>            <if test="petName != null and petName != ''">pet_name,</if>            <if test="breed != null and breed != ''">breed,</if>            <if test="age != null and age != ''">age,</if>            <if test="gender != null and gender != ''">gender,</if>            <if test="price != null">price,</if>            <if test="image != null and image != ''">image,</if>            <if test="status != null and status != ''">status,</if>            <if test="description != null and description != ''">description,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="categoryId != null">#{categoryId},</if>            <if test="petName != null and petName != ''">#{petName},</if>            <if test="breed != null and breed != ''">#{breed},</if>            <if test="age != null and age != ''">#{age},</if>            <if test="gender != null and gender != ''">#{gender},</if>            <if test="price != null">#{price},</if>            <if test="image != null and image != ''">#{image},</if>            <if test="status != null and status != ''">#{status},</if>            <if test="description != null and description != ''">#{description},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <!-- 修改 -->
+    <update id="updatePetInfo" parameterType="PetInfo">
+        update pet_info
+        <set>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="petName != null and petName != ''">pet_name = #{petName},</if>
+            <if test="breed != null and breed != ''">breed = #{breed},</if>
+            <if test="age != null and age != ''">age = #{age},</if>
+            <if test="gender != null and gender != ''">gender = #{gender},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="image != null and image != ''">image = #{image},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="description != null and description != ''">description = #{description},</if>
+            <if test="likeCount != null">like_count = #{likeCount},</if>
+            update_time = sysdate()
+        </set>
+        where pet_id = #{petId}
+    </update>
+
+    <delete id="deletePetInfoByPetId" parameterType="Long">
+        delete from pet_info where pet_id = #{petId}
+    </delete>
+
+    <delete id="deletePetInfoByPetIds" parameterType="Long">
+        delete from pet_info where pet_id in
+        <foreach item="petId" collection="array" open="(" separator="," close=")">
+            #{petId}
+        </foreach>
+    </delete>
+
+</mapper>

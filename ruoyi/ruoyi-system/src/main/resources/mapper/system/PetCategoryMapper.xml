@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetCategoryMapper">
+
+    <resultMap type="PetCategory" id="PetCategoryResult">
+        <result property="categoryId"   column="category_id"     />
+        <result property="categoryName"  column="category_name"   />
+        <result property="sort"          column="sort"            />
+        <result property="family"        column="family"          />
+        <result property="groupName"     column="group_name"      />
+        <result property="status"        column="status"           />
+        <result property="createBy"      column="create_by"       />
+        <result property="createTime"    column="create_time"     />
+        <result property="updateBy"      column="update_by"       />
+        <result property="updateTime"    column="update_time"     />
+        <result property="remark"        column="remark"          />
+    </resultMap>
+
+    <sql id="selectPetCategoryVo">
+        select category_id, category_name, sort, family, group_name, status, create_by, create_time, update_by, update_time, remark
+        from pet_category
+    </sql>
+
+    <!-- 查询列表 -->
+    <select id="selectPetCategoryList" parameterType="PetCategory" resultMap="PetCategoryResult">
+        <include refid="selectPetCategoryVo"/>
+        <where>
+            <if test="categoryName != null and categoryName != ''">
+                AND category_name like concat('%', #{categoryName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        order by sort, category_id
+    </select>
+
+    <!-- 通过ID查询 -->
+    <select id="selectPetCategoryByCategoryId" parameterType="Long" resultMap="PetCategoryResult">
+        <include refid="selectPetCategoryVo"/>
+        where category_id = #{categoryId}
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insertPetCategory" parameterType="PetCategory" useGeneratedKeys="true" keyProperty="categoryId">
+        insert into pet_category(
+            <if test="categoryName != null and categoryName != ''">category_name,</if>
+            <if test="sort != null">sort,</if>
+            <if test="family != null and family != ''">family,</if>
+            <if test="groupName != null and groupName != ''">group_name,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="categoryName != null and categoryName != ''">#{categoryName},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="family != null and family != ''">#{family},</if>
+            <if test="groupName != null and groupName != ''">#{groupName},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <!-- 修改 -->
+    <update id="updatePetCategory" parameterType="PetCategory">
+        update pet_category
+        <set>
+            <if test="categoryName != null and categoryName != ''">category_name = #{categoryName},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="family != null">family = #{family},</if>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where category_id = #{categoryId}
+    </update>
+
+    <!-- 单个删除 -->
+    <delete id="deletePetCategoryByCategoryId" parameterType="Long">
+        delete from pet_category where category_id = #{categoryId}
+    </delete>
+
+    <!-- 批量删除 -->
+    <delete id="deletePetCategoryByCategoryIds" parameterType="Long">
+        delete from pet_category where category_id in
+        <foreach item="categoryId" collection="array" open="(" separator="," close=")">
+            #{categoryId}
+        </foreach>
+    </delete>
+
+</mapper>

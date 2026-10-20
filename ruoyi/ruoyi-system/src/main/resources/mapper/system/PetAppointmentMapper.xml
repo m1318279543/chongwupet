@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetAppointmentMapper">
+
+    <resultMap type="PetAppointment" id="PetAppointmentResult">
+        <result property="appointmentId"     column="appointment_id"     />
+        <result property="userId"  column="user_id"   />
+        <result property="petId"  column="pet_id"   />
+        <result property="appointmentDate"  column="appointment_date"   />
+        <result property="contactPhone"  column="contact_phone"   />
+        <result property="status"  column="status"   />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy"   column="update_by"   />
+        <result property="updateTime" column="update_time" />
+        <result property="remark"     column="remark"      />
+        <result property="userName"   column="user_name"   />
+        <result property="petName"    column="pet_name"    />
+    </resultMap>
+
+    <sql id="selectPetAppointmentVo">
+        select a.appointment_id, a.user_id, a.pet_id, a.appointment_date, a.contact_phone, a.status, a.create_by, a.create_time, a.update_by, a.update_time, a.remark,
+               u.user_name as user_name, p.pet_name as pet_name, p.image as image, p.category_id as category_id
+        from pet_appointment a
+        left join sys_user u on u.user_id = a.user_id
+        left join pet_info p on p.pet_id = a.pet_id
+    </sql>
+
+    <select id="selectPetAppointmentList" parameterType="PetAppointment" resultMap="PetAppointmentResult">
+        <include refid="selectPetAppointmentVo"/>
+        <where>
+            <if test="userId != null">
+                AND a.user_id = #{userId}
+            </if>
+            <if test="petId != null">
+                AND a.pet_id = #{petId}
+            </if>
+            <if test="appointmentDate != null">
+                AND a.appointment_date = #{appointmentDate}
+            </if>
+            <if test="contactPhone != null and contactPhone != ''">
+                AND a.contact_phone like concat('%', #{contactPhone}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND a.status like concat('%', #{status}, '%')
+            </if>
+        </where>
+        order by a.appointment_id desc
+    </select>
+
+    <select id="selectPetAppointmentByAppointmentId" parameterType="Long" resultMap="PetAppointmentResult">
+        <include refid="selectPetAppointmentVo"/>
+        where a.appointment_id = #{appointmentId}
+    </select>
+
+    <insert id="insertPetAppointment" parameterType="PetAppointment" useGeneratedKeys="true" keyProperty="appointmentId">
+        insert into pet_appointment(
+            <if test="userId != null">user_id,</if>            <if test="petId != null">pet_id,</if>            <if test="appointmentDate != null">appointment_date,</if>            <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="userId != null">#{userId},</if>            <if test="petId != null">#{petId},</if>            <if test="appointmentDate != null">#{appointmentDate},</if>            <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <!-- 修改 -->
+    <update id="updatePetAppointment" parameterType="PetAppointment">
+        update pet_appointment
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="petId != null">pet_id = #{petId},</if>
+            <if test="appointmentDate != null">appointment_date = #{appointmentDate},</if>
+            <if test="contactPhone != null and contactPhone != ''">contact_phone = #{contactPhone},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            update_time = sysdate()
+        </set>
+        where appointment_id = #{appointmentId}
+    </update>
+
+    <delete id="deletePetAppointmentByAppointmentId" parameterType="Long">
+        delete from pet_appointment where appointment_id = #{appointmentId}
+    </delete>
+
+    <delete id="deletePetAppointmentByAppointmentIds" parameterType="Long">
+        delete from pet_appointment where appointment_id in
+        <foreach item="appointmentId" collection="array" open="(" separator="," close=")">
+            #{appointmentId}
+        </foreach>
+    </delete>
+
+</mapper>

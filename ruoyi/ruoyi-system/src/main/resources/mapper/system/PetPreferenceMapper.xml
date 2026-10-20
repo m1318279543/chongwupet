@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetPreferenceMapper">
+
+    <resultMap type="PetPreference" id="PetPreferenceResult">
+        <result property="preferenceId"   column="preference_id"   />
+        <result property="petId"         column="pet_id"          />
+        <result property="foodLike"       column="food_like"       />
+        <result property="toyLike"        column="toy_like"        />
+        <result property="personality"    column="personality"     />
+        <result property="activityLevel"  column="activity_level"  />
+        <result property="envLike"        column="env_like"        />
+        <result property="taboo"          column="taboo"           />
+        <result property="note"          column="note"            />
+        <result property="status"         column="status"          />
+        <result property="delFlag"        column="del_flag"        />
+        <result property="createBy"       column="create_by"       />
+        <result property="createTime"     column="create_time"     />
+        <result property="updateBy"       column="update_by"       />
+        <result property="updateTime"     column="update_time"     />
+        <result property="petName"        column="pet_name"        />
+        <result property="breed"          column="breed"           />
+        <result property="image"          column="image"           />
+        <result property="categoryId"     column="category_id"     />
+    </resultMap>
+
+    <sql id="selectPetPreferenceVo">
+        select pp.preference_id, pp.pet_id, pp.food_like, pp.toy_like, pp.personality,
+               pp.activity_level, pp.env_like, pp.taboo, pp.note, pp.status, pp.del_flag,
+               pp.create_by, pp.create_time, pp.update_by, pp.update_time,
+               pi.pet_name, pi.breed, pi.image, pi.category_id
+        from pet_preference pp
+        left join pet_info pi on pi.pet_id = pp.pet_id
+    </sql>
+
+    <select id="selectPetPreferenceList" parameterType="PetPreference" resultMap="PetPreferenceResult">
+        <include refid="selectPetPreferenceVo"/>
+        <where>
+            pp.del_flag = '0'
+            <if test="petId != null">AND pp.pet_id = #{petId}</if>
+            <if test="petName != null and petName != ''">AND pi.pet_name like concat('%', #{petName}, '%')</if>
+            <if test="foodLike != null and foodLike != ''">AND pp.food_like like concat('%', #{foodLike}, '%')</if>
+            <if test="status != null and status != ''">AND pp.status = #{status}</if>
+        </where>
+        order by pp.pet_id
+    </select>
+
+    <select id="selectPetPreferenceByPetId" parameterType="Long" resultMap="PetPreferenceResult">
+        <include refid="selectPetPreferenceVo"/>
+        where pp.del_flag = '0' and pp.pet_id = #{petId}
+        limit 1
+    </select>
+
+    <select id="selectPetPreferenceByPreferenceId" parameterType="Long" resultMap="PetPreferenceResult">
+        <include refid="selectPetPreferenceVo"/>
+        where pp.preference_id = #{preferenceId}
+    </select>
+
+    <insert id="insertPetPreference" parameterType="PetPreference" useGeneratedKeys="true" keyProperty="preferenceId">
+        insert into pet_preference(
+            <if test="petId != null">pet_id,</if>
+            <if test="foodLike != null">food_like,</if>
+            <if test="toyLike != null">toy_like,</if>
+            <if test="personality != null">personality,</if>
+            <if test="activityLevel != null and activityLevel != ''">activity_level,</if>
+            <if test="envLike != null">env_like,</if>
+            <if test="taboo != null">taboo,</if>
+            <if test="note != null">note,</if>
+            <if test="status != null and status != ''">status,</if>
+            create_by, create_time
+        )values(
+            <if test="petId != null">#{petId},</if>
+            <if test="foodLike != null">#{foodLike},</if>
+            <if test="toyLike != null">#{toyLike},</if>
+            <if test="personality != null">#{personality},</if>
+            <if test="activityLevel != null and activityLevel != ''">#{activityLevel},</if>
+            <if test="envLike != null">#{envLike},</if>
+            <if test="taboo != null">#{taboo},</if>
+            <if test="note != null">#{note},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updatePetPreference" parameterType="PetPreference">
+        update pet_preference
+        <set>
+            <if test="petId != null">pet_id = #{petId},</if>
+            <if test="foodLike != null">food_like = #{foodLike},</if>
+            <if test="toyLike != null">toy_like = #{toyLike},</if>
+            <if test="personality != null">personality = #{personality},</if>
+            <if test="activityLevel != null and activityLevel != ''">activity_level = #{activityLevel},</if>
+            <if test="envLike != null">env_like = #{envLike},</if>
+            <if test="taboo != null">taboo = #{taboo},</if>
+            <if test="note != null">note = #{note},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            update_by = #{updateBy}, update_time = sysdate()
+        </set>
+        where preference_id = #{preferenceId}
+    </update>
+
+    <update id="deletePetPreferenceByPreferenceIds" parameterType="Long">
+        update pet_preference set del_flag = '2' where preference_id in
+        <foreach item="preferenceId" collection="array" open="(" separator="," close=")">
+            #{preferenceId}
+        </foreach>
+    </update>
+
+    <update id="deletePetPreferenceByPetId" parameterType="Long">
+        update pet_preference set del_flag = '2' where pet_id = #{petId}
+    </update>
+
+</mapper>

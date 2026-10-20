@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetLikeMapper">
+
+    <resultMap type="PetLike" id="PetLikeResult">
+        <result property="likeId"     column="like_id"     />
+        <result property="petId"      column="pet_id"      />
+        <result property="targetType" column="target_type" />
+        <result property="userId"     column="user_id"     />
+        <result property="createTime" column="create_time" />
+        <result property="userName"   column="user_name"   />
+        <result property="petName"    column="pet_name"    />
+        <result property="image"      column="image"       />
+    </resultMap>
+
+    <sql id="selectPetLikeVo">
+        select l.like_id, l.user_id, l.pet_id, l.target_type, l.create_time,
+               u.user_name as user_name, p.pet_name as pet_name, p.image as image
+        from pet_like l
+        left join sys_user u on u.user_id = l.user_id
+        left join pet_info p on p.pet_id = l.pet_id
+    </sql>
+
+    <select id="selectPetLikeList" parameterType="PetLike" resultMap="PetLikeResult">
+        <include refid="selectPetLikeVo"/>
+        <where>
+            <if test="userId != null">
+                AND l.user_id = #{userId}
+            </if>
+            <if test="petId != null">
+                AND l.pet_id = #{petId}
+            </if>
+            <if test="targetType != null and targetType != ''">
+                AND l.target_type = #{targetType}
+            </if>
+        </where>
+        order by l.like_id desc
+    </select>
+
+    <select id="selectPetLikeByLikeId" parameterType="Long" resultMap="PetLikeResult">
+        <include refid="selectPetLikeVo"/>
+        where l.like_id = #{likeId}
+    </select>
+
+    <select id="selectPetLikeByUserAndPet" parameterType="map" resultMap="PetLikeResult">
+        <include refid="selectPetLikeVo"/>
+        where l.user_id = #{userId} and l.pet_id = #{petId} and l.target_type = #{targetType}
+        limit 1
+    </select>
+
+    <select id="countByPetId" parameterType="map" resultType="int">
+        select count(*) from pet_like where pet_id = #{petId} and target_type = #{targetType}
+    </select>
+
+    <insert id="insertPetLike" parameterType="PetLike" useGeneratedKeys="true" keyProperty="likeId">
+        insert into pet_like(user_id, pet_id, target_type, create_time)
+        values(#{userId}, #{petId}, #{targetType}, sysdate())
+    </insert>
+
+    <delete id="deletePetLikeByLikeId" parameterType="Long">
+        delete from pet_like where like_id = #{likeId}
+    </delete>
+
+    <delete id="deletePetLikeByLikeIds" parameterType="Long">
+        delete from pet_like where like_id in
+        <foreach item="likeId" collection="array" open="(" separator="," close=")">
+            #{likeId}
+        </foreach>
+    </delete>
+
+    <delete id="deletePetLikeByPetId" parameterType="Long">
+        delete from pet_like where pet_id = #{petId}
+    </delete>
+
+</mapper>

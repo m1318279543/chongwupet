@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetFavoriteMapper">
+
+    <resultMap type="PetFavorite" id="PetFavoriteResult">
+        <result property="favoriteId"     column="favorite_id"     />
+        <result property="userId"  column="user_id"   />
+        <result property="petId"  column="pet_id"   />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy"   column="update_by"   />
+        <result property="updateTime" column="update_time" />
+        <result property="remark"     column="remark"      />
+        <result property="userName"   column="user_name"   />
+        <result property="petName"    column="pet_name"    />
+    </resultMap>
+
+    <sql id="selectPetFavoriteVo">
+        select f.favorite_id, f.user_id, f.pet_id, f.create_by, f.create_time, f.update_by, f.update_time, f.remark,
+               u.user_name as user_name, p.pet_name as pet_name, p.image as image, p.category_id as category_id
+        from pet_favorite f
+        left join sys_user u on u.user_id = f.user_id
+        left join pet_info p on p.pet_id = f.pet_id
+    </sql>
+
+    <select id="selectPetFavoriteList" parameterType="PetFavorite" resultMap="PetFavoriteResult">
+        <include refid="selectPetFavoriteVo"/>
+        <where>
+            <if test="userId != null">
+                AND f.user_id = #{userId}
+            </if>
+            <if test="petId != null">
+                AND f.pet_id = #{petId}
+            </if>
+        </where>
+        order by f.favorite_id desc
+    </select>
+
+    <select id="selectPetFavoriteByFavoriteId" parameterType="Long" resultMap="PetFavoriteResult">
+        <include refid="selectPetFavoriteVo"/>
+        where f.favorite_id = #{favoriteId}
+    </select>
+
+    <insert id="insertPetFavorite" parameterType="PetFavorite" useGeneratedKeys="true" keyProperty="favoriteId">
+        insert into pet_favorite(
+            <if test="userId != null">user_id,</if>            <if test="petId != null">pet_id,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="userId != null">#{userId},</if>            <if test="petId != null">#{petId},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+
+    <delete id="deletePetFavoriteByFavoriteId" parameterType="Long">
+        delete from pet_favorite where favorite_id = #{favoriteId}
+    </delete>
+
+    <delete id="deletePetFavoriteByFavoriteIds" parameterType="Long">
+        delete from pet_favorite where favorite_id in
+        <foreach item="favoriteId" collection="array" open="(" separator="," close=")">
+            #{favoriteId}
+        </foreach>
+    </delete>
+
+</mapper>

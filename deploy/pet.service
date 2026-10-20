@@ -1,0 +1,18 @@
+[Unit]
+Description=Pet Shop Backend (RuoYi Spring Boot)
+After=network.target mysql.service redis-server.service
+Wants=mysql.service redis-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pet/app
+Environment=LANG=C.UTF-8
+Environment=JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
+ExecStart=/usr/bin/java -Xms256m -Xmx448m -XX:+UseSerialGC -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError -jar /opt/pet/app/ruoyi-admin.jar --server.address=127.0.0.1 --server.port=8081 --ruoyi.profile=/opt/pet/uploadPath "--spring.datasource.druid.master.url=jdbc:mysql://127.0.0.1:3306/ry-pet?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai" --spring.datasource.druid.master.username=pet --spring.datasource.druid.master.password=__DB_PASS__
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/pet/logs/backend.log
+StandardError=append:/opt/pet/logs/backend.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetHealthIssueMapper">
+
+    <resultMap type="PetHealthIssue" id="PetHealthIssueResult">
+        <result property="issueId"     column="issue_id"      />
+        <result property="categoryId"  column="category_id"   />
+        <result property="family"      column="family"        />
+        <result property="issueName"   column="issue_name"    />
+        <result property="symptoms"    column="symptoms"      />
+        <result property="cause"       column="cause"         />
+        <result property="solution"    column="solution"      />
+        <result property="prevention"  column="prevention"    />
+        <result property="severity"    column="severity"      />
+        <result property="sort"        column="sort"          />
+        <result property="status"      column="status"        />
+        <result property="delFlag"     column="del_flag"      />
+        <result property="createBy"    column="create_by"     />
+        <result property="createTime"  column="create_time"   />
+        <result property="updateBy"    column="update_by"     />
+        <result property="updateTime"  column="update_time"   />
+        <result property="categoryName" column="category_name" />
+    </resultMap>
+
+    <sql id="selectPetHealthIssueVo">
+        select hi.issue_id, hi.category_id, hi.family, hi.issue_name, hi.symptoms,
+               hi.cause, hi.solution, hi.prevention, hi.severity, hi.sort, hi.status, hi.del_flag,
+               hi.create_by, hi.create_time, hi.update_by, hi.update_time,
+               pc.category_name
+        from pet_health_issue hi
+        left join pet_category pc on pc.category_id = hi.category_id
+    </sql>
+
+    <select id="selectPetHealthIssueList" parameterType="PetHealthIssue" resultMap="PetHealthIssueResult">
+        <include refid="selectPetHealthIssueVo"/>
+        <where>
+            hi.del_flag = '0'
+            <if test="categoryId != null">AND hi.category_id = #{categoryId}</if>
+            <if test="family != null and family != ''">AND hi.family = #{family}</if>
+            <if test="issueName != null and issueName != ''">AND hi.issue_name like concat('%', #{issueName}, '%')</if>
+            <if test="status != null and status != ''">AND hi.status = #{status}</if>
+        </where>
+        order by hi.sort, hi.issue_id
+    </select>
+
+    <select id="selectPetHealthIssueByIssueId" parameterType="Long" resultMap="PetHealthIssueResult">
+        <include refid="selectPetHealthIssueVo"/>
+        where hi.issue_id = #{issueId}
+    </select>
+
+    <select id="selectPetHealthIssueByFamily" parameterType="String" resultMap="PetHealthIssueResult">
+        <include refid="selectPetHealthIssueVo"/>
+        where hi.del_flag = '0' and hi.status = '0' and hi.family = #{family}
+        order by hi.sort, hi.issue_id
+    </select>
+
+    <insert id="insertPetHealthIssue" parameterType="PetHealthIssue" useGeneratedKeys="true" keyProperty="issueId">
+        insert into pet_health_issue(
+            <if test="categoryId != null">category_id,</if>
+            <if test="family != null and family != ''">family,</if>
+            <if test="issueName != null and issueName != ''">issue_name,</if>
+            <if test="symptoms != null">symptoms,</if>
+            <if test="cause != null">cause,</if>
+            <if test="solution != null">solution,</if>
+            <if test="prevention != null">prevention,</if>
+            <if test="severity != null and severity != ''">severity,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null and status != ''">status,</if>
+            create_by, create_time
+        )values(
+            <if test="categoryId != null">#{categoryId},</if>
+            <if test="family != null and family != ''">#{family},</if>
+            <if test="issueName != null and issueName != ''">#{issueName},</if>
+            <if test="symptoms != null">#{symptoms},</if>
+            <if test="cause != null">#{cause},</if>
+            <if test="solution != null">#{solution},</if>
+            <if test="prevention != null">#{prevention},</if>
+            <if test="severity != null and severity != ''">#{severity},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updatePetHealthIssue" parameterType="PetHealthIssue">
+        update pet_health_issue
+        <set>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="family != null and family != ''">family = #{family},</if>
+            <if test="issueName != null and issueName != ''">issue_name = #{issueName},</if>
+            <if test="symptoms != null">symptoms = #{symptoms},</if>
+            <if test="cause != null">cause = #{cause},</if>
+            <if test="solution != null">solution = #{solution},</if>
+            <if test="prevention != null">prevention = #{prevention},</if>
+            <if test="severity != null and severity != ''">severity = #{severity},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            update_by = #{updateBy}, update_time = sysdate()
+        </set>
+        where issue_id = #{issueId}
+    </update>
+
+    <update id="deletePetHealthIssueByIssueIds" parameterType="Long">
+        update pet_health_issue set del_flag = '2' where issue_id in
+        <foreach item="issueId" collection="array" open="(" separator="," close=")">
+            #{issueId}
+        </foreach>
+    </update>
+
+</mapper>

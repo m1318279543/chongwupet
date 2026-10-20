@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetConsultMapper">
+
+    <resultMap type="PetConsult" id="PetConsultResult">
+        <result property="consultId"   column="consult_id"    />
+        <result property="userId"      column="user_id"       />
+        <result property="userName"    column="user_name"     />
+        <result property="contact"     column="contact"       />
+        <result property="question"    column="question"      />
+        <result property="reply"       column="reply"         />
+        <result property="replyBy"     column="reply_by"      />
+        <result property="replyTime"   column="reply_time"    />
+        <result property="status"      column="status"        />
+        <result property="delFlag"     column="del_flag"      />
+        <result property="createBy"    column="create_by"     />
+        <result property="createTime"  column="create_time"   />
+        <result property="updateBy"    column="update_by"     />
+        <result property="updateTime"  column="update_time"   />
+    </resultMap>
+
+    <sql id="selectPetConsultVo">
+        select consult_id, user_id, user_name, contact, question, reply, reply_by, reply_time,
+               status, del_flag, create_by, create_time, update_by, update_time
+        from pet_consult
+    </sql>
+
+    <select id="selectPetConsultList" parameterType="PetConsult" resultMap="PetConsultResult">
+        <include refid="selectPetConsultVo"/>
+        <where>
+            del_flag = '0'
+            <if test="userId != null">AND user_id = #{userId}</if>
+            <if test="userName != null and userName != ''">AND user_name like concat('%', #{userName}, '%')</if>
+            <if test="question != null and question != ''">AND question like concat('%', #{question}, '%')</if>
+            <if test="status != null and status != ''">AND status = #{status}</if>
+        </where>
+        order by consult_id desc
+    </select>
+
+    <select id="selectPetConsultByConsultId" parameterType="Long" resultMap="PetConsultResult">
+        <include refid="selectPetConsultVo"/>
+        where consult_id = #{consultId}
+    </select>
+
+    <insert id="insertPetConsult" parameterType="PetConsult" useGeneratedKeys="true" keyProperty="consultId">
+        insert into pet_consult(
+            <if test="userId != null">user_id,</if>
+            <if test="userName != null and userName != ''">user_name,</if>
+            <if test="contact != null">contact,</if>
+            <if test="question != null and question != ''">question,</if>
+            <if test="status != null and status != ''">status,</if>
+            create_by, create_time
+        )values(
+            <if test="userId != null">#{userId},</if>
+            <if test="userName != null and userName != ''">#{userName},</if>
+            <if test="contact != null">#{contact},</if>
+            <if test="question != null and question != ''">#{question},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updatePetConsult" parameterType="PetConsult">
+        update pet_consult
+        <set>
+            <if test="reply != null">reply = #{reply},</if>
+            <if test="replyBy != null and replyBy != ''">reply_by = #{replyBy},</if>
+            <if test="replyTime != null">reply_time = #{replyTime},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="contact != null">contact = #{contact},</if>
+            <if test="question != null and question != ''">question = #{question},</if>
+            update_by = #{updateBy}, update_time = sysdate()
+        </set>
+        where consult_id = #{consultId}
+    </update>
+
+    <update id="deletePetConsultByConsultIds" parameterType="Long">
+        update pet_consult set del_flag = '2' where consult_id in
+        <foreach item="consultId" collection="array" open="(" separator="," close=")">
+            #{consultId}
+        </foreach>
+    </update>
+
+</mapper>

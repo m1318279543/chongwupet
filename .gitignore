@@ -1,0 +1,51 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建产物
+pet-web/dist/
+pet-web/dist-new/
+pet-web/dist-*/
+pet-web/.vite-cache/
+ruoyi/**/target/
+*.jar
+*.war
+*.class
+
+# 日志
+*.log
+logs/
+
+# 部署包 / 数据备份 / 密钥（含数据库导出与服务器凭据，绝不能进公开仓库）
+deploy/*.jar
+deploy/*.tar.gz
+deploy/*.sql
+deploy/pet_deploy_key*
+deploy/ssh_run.py
+
+# 测试过程产物
+*-shot.png
+nav-w*.png
+remote-admin.png
+remote-match.png
+remote-shop.png
+quiz-*.png
+match-*.png
+*.mp4
+perf-report.html
+
+# 二进制工具
+cloudflared.exe
+*.exe
+
+# IDE / 系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.iml
+*.swp
+
+# 临时文件
+*.tmp
+*.bak

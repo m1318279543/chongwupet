@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetMatchMapper">
+
+    <resultMap type="PetMatchRecord" id="PetMatchRecordResult">
+        <result property="recordId"     column="record_id"     />
+        <result property="userId"       column="user_id"       />
+        <result property="userName"     column="user_name"     />
+        <result property="answers"      column="answers"       />
+        <result property="topPetId"     column="top_pet_id"    />
+        <result property="topPetName"   column="top_pet_name"  />
+        <result property="topScore"     column="top_score"     />
+        <result property="resultPets"   column="result_pets"   />
+        <result property="resultDetail" column="result_detail" />
+        <result property="algorithm"    column="algorithm"     />
+        <result property="delFlag"      column="del_flag"      />
+        <result property="createTime"   column="create_time"   />
+    </resultMap>
+
+    <!-- 宠物 + 特征（只在售） -->
+    <select id="selectTraitPets" resultType="java.util.LinkedHashMap">
+        select p.pet_id          as petId,
+               p.pet_name        as petName,
+               p.breed           as breed,
+               p.image           as image,
+               p.age             as age,
+               p.gender          as gender,
+               p.price           as price,
+               p.description     as description,
+               p.like_count      as likeCount,
+               p.category_id     as categoryId,
+               c.category_name   as categoryName,
+               c.group_name      as groupName,
+               t.space_need      as spaceNeed,
+               t.activity_need   as activityNeed,
+               t.care_level      as careLevel,
+               t.exp_level       as expLevel,
+               t.noise_level     as noiseLevel,
+               t.kid_friendly    as kidFriendly,
+               t.monthly_cost    as monthlyCost,
+               t.traits          as traits
+        from pet_info p
+        join pet_match_trait t on t.pet_id = p.pet_id
+        left join pet_category c on c.category_id = p.category_id
+        where (p.status is null or p.status = '0')
+    </select>
+
+    <!-- 隐式反馈：收藏(3) + 有效预约(5) + 点赞(2) -->
+    <select id="selectInteractionSignals" resultType="java.util.LinkedHashMap">
+        select user_id as userId, pet_id as petId, 3 as weight
+        from pet_favorite
+        where user_id is not null and pet_id is not null
+        union all
+        select user_id as userId, pet_id as petId, 5 as weight
+        from pet_appointment
+        where user_id is not null and pet_id is not null and (status is null or status &lt;&gt; '3')
+        union all
+        select user_id as userId, pet_id as petId, 2 as weight
+        from pet_like
+        where user_id is not null and pet_id is not null and target_type = 'pet'
+    </select>
+
+    <insert id="insertPetMatchRecord" parameterType="PetMatchRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into pet_match_record
+        (user_id, user_name, answers, top_pet_id, top_pet_name, top_score, result_pets, result_detail, algorithm, create_time)
+        values
+        (#{userId}, #{userName}, #{answers}, #{topPetId}, #{topPetName}, #{topScore}, #{resultPets}, #{resultDetail}, #{algorithm}, sysdate())
+    </insert>
+
+    <select id="selectPetMatchRecordList" parameterType="PetMatchRecord" resultMap="PetMatchRecordResult">
+        select record_id, user_id, user_name, answers, top_pet_id, top_pet_name, top_score,
+               result_pets, result_detail, algorithm, del_flag, create_time
+        from pet_match_record
+        where del_flag = '0'
+        <if test="userName != null and userName != ''">
+            and user_name like concat('%', #{userName}, '%')
+        </if>
+        <if test="params.beginTime != null and params.beginTime != ''">
+            and create_time &gt;= #{params.beginTime}
+        </if>
+        <if test="params.endTime != null and params.endTime != ''">
+            and create_time &lt;= concat(#{params.endTime}, ' 23:59:59')
+        </if>
+        order by record_id desc
+    </select>
+
+    <select id="selectPetMatchRecordById" parameterType="Long" resultMap="PetMatchRecordResult">
+        select record_id, user_id, user_name, answers, top_pet_id, top_pet_name, top_score,
+               result_pets, result_detail, algorithm, del_flag, create_time
+        from pet_match_record where record_id = #{recordId}
+    </select>
+
+    <delete id="deletePetMatchRecordByIds" parameterType="Long">
+        update pet_match_record set del_flag = '2' where record_id in
+        <foreach collection="array" item="recordId" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+
+    <update id="deletePetMatchRecordAll">
+        update pet_match_record set del_flag = '2' where del_flag = '0'
+    </update>
+
+    <select id="countPetMatchRecord" resultType="int">
+        select count(*) from pet_match_record where del_flag = '0'
+    </select>
+</mapper>

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetHealthMapper">
+
+    <resultMap type="PetHealth" id="PetHealthResult">
+        <result property="healthId"        column="health_id"        />
+        <result property="petId"           column="pet_id"           />
+        <result property="archiveNo"       column="archive_no"       />
+        <result property="vaccineName"     column="vaccine_name"     />
+        <result property="vaccineProgress" column="vaccine_progress" />
+        <result property="vaccineDate"     column="vaccine_date"     />
+        <result property="dewormName"      column="deworm_name"      />
+        <result property="dewormDate"      column="deworm_date"      />
+        <result property="examItems"       column="exam_items"       />
+        <result property="examResult"      column="exam_result"      />
+        <result property="examDate"        column="exam_date"        />
+        <result property="examHospital"    column="exam_hospital"    />
+        <result property="geneticScreen"   column="genetic_screen"   />
+        <result property="healthLevel"     column="health_level"     />
+        <result property="healthNote"      column="health_note"      />
+        <result property="sourceChannel"   column="source_channel"   />
+        <result property="sourcePlace"     column="source_place"     />
+        <result property="fatherInfo"      column="father_info"      />
+        <result property="motherInfo"      column="mother_info"      />
+        <result property="birthDate"       column="birth_date"       />
+        <result property="isPhotoReal"     column="is_photo_real"    />
+        <result property="temperament"     column="temperament"      />
+        <result property="feedPlan"        column="feed_plan"        />
+        <result property="carePoints"      column="care_points"      />
+        <result property="skillLevel"      column="skill_level"      />
+        <result property="guaranteeDays"   column="guarantee_days"   />
+        <result property="contractNo"      column="contract_no"      />
+        <result property="deliverySupport" column="delivery_support" />
+        <result property="aftersaleNote"   column="aftersale_note"   />
+        <result property="status"          column="status"           />
+        <result property="delFlag"         column="del_flag"         />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+        <result property="remark"          column="remark"           />
+        <!-- 关联展示字段 -->
+        <result property="petName"         column="pet_name"         />
+        <result property="breed"           column="breed"            />
+        <result property="image"           column="image"            />
+        <result property="categoryId"      column="category_id"      />
+        <result property="price"           column="price"            />
+    </resultMap>
+
+    <sql id="selectPetHealthVo">
+        select h.health_id, h.pet_id, h.archive_no, h.vaccine_name, h.vaccine_progress,
+               h.vaccine_date, h.deworm_name, h.deworm_date, h.exam_items, h.exam_result,
+               h.exam_date, h.exam_hospital, h.genetic_screen, h.health_level, h.health_note,
+               h.source_channel, h.source_place, h.father_info, h.mother_info, h.birth_date,
+               h.is_photo_real, h.temperament, h.feed_plan, h.care_points, h.skill_level,
+               h.guarantee_days, h.contract_no, h.delivery_support, h.aftersale_note,
+               h.status, h.del_flag, h.create_by, h.create_time, h.update_by, h.update_time, h.remark,
+               p.pet_name as pet_name, p.breed as breed, p.image as image,
+               p.category_id as category_id, p.price as price
+        from pet_health h
+        left join pet_info p on p.pet_id = h.pet_id
+    </sql>
+
+    <select id="selectPetHealthList" parameterType="PetHealth" resultMap="PetHealthResult">
+        <include refid="selectPetHealthVo"/>
+        <where>
+            h.del_flag = '0'
+            <if test="petId != null"> and h.pet_id = #{petId}</if>
+            <if test="archiveNo != null and archiveNo != ''"> and h.archive_no like concat('%', #{archiveNo}, '%')</if>
+            <if test="healthLevel != null and healthLevel != ''"> and h.health_level = #{healthLevel}</if>
+            <if test="status != null and status != ''"> and h.status = #{status}</if>
+            <if test="petName != null and petName != ''"> and p.pet_name like concat('%', #{petName}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''"> and h.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''"> and h.create_time &lt;= #{params.endTime}</if>
+        </where>
+        order by h.health_id desc
+    </select>
+
+    <select id="selectPetHealthByPetId" parameterType="Long" resultMap="PetHealthResult">
+        <include refid="selectPetHealthVo"/>
+        where h.pet_id = #{petId} and h.del_flag = '0'
+    </select>
+
+    <select id="selectPetHealthByHealthId" parameterType="Long" resultMap="PetHealthResult">
+        <include refid="selectPetHealthVo"/>
+        where h.health_id = #{healthId}
+    </select>
+
+    <insert id="insertPetHealth" parameterType="PetHealth" useGeneratedKeys="true" keyProperty="healthId">
+        insert into pet_health
+        (pet_id, archive_no, vaccine_name, vaccine_progress, vaccine_date, deworm_name, deworm_date,
+         exam_items, exam_result, exam_date, exam_hospital, genetic_screen, health_level, health_note,
+         source_channel, source_place, father_info, mother_info, birth_date, is_photo_real,
+         temperament, feed_plan, care_points, skill_level, guarantee_days, contract_no,
+         delivery_support, aftersale_note, status, del_flag, create_by, create_time, remark)
+        values
+        (#{petId}, #{archiveNo}, #{vaccineName}, #{vaccineProgress}, #{vaccineDate}, #{dewormName}, #{dewormDate},
+         #{examItems}, #{examResult}, #{examDate}, #{examHospital}, #{geneticScreen}, #{healthLevel}, #{healthNote},
+         #{sourceChannel}, #{sourcePlace}, #{fatherInfo}, #{motherInfo}, #{birthDate}, #{isPhotoReal},
+         #{temperament}, #{feedPlan}, #{carePoints}, #{skillLevel}, #{guaranteeDays}, #{contractNo},
+         #{deliverySupport}, #{aftersaleNote}, #{status}, '0', #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updatePetHealth" parameterType="PetHealth">
+        update pet_health
+        <set>
+            <if test="petId != null">pet_id = #{petId},</if>
+            <if test="archiveNo != null">archive_no = #{archiveNo},</if>
+            <if test="vaccineName != null">vaccine_name = #{vaccineName},</if>
+            <if test="vaccineProgress != null">vaccine_progress = #{vaccineProgress},</if>
+            <if test="vaccineDate != null">vaccine_date = #{vaccineDate},</if>
+            <if test="dewormName != null">deworm_name = #{dewormName},</if>
+            <if test="dewormDate != null">deworm_date = #{dewormDate},</if>
+            <if test="examItems != null">exam_items = #{examItems},</if>
+            <if test="examResult != null">exam_result = #{examResult},</if>
+            <if test="examDate != null">exam_date = #{examDate},</if>
+            <if test="examHospital != null">exam_hospital = #{examHospital},</if>
+            <if test="geneticScreen != null">genetic_screen = #{geneticScreen},</if>
+            <if test="healthLevel != null">health_level = #{healthLevel},</if>
+            <if test="healthNote != null">health_note = #{healthNote},</if>
+            <if test="sourceChannel != null">source_channel = #{sourceChannel},</if>
+            <if test="sourcePlace != null">source_place = #{sourcePlace},</if>
+            <if test="fatherInfo != null">father_info = #{fatherInfo},</if>
+            <if test="motherInfo != null">mother_info = #{motherInfo},</if>
+            <if test="birthDate != null">birth_date = #{birthDate},</if>
+            <if test="isPhotoReal != null">is_photo_real = #{isPhotoReal},</if>
+            <if test="temperament != null">temperament = #{temperament},</if>
+            <if test="feedPlan != null">feed_plan = #{feedPlan},</if>
+            <if test="carePoints != null">care_points = #{carePoints},</if>
+            <if test="skillLevel != null">skill_level = #{skillLevel},</if>
+            <if test="guaranteeDays != null">guarantee_days = #{guaranteeDays},</if>
+            <if test="contractNo != null">contract_no = #{contractNo},</if>
+            <if test="deliverySupport != null">delivery_support = #{deliverySupport},</if>
+            <if test="aftersaleNote != null">aftersale_note = #{aftersaleNote},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where health_id = #{healthId}
+    </update>
+
+    <update id="deletePetHealthByHealthIds" parameterType="Long">
+        update pet_health set del_flag = '2' where health_id in
+        <foreach collection="array" item="healthId" open="(" separator="," close=")">
+            #{healthId}
+        </foreach>
+    </update>
+
+    <update id="deletePetHealthByPetId" parameterType="Long">
+        update pet_health set del_flag = '2' where pet_id = #{petId}
+    </update>
+
+</mapper>

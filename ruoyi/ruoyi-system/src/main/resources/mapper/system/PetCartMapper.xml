@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetCartMapper">
+
+    <resultMap type="PetCart" id="PetCartResult">
+        <result property="cartId"     column="cart_id"     />
+        <result property="userId"     column="user_id"     />
+        <result property="userName"   column="user_name"   />
+        <result property="goodsName"  column="goods_name"  />
+        <result property="goodsImage" column="goods_image" />
+        <result property="goodsSpec"  column="goods_spec"  />
+        <result property="price"      column="price"       />
+        <result property="qty"        column="qty"         />
+        <result property="amount"     column="amount"      />
+        <result property="status"     column="status"      />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+        <result property="remark"     column="remark"      />
+    </resultMap>
+
+    <sql id="selectPetCartVo">
+        select c.cart_id, c.user_id, c.user_name, c.goods_name, c.goods_image, c.goods_spec,
+               c.price, c.qty, c.amount, c.status, c.create_by, c.create_time, c.remark
+        from pet_cart c
+    </sql>
+
+    <select id="selectPetCartList" parameterType="PetCart" resultMap="PetCartResult">
+        <include refid="selectPetCartVo"/>
+        <where>
+            <if test="userId != null">
+                AND c.user_id = #{userId}
+            </if>
+            <if test="userName != null and userName != ''">
+                AND c.user_name like concat('%', #{userName}, '%')
+            </if>
+            <if test="goodsName != null and goodsName != ''">
+                AND c.goods_name like concat('%', #{goodsName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND c.status = #{status}
+            </if>
+        </where>
+        order by c.cart_id desc
+    </select>
+
+    <select id="selectPetCartByCartId" parameterType="Long" resultMap="PetCartResult">
+        <include refid="selectPetCartVo"/>
+        where c.cart_id = #{cartId}
+    </select>
+
+    <insert id="insertPetCart" parameterType="PetCart" useGeneratedKeys="true" keyProperty="cartId">
+        insert into pet_cart(
+            <if test="userId != null">user_id,</if>
+            <if test="userName != null and userName != ''">user_name,</if>
+            <if test="goodsName != null and goodsName != ''">goods_name,</if>
+            <if test="goodsImage != null and goodsImage != ''">goods_image,</if>
+            <if test="goodsSpec != null and goodsSpec != ''">goods_spec,</if>
+            <if test="price != null">price,</if>
+            <if test="qty != null">qty,</if>
+            <if test="amount != null">amount,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="userId != null">#{userId},</if>
+            <if test="userName != null and userName != ''">#{userName},</if>
+            <if test="goodsName != null and goodsName != ''">#{goodsName},</if>
+            <if test="goodsImage != null and goodsImage != ''">#{goodsImage},</if>
+            <if test="goodsSpec != null and goodsSpec != ''">#{goodsSpec},</if>
+            <if test="price != null">#{price},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <!-- 修改订单状态（取消订单等） -->
+    <update id="updatePetCartStatus">
+        update pet_cart
+        set status = #{status}, update_time = sysdate()
+        where cart_id = #{cartId}
+    </update>
+
+    <delete id="deletePetCartByCartId" parameterType="Long">
+        delete from pet_cart where cart_id = #{cartId}
+    </delete>
+
+    <delete id="deletePetCartByCartIds" parameterType="Long">
+        delete from pet_cart where cart_id in
+        <foreach item="cartId" collection="array" open="(" separator="," close=")">
+            #{cartId}
+        </foreach>
+    </delete>
+
+</mapper>
