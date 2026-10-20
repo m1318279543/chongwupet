@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.utils.ServletUtils;
@@ -229,6 +230,45 @@ public class TokenService
     private String getTokenKey(String uuid)
     {
         return CacheConstants.LOGIN_TOKEN_KEY + uuid;
+    }
+
+    /**
+     * 用户资料（昵称/头像/手机/邮箱/性别）变更后，刷新该用户所有在线会话的缓存
+     * 后台修改用户资料或上传头像后调用，前台无需重新登录即可看到最新资料
+     *
+     * @param user 数据库中的最新用户信息
+     */
+    public void refreshUserProfile(SysUser user)
+    {
+        if (user == null || user.getUserId() == null)
+        {
+            return;
+        }
+        Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
+        if (keys == null || keys.isEmpty())
+        {
+            return;
+        }
+        for (String key : keys)
+        {
+            LoginUser loginUser = redisCache.getCacheObject(key);
+            if (loginUser == null || loginUser.getUser() == null)
+            {
+                continue;
+            }
+            if (!user.getUserId().equals(loginUser.getUser().getUserId()))
+            {
+                continue;
+            }
+            SysUser cached = loginUser.getUser();
+            cached.setNickName(user.getNickName());
+            cached.setAvatar(user.getAvatar());
+            cached.setPhonenumber(user.getPhonenumber());
+            cached.setEmail(user.getEmail());
+            cached.setSex(user.getSex());
+            refreshToken(loginUser);
+            log.info("用户[{}]资料变更，已刷新在线会话缓存", loginUser.getUsername());
+        }
     }
 
     /**

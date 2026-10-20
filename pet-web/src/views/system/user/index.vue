@@ -39,6 +39,15 @@
 
     <el-table v-loading="loading" :data="userList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
+      <el-table-column label="头像" align="center" width="72">
+        <template #default="scope">
+          <div class="row-av">
+            <img v-if="scope.row.avatar && !brokenAvatars.has(scope.row.userId)" :src="resolveAvatar(scope.row.avatar)"
+                 alt="头像" @error="markBroken(scope.row.userId)" />
+            <span v-else>{{ (scope.row.nickName || scope.row.userName || 'U').charAt(0).toUpperCase() }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="用户编号" align="center" key="userId" prop="userId" width="90" />
       <el-table-column label="用户名" align="center" key="userName" prop="userName" :show-overflow-tooltip="true" />
       <el-table-column label="用户昵称" align="center" key="nickName" prop="nickName" :show-overflow-tooltip="true" />
@@ -65,6 +74,36 @@
 
     <el-dialog :title="title" v-model="open" width="640px" append-to-body>
       <el-form :model="form" :rules="rules" ref="userRef" label-width="80px">
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="用户头像">
+              <div class="av-edit">
+                <el-upload
+                  class="av-upload"
+                  :show-file-list="false"
+                  :action="avatarAction"
+                  :headers="uploadHeaders"
+                  :data="avatarData"
+                  :name="avatarName"
+                  accept="image/png,image/jpeg,image/jpg,image/gif,image/bmp"
+                  :before-upload="beforeAvatarUpload"
+                  :on-success="onAvatarSuccess"
+                  :on-error="onAvatarError"
+                >
+                  <div class="av-box" :class="{ busy: avatarBusy }">
+                    <img v-if="form.avatar && !avatarBroken" :src="resolveAvatar(form.avatar)" alt="头像" @error="avatarBroken = true" />
+                    <span v-else class="av-text">{{ (form.nickName || form.userName || 'U').charAt(0).toUpperCase() }}</span>
+                    <div class="av-mask">{{ avatarBusy ? '上传中…' : '更换头像' }}</div>
+                  </div>
+                </el-upload>
+                <div class="av-tip">
+                  <p>点击头像上传，支持 jpg / png / gif，不超过 5MB</p>
+                  <p class="av-tip-sub">上传后立即同步到商城前台，用户无需重新登录</p>
+                </div>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-row>
           <el-col :span="12">
             <el-form-item label="用户昵称" prop="nickName">
@@ -195,16 +234,65 @@
 </template>
 
 <script setup name="SysUser">
-import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
+import { ref, reactive, toRefs, getCurrentInstance, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from '@/api/system/user'
 import { listRole } from '@/api/system/role'
 import { listPost } from '@/api/system/post'
 import { getToken } from '@/utils/auth'
+import { useUserStore } from '@/store/modules/user'
 
 const { proxy } = getCurrentInstance()
 const { sys_normal_disable, sys_user_sex } = proxy.useDict('sys_normal_disable', 'sys_user_sex')
+const userStore = useUserStore()
+
+/* ===== 头像（管理员可给任意用户上传，同步到商城前台） ===== */
+const apiBase = import.meta.env.VITE_APP_BASE_API || '/dev-api'
+const uploadHeaders = { Authorization: 'Bearer ' + getToken() }
+const avatarBusy = ref(false)
+const avatarBroken = ref(false)
+const brokenAvatars = reactive(new Set())
+// 老用户走管理员头像接口（直接写库并刷新其在线会话）；新用户先传通用接口，保存时随表单入库
+const avatarAction = computed(() => form.value.userId ? apiBase + '/system/user/avatar' : apiBase + '/common/upload')
+const avatarName = computed(() => form.value.userId ? 'avatarfile' : 'file')
+const avatarData = computed(() => form.value.userId ? { userId: form.value.userId } : {})
+
+function resolveAvatar(p) {
+  if (!p) return ''
+  if (/^https?:\/\//.test(p)) return p
+  return apiBase + (p.startsWith('/') ? p : '/' + p)
+}
+function markBroken(userId) { brokenAvatars.add(userId) }
+function beforeAvatarUpload(file) {
+  if (!/^image\//.test(file.type)) { ElMessage.warning('只能上传图片文件'); return false }
+  if (file.size > 5 * 1024 * 1024) { ElMessage.warning('图片大小不能超过 5MB'); return false }
+  avatarBusy.value = true
+  return true
+}
+function onAvatarSuccess(res) {
+  avatarBusy.value = false
+  const url = (res && (res.imgUrl || res.url)) || ''
+  if (res && res.code === 200 && url) {
+    form.value.avatar = url
+    avatarBroken.value = false
+    if (form.value.userId) brokenAvatars.delete(form.value.userId)
+    // 列表行同步刷新，管理员立刻能看到新头像
+    const row = userList.value.find(u => String(u.userId) === String(form.value.userId))
+    if (row) row.avatar = url
+    // 改的是当前登录管理员自己：顶栏头像即时更新
+    if (form.value.userId && String(form.value.userId) === String(userStore.userId)) {
+      userStore.avatar = url
+    }
+    ElMessage.success(form.value.userId ? '头像已更新，前台将自动同步' : '头像已选择，保存后生效')
+  } else {
+    ElMessage.error((res && res.msg) || '头像上传失败')
+  }
+}
+function onAvatarError() {
+  avatarBusy.value = false
+  ElMessage.error('头像上传失败，请稍后重试')
+}
 
 const userList = ref([])
 const loading = ref(true)
@@ -270,8 +358,9 @@ function reset() {
   form.value = {
     userId: undefined, deptId: undefined, userName: undefined, nickName: undefined,
     password: undefined, phonenumber: undefined, email: undefined, sex: undefined,
-    status: '0', remark: undefined, postIds: [], roleIds: []
+    avatar: undefined, status: '0', remark: undefined, postIds: [], roleIds: []
   }
+  avatarBroken.value = false
   proxy.resetForm('userRef')
 }
 function handleAdd() { reset(); getDeptTree(); open.value = true; title.value = '新增用户' }
@@ -282,6 +371,7 @@ function handleUpdate(row) {
     form.value = res.data
     form.value.postIds = res.postIds
     form.value.roleIds = res.roleIds
+    avatarBroken.value = false
     open.value = true
     title.value = '修改用户'
   })
@@ -290,7 +380,15 @@ function submitForm() {
   proxy.$refs.userRef.validate(valid => {
     if (valid) {
       if (form.value.userId) {
-        updateUser(form.value).then(() => { proxy.$modal.msgSuccess('修改成功'); open.value = false; getList() })
+        updateUser(form.value).then(() => {
+          proxy.$modal.msgSuccess('修改成功')
+          // 改的是当前登录账号：顶栏昵称/头像同步刷新
+          if (String(form.value.userId) === String(userStore.userId)) {
+            userStore.nickName = form.value.nickName
+            if (form.value.avatar) userStore.avatar = form.value.avatar
+          }
+          open.value = false; getList()
+        })
       } else {
         addUser(form.value).then(() => { proxy.$modal.msgSuccess('新增成功'); open.value = false; getList() })
       }
@@ -398,6 +496,35 @@ getList(); getRoles(); getPosts()
 </script>
 
 <style scoped>
+.row-av {
+  width: 34px; height: 34px; margin: 0 auto; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(135deg, #ff8c42, #ffb27a); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600;
+}
+.row-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.av-edit { display: flex; align-items: center; gap: 16px; }
+.av-box {
+  position: relative; width: 76px; height: 76px; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(135deg, #ff8c42, #ffb27a); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  border: 2px dashed #f0c4a0;
+}
+.av-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av-text { font-size: 28px; font-weight: 700; }
+.av-mask {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, .45); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; opacity: 0; transition: opacity .2s;
+}
+.av-box:hover .av-mask, .av-box.busy .av-mask { opacity: 1; }
+.av-tip p { margin: 0; font-size: 12px; color: #909399; line-height: 1.7; }
+.av-tip .av-tip-sub { color: #b0b3b8; }
+@media (max-width: 640px) {
+  .av-mask { opacity: 1; background: rgba(0,0,0,.35); }
+}
+
 .imp-desc {
   margin-top: 6px;
   font-size: 12px;

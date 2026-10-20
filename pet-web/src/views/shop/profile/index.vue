@@ -22,17 +22,18 @@
           :on-error="onAvatarError"
         >
           <div class="avatar-box" :class="{ uploading }">
-            <img v-if="avatarUrl" :src="avatarUrl" class="avatar-img" alt="头像" />
+            <img v-if="avatarUrl && !avatarBroken" :src="avatarUrl" class="avatar-img" alt="头像" @error="avatarBroken = true" />
             <span v-else class="avatar-text">{{ initial }}</span>
             <div class="avatar-mask">
               <el-icon><Camera /></el-icon>
               <span>{{ uploading ? '上传中…' : '更换头像' }}</span>
             </div>
+            <div class="avatar-badge"><el-icon><Camera /></el-icon></div>
           </div>
         </el-upload>
         <div class="pf-name">{{ form.nickName || userInfo.userName || '宠物之家用户' }}</div>
         <div class="pf-account">@{{ userInfo.userName }}</div>
-        <p class="pf-tip">支持 jpg / png / gif，建议 200×200 以上，不超过 5MB</p>
+        <p class="pf-tip">支持 jpg / png / gif，建议 200×200 以上，不超过 5MB<br />头像与资料会同步到后台，前后台一致</p>
       </aside>
 
       <!-- 右侧表单区 -->
@@ -76,6 +77,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
 const uploading = ref(false)
+const avatarBroken = ref(false)
 const userInfo = reactive({ userName: '', createTime: '' })
 const form = reactive({ nickName: '', phonenumber: '', email: '', avatar: '' })
 
@@ -104,6 +106,7 @@ async function loadProfile() {
     form.phonenumber = u.phonenumber || ''
     form.email = u.email || ''
     form.avatar = u.avatar || ''
+    avatarBroken.value = false
     if (u.avatar) userStore.avatar = u.avatar
   } catch (e) {
     ElMessage.error('加载资料失败，请稍后重试')
@@ -129,6 +132,10 @@ function onAvatarSuccess(res) {
   uploading.value = false
   if (res && res.code === 200 && res.imgUrl) {
     userStore.avatar = res.imgUrl
+    form.avatar = res.imgUrl
+    avatarBroken.value = false
+    // 拉一次最新资料，保证昵称等与后台一致
+    userStore.getInfo().catch(() => {})
     ElMessage.success('头像已更新')
   } else {
     ElMessage.error((res && res.msg) || '头像上传失败')
@@ -230,6 +237,23 @@ onMounted(loadProfile)
   transition: opacity 0.2s;
 }
 .avatar-box:hover .avatar-mask, .avatar-box.uploading .avatar-mask { opacity: 1; }
+.avatar-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ff8c42;
+  color: #fff;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.45);
+  font-size: 16px;
+  pointer-events: none;
+}
 .pf-name { margin-top: 16px; font-size: 18px; font-weight: 700; color: #303133; text-align: center; word-break: break-all; }
 .pf-account { font-size: 13px; color: #a8abb2; margin-top: 4px; }
 .pf-tip { font-size: 12px; color: #b0b3b8; text-align: center; line-height: 1.6; margin: 14px 0 0; }
@@ -240,5 +264,9 @@ onMounted(loadProfile)
   .pf-card { flex-direction: column; gap: 24px; padding: 24px 18px; }
   .pf-aside { width: 100%; border-right: none; border-bottom: 1px dashed #f0f0f0; padding: 0 0 20px; }
   .pf-form { max-width: 100%; }
+  /* 手机端没有 hover，用常驻相机角标提示可点击更换 */
+  .avatar-mask { display: none; }
+  .avatar-box.uploading .avatar-mask { display: flex; background: rgba(0, 0, 0, 0.45); }
+  .avatar-badge { display: flex; }
 }
 </style>

@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysDept;
@@ -26,7 +28,11 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.file.FileUploadUtils;
+import com.ruoyi.common.utils.file.FileUtils;
+import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysPostService;
 import com.ruoyi.system.service.ISysRoleService;
@@ -52,6 +58,9 @@ public class SysUserController extends BaseController
 
     @Autowired
     private ISysPostService postService;
+
+    @Autowired
+    private TokenService tokenService;
 
     /**
      * 获取用户列表
@@ -168,7 +177,54 @@ public class SysUserController extends BaseController
             return error("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
         }
         user.setUpdateBy(getUsername());
-        return toAjax(userService.updateUser(user));
+        int rows = userService.updateUser(user);
+        if (rows > 0)
+        {
+            // 资料变更后同步刷新该用户的在线会话，前台无需重新登录即可看到新昵称/头像
+            tokenService.refreshUserProfile(userService.selectUserById(user.getUserId()));
+        }
+        return toAjax(rows);
+    }
+
+    /**
+     * 管理员为用户上传/更换头像
+     *
+     * @param userId 目标用户ID
+     * @param file   头像文件（字段名 avatarfile）
+     */
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @Log(title = "用户头像", businessType = BusinessType.UPDATE)
+    @PostMapping("/avatar")
+    public AjaxResult avatar(@RequestParam("userId") Long userId, @RequestParam("avatarfile") MultipartFile file) throws Exception
+    {
+        if (userId == null)
+        {
+            return error("请先选择用户");
+        }
+        if (file == null || file.isEmpty())
+        {
+            return error("请选择要上传的图片");
+        }
+        userService.checkUserDataScope(userId);
+        SysUser oldUser = userService.selectUserById(userId);
+        if (oldUser == null)
+        {
+            return error("用户不存在");
+        }
+        String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
+        if (!userService.updateUserAvatar(userId, avatar))
+        {
+            return error("上传图片异常，请联系管理员");
+        }
+        if (StringUtils.isNotEmpty(oldUser.getAvatar()))
+        {
+            FileUtils.deleteFile(RuoYiConfig.getProfile() + FileUtils.stripPrefix(oldUser.getAvatar()));
+        }
+        // 同步刷新该用户所有在线会话
+        tokenService.refreshUserProfile(userService.selectUserById(userId));
+        AjaxResult ajax = AjaxResult.success();
+        ajax.put("imgUrl", avatar);
+        return ajax;
     }
 
     /**

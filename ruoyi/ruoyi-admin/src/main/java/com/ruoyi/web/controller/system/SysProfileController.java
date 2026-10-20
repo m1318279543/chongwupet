@@ -48,7 +48,22 @@ public class SysProfileController extends BaseController
     public AjaxResult profile()
     {
         LoginUser loginUser = getLoginUser();
-        SysUser user = loginUser.getUser();
+        // 后台可能刚修改过资料，这里以数据库为准，避免返回登录时的旧快照
+        SysUser user = userService.selectUserById(loginUser.getUserId());
+        if (user == null)
+        {
+            user = loginUser.getUser();
+        }
+        else
+        {
+            SysUser cachedUser = loginUser.getUser();
+            cachedUser.setNickName(user.getNickName());
+            cachedUser.setAvatar(user.getAvatar());
+            cachedUser.setPhonenumber(user.getPhonenumber());
+            cachedUser.setEmail(user.getEmail());
+            cachedUser.setSex(user.getSex());
+            tokenService.setLoginUser(loginUser);
+        }
         AjaxResult ajax = AjaxResult.success(user);
         ajax.put("roleGroup", userService.selectUserRoleGroup(loginUser.getUsername()));
         ajax.put("postGroup", userService.selectUserPostGroup(loginUser.getUsername()));
@@ -63,7 +78,12 @@ public class SysProfileController extends BaseController
     public AjaxResult updateProfile(@RequestBody SysUser user)
     {
         LoginUser loginUser = getLoginUser();
-        SysUser currentUser = loginUser.getUser();
+        // 以数据库为准，避免用旧缓存覆盖掉后台刚修改的内容
+        SysUser currentUser = userService.selectUserById(loginUser.getUserId());
+        if (currentUser == null)
+        {
+            currentUser = loginUser.getUser();
+        }
         currentUser.setNickName(user.getNickName());
         currentUser.setEmail(user.getEmail());
         currentUser.setPhonenumber(user.getPhonenumber());
@@ -79,6 +99,7 @@ public class SysProfileController extends BaseController
         if (userService.updateUserProfile(currentUser) > 0)
         {
             // 更新缓存用户信息
+            loginUser.setUser(currentUser);
             tokenService.setLoginUser(loginUser);
             return success();
         }
@@ -138,9 +159,9 @@ public class SysProfileController extends BaseController
                 }
                 AjaxResult ajax = AjaxResult.success();
                 ajax.put("imgUrl", avatar);
-                // 更新缓存用户头像
-                loginUser.getUser().setAvatar(avatar);
-                tokenService.setLoginUser(loginUser);
+                // 更新缓存用户头像（同账号在前后台的其它会话也一起刷新）
+                SysUser fresh = userService.selectUserById(loginUser.getUserId());
+                tokenService.refreshUserProfile(fresh != null ? fresh : loginUser.getUser());
                 return ajax;
             }
         }

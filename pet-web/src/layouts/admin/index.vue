@@ -233,6 +233,10 @@ function handleCommand(cmd) {
   if (cmd === 'profile') {
     nickInput.value = userStore.nickName || ''
     profileOpen.value = true
+    // 以服务端最新资料为准（可能在用户管理里刚改过自己的昵称/头像）
+    userStore.getInfo().then(() => {
+      nickInput.value = userStore.nickName || ''
+    }).catch(() => {})
   } else if (cmd === 'shop') {
     router.push('/shop/home')
   } else if (cmd === 'logout') {

@@ -50,7 +50,7 @@
             </template>
             <el-dropdown v-else @command="handleCommand">
               <span class="user">
-                <el-avatar :size="30" class="avatar" :src="avatarUrl">{{ avatarText }}</el-avatar>
+                <el-avatar :size="30" class="avatar" :src="avatarUrl" @error="avatarBroken = true">{{ avatarText }}</el-avatar>
                 <span class="uname">{{ userStore.nickName || userStore.userName }}</span>
                 <el-icon><ArrowDown /></el-icon>
               </span>
@@ -100,7 +100,7 @@
             <router-link to="/shop/order" class="m-item" @click="closeMenu">我的订单</router-link>
             <div class="m-user">
               <div class="m-user-info">
-                <el-avatar :size="34" class="avatar" :src="avatarUrl">{{ avatarText }}</el-avatar>
+                <el-avatar :size="34" class="avatar" :src="avatarUrl" @error="avatarBroken = true">{{ avatarText }}</el-avatar>
                 <span class="m-uname">{{ userStore.nickName || userStore.userName }}</span>
               </div>
               <div class="m-user-actions">
@@ -195,7 +195,11 @@ function closeMenu() {
 }
 // 菜单展开时锁滚动，关闭/切页/卸载时恢复
 watch(menuOpen, (v) => lockBody(v))
-watch(() => route.fullPath, closeMenu)
+watch(() => route.fullPath, () => {
+  closeMenu()
+  // 切页时顺带同步一次资料，后台改过昵称/头像也能立刻生效
+  refreshUserInfo()
+})
 
 function go(path) {
   closeMenu()
@@ -239,7 +243,11 @@ onBeforeUnmount(() => {
   lockBody(false)
 })
 // 头像后端存的是 /profile/xxx 相对路径，需拼 API 前缀
+// 头像文件失效时退回文字头像
+const avatarBroken = ref(false)
+watch(() => userStore.avatar, () => { avatarBroken.value = false })
 const avatarUrl = computed(() => {
+  if (avatarBroken.value) return ''
   const p = userStore.avatar
   if (!p) return ''
   if (/^https?:\/\//.test(p)) return p
