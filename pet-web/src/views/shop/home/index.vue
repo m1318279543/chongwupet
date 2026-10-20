@@ -5,7 +5,7 @@
       <div class="service-inner">
         <span class="welcome">🐾 欢迎来到宠物之家，让每一个生命都被温柔以待</span>
         <div class="service-right">
-          <template v-if="!isLogged">
+          <template v-if="!isLogged()">
             <a @click="openAuth('login')">登录</a>
             <span class="sep">|</span>
             <a @click="openAuth('register')">注册</a>
@@ -497,6 +497,11 @@ onMounted(() => {
   .sep { color: #ccc; }
   .user { color: #333; font-weight: 500; }
 }
+@media (max-width: 640px) {
+  .service-inner { padding: 6px 14px; }
+  .welcome { display: none; } /* 手机端欢迎语太长，只留快捷入口，保证单行 */
+  .service-right { gap: 8px; }
+}
 
 /* ② 主导航 */
 .main-header { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
@@ -570,7 +575,7 @@ onMounted(() => {
   }
   .food-more { color: #ff6b35; font-size: 14px; cursor: pointer; font-weight: 600; &:hover { text-decoration: underline; } }
 }
-.food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 16px; }
 .food-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all .2s;
   &:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(255,107,53,.15); border-color: #ffd4a8; }
   .food-img { height: 130px; background: #fafafa; display: flex; align-items: center; justify-content: center; overflow: hidden;
@@ -599,7 +604,7 @@ onMounted(() => {
 }
 .floor-desc { font-size: 13px; color: #909399; margin: 0 0 20px; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 16px; }
 .empty { text-align: center; padding: 60px 0; color: #c0c4cc;
   .empty-icon { font-size: 48px; display: block; margin-bottom: 8px; }
 }

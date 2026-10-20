@@ -363,7 +363,7 @@ onMounted(loadPet)
     h2 { margin: 0; font-size: 20px; color: #303133; }
     .archive { color: #909399; font-size: 13px; }
   }
-  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;
+  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px;
     .h-card { border: 1px solid #f0f0f0; border-radius: 12px; padding: 18px 20px; background: #fcfcfd;
       h3 { margin: 0 0 12px; font-size: 16px; color: #303133; display: flex; align-items: center; gap: 8px;
         .ico { font-size: 18px; }
@@ -391,7 +391,7 @@ onMounted(loadPet)
     h2 { margin: 0; font-size: 20px; color: #303133; }
     .archive { color: #909399; font-size: 13px; }
   }
-  .pref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+  .pref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px;
     .pref-item { display: flex; gap: 12px; align-items: flex-start; background: #fff8f3; border: 1px solid #ffe6d2; border-radius: 12px; padding: 14px 16px;
       .ico { font-size: 22px; flex-shrink: 0; }
       b { display: block; font-size: 13px; color: #ff8c42; margin-bottom: 2px; }
@@ -408,7 +408,7 @@ onMounted(loadPet)
   .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
     h2 { margin: 0; font-size: 20px; color: #303133; }
   }
-  .issue-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px;
+  .issue-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px;
     .issue-card { border: 1px solid #eef0f3; border-radius: 12px; padding: 16px 18px; background: #fcfcfd;
       .issue-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
         .issue-name { font-size: 15px; font-weight: 600; color: #303133; flex: 1; min-width: 140px; }

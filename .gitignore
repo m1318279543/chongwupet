@@ -49,3 +49,11 @@ Thumbs.db
 # 临时文件
 *.tmp
 *.bak
+
+# 手机端巡检产物
+mobile-*.png
+mobile-report-*.json
+match-narrow-shot.png
+admin-gate-shot.png
+nav-w*.png
+remote-*.png

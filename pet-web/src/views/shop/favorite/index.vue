@@ -114,7 +114,7 @@ onMounted(loadData)
 .empty { text-align: center; padding: 80px 0; color: #c0c4cc;
   .icon { font-size: 56px; display: block; margin-bottom: 12px; }
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 20px; }
 .card { background: #fff; border-radius: 12px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.06); transition: all .25s;
   &:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
   .avatar { height: 140px; display: flex; align-items: center; justify-content: center; font-size: 64px; overflow: hidden;

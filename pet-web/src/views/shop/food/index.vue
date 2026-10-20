@@ -128,7 +128,7 @@ function addToCart(p) {
   &:hover { border-color: #ff8c42; color: #ff8c42; }
   &.active { color: #fff; font-weight: 600; }
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; }
 .card {
   background: #fff; border-radius: 14px; overflow: hidden; cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .06);

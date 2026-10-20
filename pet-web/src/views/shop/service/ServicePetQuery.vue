@@ -193,7 +193,7 @@ onMounted(async () => {
 .coverage { color: #909399; font-size: 13px; margin: 14px 2px 6px;
   b { color: #ff6b9d; }
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; min-height: 120px;
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 18px; min-height: 120px;
   .card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.05);
     transition: transform .2s, box-shadow .2s; display: flex; flex-direction: column;
     &:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.1); }

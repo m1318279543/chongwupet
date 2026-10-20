@@ -261,7 +261,7 @@ onMounted(() => {
 
 /* 技术栈 */
 .tech-stack { background: #fff; padding: 48px 0; }
-.tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-top: 24px; }
+.tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; margin-top: 24px; }
 .tech-item { display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: 8px; background: #f5f7fa; transition: all .2s;
   &:hover { background: #e8eaf6; transform: translateY(-2px); }
   .tech-icon { font-size: 32px; flex-shrink: 0; }
@@ -271,7 +271,7 @@ onMounted(() => {
 
 /* 服务状态 */
 .status { background: #f5f7fa; padding: 48px 0; }
-.status-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 24px; }
+.status-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 16px; margin-top: 24px; }
 .status-card { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-radius: 8px; background: #fff; border-left: 4px solid;
   &.ok { border-color: #67c23a; } &.fail { border-color: #f56c6c; }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
@@ -302,7 +302,7 @@ onMounted(() => {
 
 /* 数据库表 */
 .db-tables { background: #f5f7fa; padding: 48px 0; }
-.db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-top: 24px; }
+.db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 24px; margin-top: 24px; }
 .db-group { background: #fff; border-radius: 8px; padding: 20px; }
 .db-group-title { font-size: 16px; color: #1a237e; margin: 0 0 16px; }
 .db-list { display: flex; flex-direction: column; gap: 8px; }
@@ -313,7 +313,7 @@ onMounted(() => {
 
 /* 模块 */
 .modules { background: #fff; padding: 48px 0; }
-.module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 24px; }
+.module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 20px; margin-top: 24px; }
 .module-card { border: 1px solid #ebeef5; border-radius: 8px; padding: 20px; transition: all .2s;
   &:hover { box-shadow: 0 4px 16px rgba(26,35,126,.1); border-color: #c5cae9; }
   .module-icon { font-size: 36px; }

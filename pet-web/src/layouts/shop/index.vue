@@ -10,7 +10,7 @@
         <nav class="nav">
           <router-link to="/shop/home" class="nav-item">首页</router-link>
           <router-link to="/shop/match" class="nav-item nav-ai">AI 选宠</router-link>
-          <el-dropdown class="nav-item service-dropdown" @command="goService" trigger="hover">
+          <el-dropdown class="nav-item service-dropdown" @command="goService" :trigger="isMobile ? 'click' : 'hover'">
             <span class="drop-trigger">服务保障<el-icon class="caret"><ArrowDown /></el-icon></span>
             <template #dropdown>
               <el-dropdown-menu>
@@ -89,6 +89,11 @@ const userStore = useUserStore()
 const cartStore = useCartStore()
 const authRef = ref()
 
+// 触屏设备下拉改 click 触发（hover 不可靠）
+const mql = window.matchMedia('(max-width: 900px)')
+const isMobile = ref(mql.matches)
+const onMqlChange = (e) => { isMobile.value = e.matches }
+
 const isLogged = computed(() => !!userStore.token)
 const cartCount = computed(() => cartStore.totalCount)
 const avatarText = computed(() => (userStore.nickName || userStore.userName || 'U').charAt(0).toUpperCase())
@@ -103,10 +108,12 @@ function refreshUserInfo() {
   userStore.getInfo().catch(() => {})
 }
 onMounted(() => {
+  mql.addEventListener('change', onMqlChange)
   document.addEventListener('visibilitychange', refreshUserInfo)
   window.addEventListener('focus', refreshUserInfo)
 })
 onBeforeUnmount(() => {
+  mql.removeEventListener('change', onMqlChange)
   document.removeEventListener('visibilitychange', refreshUserInfo)
   window.removeEventListener('focus', refreshUserInfo)
 })
@@ -156,13 +163,17 @@ function handleCommand(cmd) {
 .topbar {
   position: sticky; top: 0; z-index: 100;
   background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.06);
-  .bar-inner { max-width: 1200px; margin: 0 auto; height: 64px; display: flex; align-items: center; padding: 0 24px;
-    overflow-x: auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
+  .bar-inner { max-width: 1200px; margin: 0 auto; height: 64px; display: flex; align-items: center; padding: 0 24px; }
   .brand { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-right: 36px; flex-shrink: 0;
     .logo { font-size: 24px; }
     .name { font-size: 20px; font-weight: 700; color: #ff8c42; }
   }
-  .nav { display: flex; gap: 26px; flex: 1; align-items: center; min-width: 0; }
+  /* 手机端：导航在自身盒子内横向滚动，溢出内容被裁切，不再压到右侧登录按钮上 */
+  .nav { display: flex; gap: 26px; flex: 1; align-items: center; min-width: 0;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    padding: 14px 2px; margin: -14px -2px; /* 裁切框外扩，保住 AI 胶囊阴影与选中下划线 */
+    &::-webkit-scrollbar { display: none; }
+  }
   .nav-item { font-size: 15px; color: #606266; padding: 6px 0; border-bottom: 2px solid transparent; transition: all .2s;
     white-space: nowrap; flex-shrink: 0;
     &:hover, &.router-link-active { color: #ff8c42; border-bottom-color: #ff8c42; }
@@ -180,8 +191,8 @@ function handleCommand(cmd) {
     }
   }
   .cart-link { position: relative;
-    .cart-badge { position: absolute; top: -8px; right: -16px; min-width: 18px; height: 18px;
-      line-height: 18px; text-align: center; padding: 0 5px; border-radius: 9px;
+    .cart-badge { display: inline-block; vertical-align: top; margin-left: 3px; transform: translateY(-3px);
+      min-width: 18px; height: 18px; line-height: 16px; text-align: center; padding: 0 5px; border-radius: 9px;
       background: #ff4d4f; color: #fff; font-size: 12px; font-weight: 600; }
   }
   .user-area { display: flex; align-items: center; gap: 8px; flex-shrink: 0;
@@ -205,13 +216,13 @@ function handleCommand(cmd) {
   .topbar .nav { gap: 10px; }
   .topbar .user-area .uname { display: none; }
 }
-/* 窄屏 / 窄预览面板：顶栏内部横向滚动，禁止撑破页面产生全局横向滚动条 */
+/* 窄屏 / 窄预览面板：品牌只留爪印，导航区内滚动，登录按钮固定右侧 */
 @media (max-width: 900px) {
   .topbar .bar-inner { padding: 0 12px; }
   .topbar .brand { margin-right: 14px;
     .name { display: none; }
   }
-  .topbar .nav { gap: 14px; flex-shrink: 0; }
+  .topbar .nav { gap: 14px; }
   .topbar .user-area { flex-shrink: 0;
     :deep(.el-button) { padding: 8px 12px; }
   }

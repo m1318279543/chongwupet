@@ -919,7 +919,7 @@ onUnmounted(() => {
 }
 
 .grid-main {
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(min(280px, 100%), 1fr);
 }
 
 .grid-3 {
