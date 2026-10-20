@@ -138,4 +138,23 @@ onMounted(loadData)
   .price { color: #f56c6c; font-weight: 700; }
   .ops { padding: 0 16px 16px; display: flex; gap: 8px; }
 }
+
+/* 手机端：两列小卡 + 图片等比（宽高 1:1），不再一张图占一屏 */
+@media (max-width: 640px) {
+  .my-fav { padding: 20px 12px; }
+  .page-head { margin-bottom: 16px;
+    h1 { font-size: 20px; }
+    p { font-size: 13px; }
+  }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card {
+    .avatar { height: auto; aspect-ratio: 1 / 1; max-height: min(180px, 30vh); font-size: 44px; }
+    .info { padding: 10px 12px; }
+    .name { font-size: 14px; margin-bottom: 6px; }
+    .price { font-size: 14px; }
+    .ops { padding: 0 12px 12px; gap: 6px; flex-wrap: wrap;
+      :deep(.el-button) { margin-left: 0; padding: 5px 10px; font-size: 12px; }
+    }
+  }
+}
 </style>

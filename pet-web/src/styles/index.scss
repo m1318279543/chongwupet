@@ -11,3 +11,50 @@ a { text-decoration: none; color: inherit; }
 .dialog-footer { text-align: right; }
 .small-padding .cell { padding: 0 4px; }
 .tree-border { border: 1px solid #e5e6e7; border-radius: 4px; }
+
+// ===== 手机端图片统一规范 =====
+// 目标：任何页面都不出现"一张图占一屏"，所有内容图片等比缩小到视口内合适范围。
+// 1) 兜底规则：内容图最高不超过 34vh（约三分之一屏），超过自动等比收缩；
+// 2) 排除图标/头像/缩略图/后台表格小图，避免影响小尺寸元素。
+@media (max-width: 768px) {
+  img:not(.app-icon):not([class*="icon"]):not([class*="thumb"]):not([class*="avatar-sm"]):not([class*="logo"]) {
+    max-height: 34vh;
+  }
+  // 弹窗内的图片再收一档，避免弹窗只剩一张图
+  .el-dialog img:not([class*="icon"]):not([class*="avatar"]) {
+    max-height: 30vh;
+  }
+
+  // 2) 弹窗宽度自适应：覆盖各页写死的 760px/500px/440px，手机端一律 94vw
+  .el-dialog {
+    width: 94vw !important;
+    max-width: 94vw;
+    margin-top: 5vh !important;
+  }
+  .el-message-box {
+    width: 88vw !important;
+    max-width: 88vw;
+  }
+
+  // 3) 宠物粮详情弹窗（挂载到 body，scoped 样式管不到）：改为上下结构 + 等比图
+  .food-detail-dialog {
+    .detail {
+      flex-direction: column;
+      min-height: 0;
+    }
+    .detail-left {
+      width: 100% !important;
+      height: auto;
+      img {
+        width: 100%;
+        height: auto;
+        max-height: 28vh;
+        object-fit: contain;
+      }
+    }
+    .detail-right {
+      padding: 18px 16px;
+    }
+  }
+}
+

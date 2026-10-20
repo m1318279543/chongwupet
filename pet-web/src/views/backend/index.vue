@@ -324,6 +324,10 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .api-row { grid-template-columns: 60px 1fr; .api-desc, .api-perm { display: none; } }
-  .hero h1 { font-size: 28px; }
+  .hero { min-height: 220px; }
+  .hero-inner { padding: 30px 16px; }
+  .hero h1 { font-size: 26px; margin-bottom: 10px; }
+  .hero p { font-size: 13px; margin-bottom: 16px; }
+  .hero-stats { gap: 22px; .stat .num { font-size: 20px; } .stat .lbl { font-size: 12px; } }
 }
 </style>

@@ -445,7 +445,7 @@ onMounted(loadPet)
       height: auto;
       width: 100%;
       aspect-ratio: 4 / 3;   /* 保持等比，宽度跟随容器 */
-      max-height: 280px;
+      max-height: min(280px, 34vh);
       font-size: 96px;
     }
   }

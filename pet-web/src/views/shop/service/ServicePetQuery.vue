@@ -237,4 +237,17 @@ onMounted(async () => {
   }
 }
 .empty { text-align: center; color: #c0c4cc; padding: 40px 0; }
+
+/* 手机端：档案卡图片等比缩小（4:3），高度不超过约三分之一屏 */
+@media (max-width: 640px) {
+  .pet-query { margin-top: 4px; }
+  .grid { grid-template-columns: minmax(0, 1fr); gap: 12px;
+    .card .pic {
+      height: auto;
+      aspect-ratio: 4 / 3;
+      max-height: min(200px, 32vh);
+      .emoji { font-size: 48px; }
+    }
+  }
+}
 </style>

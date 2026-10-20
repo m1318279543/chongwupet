@@ -643,7 +643,13 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .features-inner, .promise-grid { grid-template-columns: 1fr 1fr; }
-  .hero-text h1 { font-size: 28px; }
+  .hero-inner { padding: 32px 16px; }
+  .hero-text h1 { font-size: 26px; margin-bottom: 10px; }
+  .hero-text p { font-size: 13px; line-height: 1.65; margin-bottom: 16px; }
+  .hero-stats { gap: 22px; margin-top: 20px;
+    .stat .num { font-size: 20px; }
+    .stat .lbl { font-size: 12px; }
+  }
   .header-inner { flex-wrap: wrap; }
   .search-box { order: 3; flex: 1 1 100%; max-width: none; }
 }

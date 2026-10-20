@@ -197,7 +197,7 @@ function addToCart(p) {
 }
 @media (max-width: 640px) {
   .food-detail-dialog .detail { flex-direction: column;
-    .detail-left { width: 100%; img { max-height: 240px; } }
+    .detail-left { width: 100%; img { max-height: min(240px, 30vh); } }
   }
 
   /* 手机端：单列大图改为两列小卡，图片等比例缩小（1:1），一屏可见多款 */

@@ -1212,8 +1212,11 @@ function dimColor(v) {
   .top-pick {
     grid-template-columns: 1fr;
   }
+  /* 首推大图等比缩放：宽度跟随卡片，高度不超过约三分之一屏 */
   .tp-image {
-    min-height: 240px;
+    min-height: 0;
+    aspect-ratio: 16 / 10;
+    max-height: min(240px, 30vh);
   }
   .hero h1 {
     font-size: 26px;

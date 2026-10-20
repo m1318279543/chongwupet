@@ -1222,4 +1222,31 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* 手机端：图表等比收窄，避免一张图表占满一屏 */
+@media (max-width: 768px) {
+  .dash {
+    padding: 12px 10px 24px;
+  }
+
+  .dash-head h2 {
+    font-size: 18px;
+  }
+
+  .chart-lg {
+    height: min(240px, 32vh);
+  }
+
+  .chart-md {
+    height: min(200px, 28vh);
+  }
+
+  .chart-sm {
+    height: min(170px, 25vh);
+  }
+
+  .kpi-grid {
+    gap: 8px;
+  }
+}
 </style>
