@@ -13,6 +13,8 @@
         <result property="remark"     column="remark"      />
         <result property="userName"   column="user_name"   />
         <result property="petName"    column="pet_name"    />
+        <result property="image"      column="image"       />
+        <result property="categoryId" column="category_id" />
     </resultMap>
 
     <sql id="selectPetFavoriteVo">

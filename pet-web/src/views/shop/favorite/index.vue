@@ -18,7 +18,14 @@
       <div class="grid" v-else>
         <div class="card" v-for="item in list" :key="item.favoriteId" @click="goDetail(item.petId)">
           <div class="avatar" :style="{ background: petGradient(item.petId) }">
-            <img v-if="isImage(item.image)" :src="item.image" :alt="item.petName" class="avatar-photo" loading="lazy" />
+            <img
+              v-if="isImage(item.image)"
+              :src="item.image"
+              :alt="item.petName"
+              class="avatar-photo"
+              loading="lazy"
+              @error="onImgError(item)"
+            />
             <span v-else>{{ petEmoji(item.categoryId) }}</span>
           </div>
           <div class="info">
@@ -56,6 +63,8 @@ const list = ref([])
 const emojiPool = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🐟', '🦎']
 function petEmoji(c) { return emojiPool[(c || 0) % emojiPool.length] }
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
+// 图片 404 / 加载失败时回退成 emoji，避免出现破图
+function onImgError(item) { item.image = '' }
 function petGradient(id) {
   const colors = [['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0']]
   return `linear-gradient(135deg, ${colors[(id||0)%colors.length][0]}, ${colors[(id||0)%colors.length][1]})`
@@ -80,7 +89,10 @@ async function loadData() {
       breed: petMap[f.petId]?.breed,
       age: petMap[f.petId]?.age,
       price: petMap[f.petId]?.price,
-      categoryId: petMap[f.petId]?.categoryId
+      // 之前漏了 image，收藏卡片只能显示 emoji 占位：收藏接口本身会联表返回 image，
+      // 宠物表兜底再取一次，两个来源任意一个有值都能显示图片
+      image: f.image || petMap[f.petId]?.image,
+      categoryId: f.categoryId || petMap[f.petId]?.categoryId
     })).filter(item => item.petName)  // 只展示仍存在的宠物
   } catch (e) {
     ElMessage.error(e?.message || '加载失败')
