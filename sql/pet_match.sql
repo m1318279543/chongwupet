@@ -139,11 +139,14 @@ create table pet_match_record (
   top_score     decimal(5,1) default 0,
   result_pets   varchar(500) default '' comment '推荐结果概览',
   result_detail text comment '推荐明细JSON',
+  match_status  char(1)      default '0' comment '匹配状态(0有结果/1无匹配)',
+  diagnosis     varchar(1000) default '' comment '无匹配诊断JSON',
   algorithm     varchar(64)  default 'rule-engine+cf' comment '算法说明',
   create_time   datetime     default current_timestamp,
   del_flag      char(1)      default '0',
   key idx_match_user (user_id),
-  key idx_match_time (create_time)
+  key idx_match_time (create_time),
+  key idx_match_status (match_status)
 ) engine=innodb default charset=utf8mb4 comment='AI宠物匹配问卷记录';
 
 select '特征覆盖' as item, count(*) as cnt from pet_match_trait
