@@ -199,5 +199,33 @@ function addToCart(p) {
   .food-detail-dialog .detail { flex-direction: column;
     .detail-left { width: 100%; img { max-height: 240px; } }
   }
+
+  /* 手机端：单列大图改为两列小卡，图片等比例缩小（1:1），一屏可见多款 */
+  .food-page { padding: 16px 12px; }
+  .hero { padding: 22px 12px; margin-bottom: 16px;
+    h1 { font-size: 20px; margin-bottom: 6px; }
+    p { font-size: 13px; }
+  }
+  .cat-tabs { gap: 8px; margin-bottom: 16px; }
+  .cat-tab { padding: 6px 12px; font-size: 13px;
+    .emoji { font-size: 15px; }
+  }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card { border-radius: 10px;
+    .thumb { height: auto; aspect-ratio: 1 / 1; }
+    .body { padding: 10px 10px 12px; }
+    .name { font-size: 13px; margin-bottom: 4px; }
+    .meta { margin-bottom: 4px;
+      .spec { font-size: 12px; }
+    }
+    .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
+    .price { font-size: 15px;
+      .unit { font-size: 11px; }
+    }
+  }
+  .tip { padding: 14px 16px; margin-top: 20px;
+    h3 { font-size: 14px; }
+    p { font-size: 13px; }
+  }
 }
 </style>

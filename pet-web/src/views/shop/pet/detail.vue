@@ -433,4 +433,33 @@ onMounted(loadPet)
     }
   }
 }
+
+/* 手机端：左右结构改上下，大图等比例缩小，不再一张图占一屏 */
+@media (max-width: 768px) {
+  .detail { padding: 16px 12px; }
+  .detail-inner { flex-direction: column; gap: 18px; padding: 20px 16px; }
+  .left {
+    flex: none;
+    width: 100%;
+    .big-avatar {
+      height: auto;
+      width: 100%;
+      aspect-ratio: 4 / 3;   /* 保持等比，宽度跟随容器 */
+      max-height: 280px;
+      font-size: 96px;
+    }
+  }
+  .right {
+    h1 { font-size: 22px; margin-bottom: 12px; }
+    .price { padding: 12px 16px; margin-bottom: 14px;
+      .amount { font-size: 22px; }
+    }
+    .actions { gap: 10px; margin-top: 20px;
+      .el-button { flex: 1 1 30%; min-width: 0; padding-left: 8px; padding-right: 8px; }
+    }
+  }
+  .health-panel, .pref-panel, .issue-panel { padding: 18px 14px;
+    .panel-head h2 { font-size: 17px; }
+  }
+}
 </style>

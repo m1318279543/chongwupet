@@ -647,4 +647,19 @@ onMounted(() => {
   .header-inner { flex-wrap: wrap; }
   .search-box { order: 3; flex: 1 1 100%; max-width: none; }
 }
+
+/* 手机端：宠物楼层卡由单列大图改为两列等比小图，一屏可见多只 */
+@media (max-width: 640px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pet-card { border-radius: 10px;
+    .pet-image { height: auto; aspect-ratio: 1 / 1;
+      .pet-emoji { font-size: 48px; }
+    }
+    .pet-body { padding: 10px 12px; }
+    .pet-title { font-size: 13px; }
+    .pet-desc { display: none; }
+    .pet-price em { font-size: 16px; }
+    .fav-btn { font-size: 17px; }
+  }
+}
 </style>
