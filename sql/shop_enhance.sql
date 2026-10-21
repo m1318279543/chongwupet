@@ -30,3 +30,9 @@ CREATE TABLE IF NOT EXISTS pet_notification (
 -- ③ pet_comment 评分（仅顶级评论评分 1-5，回复不评分）
 ALTER TABLE pet_comment
   ADD COLUMN score TINYINT DEFAULT NULL COMMENT '评分（1-5，仅顶级评论）';
+
+-- ④ 评分演示种子：给已有顶级评论补评分（4-5 星，可按需清除 score=NULL 还原）
+UPDATE pet_comment SET score = CASE WHEN comment_id % 3 = 0 THEN 4 ELSE 5 END
+WHERE parent_id = 0 AND status = '0' AND del_flag = '0' AND target_type = 'pet' AND score IS NULL;
+UPDATE pet_comment SET score = CASE WHEN comment_id % 4 = 0 THEN 4 ELSE 5 END
+WHERE parent_id = 0 AND status = '0' AND del_flag = '0' AND target_type = 'food' AND score IS NULL;
