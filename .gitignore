@@ -62,3 +62,12 @@ remote-*.png
 .admintoken
 .rytoken
 .tok_*
+
+# 测试截图（cdp_* 脚本产出）
+v5-*.png
+v5m-*.png
+ai-*.png
+*-empty.png
+av-*.png
+test-report.json
+ai-test-report.json
