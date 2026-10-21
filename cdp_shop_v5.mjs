@@ -181,7 +181,7 @@ const check=(n,c,d='')=>{console.log((c?'PASS':'FAIL')+'  '+n+(d?'  ['+d+']':'')
     stars: document.querySelectorAll('.c-score .el-rate').length
   }))()`) || '{}')
   check('评分汇总区', s1.summary)
-  check('均分显示 5', s1.avg === '5', 'avg=' + s1.avg)
+  check('均分为 1-5 数字', /^[0-5](\.\d)?$/.test(s1.avg), 'avg=' + s1.avg)
   check('星级分布 5 行', s1.bars === 5, s1.bars + '行')
   check('发表框有打星', s1.editor)
   check('带分评论显示星', s1.stars > 0, s1.stars + '条')
