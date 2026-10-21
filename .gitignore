@@ -71,3 +71,7 @@ ai-*.png
 av-*.png
 test-report.json
 ai-test-report.json
+/*.png
+/*-audit*.json
+/*-report*.json
+mobile-*.json
