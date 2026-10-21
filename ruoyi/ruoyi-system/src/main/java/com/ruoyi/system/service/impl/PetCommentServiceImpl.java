@@ -1,6 +1,7 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.utils.DateUtils;
@@ -36,6 +37,18 @@ public class PetCommentServiceImpl implements IPetCommentService
     public int countByPetId(Long petId, String targetType)
     {
         return petCommentMapper.countByPetId(petId, targetType == null ? "pet" : targetType);
+    }
+
+    @Override
+    public Map<String, Object> scoreStat(Long petId, String targetType)
+    {
+        return petCommentMapper.scoreStat(petId, targetType == null ? "pet" : targetType);
+    }
+
+    @Override
+    public List<Map<String, Object>> scoreStatBatch(List<Long> petIds, String targetType)
+    {
+        return petCommentMapper.scoreStatBatch(petIds, targetType == null ? "pet" : targetType);
     }
 
     @Override

@@ -18,9 +18,9 @@
 
         <div ref="bodyRef" class="ai-body">
           <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
-            <div class="bubble" :class="{ error: m.error }">{{ m.content }}<i v-if="m.streaming" class="cursor"></i></div>
+            <div v-show="m.content || m.error" class="bubble" :class="{ error: m.error }">{{ m.content }}<i v-if="m.streaming && m.content" class="cursor"></i></div>
           </div>
-          <div v-if="sending && !streaming" class="msg assistant">
+          <div v-if="sending" class="msg assistant">
             <div class="bubble thinking"><i></i><i></i><i></i></div>
           </div>
         </div>
@@ -53,7 +53,7 @@
 <script setup>
 import { ref, reactive, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Close, Delete } from '@element-plus/icons-vue'
-import { aiChat } from '@/api/pet/petAi'
+import { aiChat, aiChatStream } from '@/api/pet/petAi'
 
 const open = ref(false)
 const sending = ref(false)
@@ -76,6 +76,7 @@ const quickAsks = [
 ]
 
 let timer = null
+let abortCtrl = null
 
 function scrollBottom() {
   nextTick(() => {
@@ -91,6 +92,7 @@ function toggle() {
 
 function clear() {
   if (timer) clearInterval(timer)
+  if (abortCtrl) { try { abortCtrl.abort() } catch (e) {} abortCtrl = null }
   messages.splice(0, messages.length, {
     role: 'assistant',
     content: '对话已清空，我们重新开始吧 🐾'
@@ -140,27 +142,65 @@ async function send() {
   sending.value = true
   scrollBottom()
 
+  // 先占一个空气泡，流式增量实时往里追加
+  const msg = reactive({ role: 'assistant', content: '', streaming: true })
+  messages.push(msg)
+  let gotAny = false
+
+  const fallback = async () => {
+    // 流式失败：回退到一次性接口 + 打字机效果
+    if (!gotAny) messages.splice(messages.indexOf(msg), 1)
+    try {
+      const history = messages.filter((m) => !m.error).slice(-8).map((m) => ({ role: m.role, content: m.content }))
+      const res = await aiChat({ messages: history, scene: 'shop' })
+      const data = (res && res.data) || {}
+      online.value = data.source === 'ai'
+      const m2 = reactive({ role: 'assistant', content: '' })
+      messages.push(m2)
+      typeWrite(m2, data.reply || '抱歉，我暂时没能理解，换个说法再试试？')
+    } catch (e) {
+      messages.push({
+        role: 'assistant',
+        content: '网络有点不稳定，AI 助手暂时没响应。你可以先到「AI 选宠」用一句话匹配，或联系在线客服。',
+        error: true
+      })
+    }
+  }
+
   try {
     const history = messages
-      .filter((m) => !m.error)
+      .filter((m) => !m.error && m !== msg)
       .slice(-8)
       .map((m) => ({ role: m.role, content: m.content }))
-    const res = await aiChat({ messages: history, scene: 'shop' })
-    const data = (res && res.data) || {}
-    const reply = data.reply || '抱歉，我暂时没能理解，换个说法再试试？'
-    online.value = data.source === 'ai'
-    const msg = reactive({ role: 'assistant', content: '' })
-    messages.push(msg)
-    sending.value = false
-    typeWrite(msg, reply)
+    abortCtrl = new AbortController()
+    const res = await aiChatStream(
+      { messages: history, scene: 'shop' },
+      (delta) => {
+        if (!gotAny) {
+          gotAny = true
+          sending.value = false
+        }
+        msg.content += delta
+        scrollBottom()
+      },
+      abortCtrl.signal
+    )
+    abortCtrl = null
+    if (res.source === 'error') {
+      if (!gotAny) messages.splice(messages.indexOf(msg), 1)
+      messages.push({ role: 'assistant', content: res.final || 'AI 助手暂时繁忙，请稍后再试。', error: true })
+    } else {
+      online.value = res.source === 'ai'
+      // 用后端清洗后的全文覆盖（去掉零星 Markdown 符号）
+      if (res.final && res.final !== msg.content) msg.content = res.final
+      msg.streaming = false
+    }
   } catch (e) {
-    messages.push({
-      role: 'assistant',
-      content: '网络有点不稳定，AI 助手暂时没响应。你可以先到「AI 选宠」用一句话匹配，或联系在线客服。',
-      error: true
-    })
-    sending.value = false
+    abortCtrl = null
+    await fallback()
   }
+  sending.value = false
+  msg.streaming = false
   scrollBottom()
 }
 

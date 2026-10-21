@@ -70,6 +70,7 @@
           <span class="page-title">{{ pageTitle }}</span>
         </div>
         <div class="right">
+          <NotificationBell />
           <el-dropdown @command="handleCommand">
             <span class="user">
               <el-avatar :size="32" class="avatar" :src="avatarUrl">{{ avatarText }}</el-avatar>
@@ -141,6 +142,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { DataLine, Goods, Calendar, Star, Monitor, ArrowDown, Setting, Pointer, ChatDotRound, FirstAidKit, Histogram, ChatLineRound, ChatLineSquare, CircleClose, IceCream, ShoppingCart, MagicStick, Tickets, Odometer } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { getToken } from '@/utils/auth'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { updateUserProfile } from '@/api/system/user'
 
 const route = useRoute()

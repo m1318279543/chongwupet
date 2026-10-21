@@ -33,6 +33,8 @@
           <router-link to="/shop/order" class="nav-item" v-if="isLogged">我的订单</router-link>
         </nav>
         <div class="user-area">
+          <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
+          <NotificationBell v-if="isLogged" more-path="/shop/order" />
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
           <router-link to="/shop/cart" class="m-cart" aria-label="购物车">
             <el-icon :size="21"><ShoppingCart /></el-icon>
@@ -152,6 +154,7 @@ import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import AuthDialog from '@/components/AuthDialog.vue'
 import AiAssistant from '@/components/AiAssistant.vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const route = useRoute()
 const router = useRouter()

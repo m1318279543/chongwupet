@@ -20,6 +20,26 @@
       </div>
     </div>
 
+    <!-- 评分汇总 -->
+    <div class="rating-summary">
+      <div class="rs-score">
+        <span class="big">{{ stat.avg || '—' }}</span>
+        <div class="rs-right">
+          <el-rate :model-value="Number(stat.avg) || 0" disabled allow-half size="small" />
+          <span class="rs-count">{{ stat.commentCount || 0 }} 条评价</span>
+        </div>
+      </div>
+      <div class="rs-bars">
+        <div class="bar-row" v-for="n in [5, 4, 3, 2, 1]" :key="n">
+          <span class="bar-label">{{ n }} 星</span>
+          <div class="bar-track">
+            <div class="bar-fill" :style="{ width: barPct(n) + '%' }"></div>
+          </div>
+          <span class="bar-num">{{ dist(n) }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 评论区 -->
     <div class="comment-area">
       <div class="area-head">
@@ -37,6 +57,11 @@
         <div class="reply-tip" v-if="replyTo">
           回复 <b>@{{ replyTo.userName }}</b>
           <el-link type="primary" underline="never" @click="cancelReply">取消</el-link>
+        </div>
+        <div class="score-pick" v-if="!replyTo">
+          <span class="sp-label">给个评分</span>
+          <el-rate v-model="draftScore" :texts="scoreTexts" show-text />
+          <span class="sp-tip">{{ draftScore ? '感谢你的评价～' : '选填，帮助其他人了解' }}</span>
         </div>
         <el-input
           v-model="draft"
@@ -62,6 +87,9 @@
               <span class="name">{{ c.userName || '匿名用户' }}</span>
               <el-tag size="small" type="danger" v-if="c.userId === 1">管理员</el-tag>
               <span class="time">{{ c.createTime }}</span>
+            </div>
+            <div class="c-score" v-if="c.score">
+              <el-rate :model-value="Number(c.score)" disabled size="small" />
             </div>
             <div class="content">{{ c.content }}</div>
             <div class="ops">
@@ -105,10 +133,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getLikeStatus, likePet, unlikePet } from '@/api/pet/petLike'
-import { listPetComment, addPetComment, delPetComment } from '@/api/pet/petComment'
+import { listPetComment, addPetComment, delPetComment, commentStat } from '@/api/pet/petComment'
 import { useUserStore } from '@/store/modules/user'
 
 const props = defineProps({
@@ -135,6 +163,25 @@ const posting = ref(false)
 const draft = ref('')
 const replyTo = ref(null)     // { commentId, userName }
 const sort = ref('new')
+const draftScore = ref(0)
+const scoreTexts = ['很差', '较差', '一般', '满意', '超棒']
+const stat = ref({ avg: 0, commentCount: 0, d1: 0, d2: 0, d3: 0, d4: 0, d5: 0 })
+
+function dist(n) {
+  return Number(stat.value['d' + n] || 0)
+}
+function barPct(n) {
+  const total = Number(stat.value.count || 0)
+  if (!total) return 0
+  return Math.round((dist(n) / total) * 100)
+}
+
+async function loadStat() {
+  try {
+    const res = await commentStat(props.petId, props.targetType)
+    stat.value = res.data || stat.value
+  } catch (e) { /* 游客/异常静默 */ }
+}
 
 // 组装楼中楼：顶级评论 + 其下回复（本地排序，最新在前）
 const commentTree = computed(() => {
@@ -228,6 +275,7 @@ function startReply(c) {
   // 回复楼中楼时挂到所属顶楼，避免层级过深
   replyTo.value = { commentId: c.parentComment ? c.parentComment.commentId : c.commentId, userName: c.userName }
   draft.value = ''
+  draftScore.value = 0
 }
 
 function cancelReply() {
@@ -249,12 +297,14 @@ async function submit() {
       targetType: props.targetType,
       content: text,
       parentId: replyTo.value ? replyTo.value.commentId : 0,
-      replyUser: replyTo.value ? replyTo.value.userName : null
+      replyUser: replyTo.value ? replyTo.value.userName : null,
+      score: replyTo.value ? null : (draftScore.value || null)
     })
     ElMessage.success('评论发表成功')
     draft.value = ''
+    draftScore.value = 0
     replyTo.value = null
-    await loadComments()
+    await Promise.all([loadComments(), loadStat()])
   } catch (e) {
     ElMessage.error(e?.message || '评论失败')
   } finally {
@@ -278,7 +328,10 @@ async function remove(c) {
 onMounted(() => {
   loadLike()
   loadComments()
+  loadStat()
 })
+// 详情页切换宠物时重新加载
+watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
 </script>
 
 <style scoped lang="scss">
@@ -299,6 +352,32 @@ onMounted(() => {
   0% { transform: scale(1); } 30% { transform: scale(1.35); }
   60% { transform: scale(.9); } 100% { transform: scale(1); }
 }
+
+.rating-summary {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 0 4px;
+  flex-wrap: wrap;
+  .rs-score { display: flex; align-items: center; gap: 14px;
+    .big { font-size: 44px; font-weight: 700; color: #ff8c42; line-height: 1; }
+    .rs-right { display: flex; flex-direction: column; gap: 4px; }
+    .rs-count { font-size: 12.5px; color: #909399; }
+  }
+  .rs-bars { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 5px;
+    .bar-row { display: flex; align-items: center; gap: 8px;
+      .bar-label { width: 34px; font-size: 12px; color: #909399; }
+      .bar-track { flex: 1; height: 7px; border-radius: 4px; background: #f2f3f5; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb27a, #ff8c42); transition: width .3s; }
+      .bar-num { width: 26px; text-align: right; font-size: 12px; color: #909399; }
+    }
+  }
+}
+.score-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+  .sp-label { font-size: 13px; color: #606266; }
+  .sp-tip { font-size: 12px; color: #c0c4cc; }
+}
+.c-score { margin: 2px 0 4px; }
 
 .comment-area {
   .area-head { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 14px; flex-wrap: wrap; gap: 10px;

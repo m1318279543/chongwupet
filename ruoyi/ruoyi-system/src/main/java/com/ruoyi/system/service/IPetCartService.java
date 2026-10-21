@@ -25,4 +25,10 @@ public interface IPetCartService
      * @return 取消后的状态说明（成功返回 null 表示无异常）
      */
     public void cancelPetCart(Long cartId, String reason, Long operatorUserId, String operatorName);
+
+    /**
+     * 模拟支付：按订单号把该用户名下待支付订单置为已支付
+     * @return 实际支付的商品件数
+     */
+    public int payOrder(String orderNo, Long userId, String payMethod);
 }

@@ -1,11 +1,15 @@
 package com.ruoyi.system.service.impl;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -153,6 +157,148 @@ public class PetAiServiceImpl implements IPetAiService
         result.put("source", "rule");
         result.put("model", llmModel);
         return result;
+    }
+
+    // ==================== 流式对话（SSE） ====================
+
+    @Override
+    public String chatStream(List<Map<String, String>> messages, String scene, Long petId,
+                             java.util.function.Consumer<String> onDelta)
+    {
+        List<Map<String, String>> safe = sanitize(messages);
+        String lastUser = lastUserText(safe);
+        if (safe.isEmpty())
+        {
+            onDelta.accept("你好，我是宠物之家的 AI 助手小爪 🐾 可以帮你选宠物、看订单预约、解答养护问题，想了解点什么？");
+            return "rule";
+        }
+
+        boolean anySent = false;
+        if (isAvailable())
+        {
+            List<Map<String, String>> payload = new ArrayList<>();
+            Map<String, String> sys = new LinkedHashMap<>();
+            sys.put("role", "system");
+            sys.put("content", buildSystemPrompt(scene, petId));
+            payload.add(sys);
+            payload.addAll(safe);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", llmModel);
+            body.put("messages", payload);
+            body.put("temperature", 0.7);
+            body.put("stream", true);
+
+            String json;
+            try
+            {
+                json = JSON.writeValueAsString(body);
+            }
+            catch (Exception e)
+            {
+                json = null;
+            }
+
+            if (json != null)
+            {
+                String url = llmBaseUrl.replaceAll("/+$", "") + "/chat/completions";
+                HttpClient client = buildClient();
+                int timeout = Math.max(20, Math.min(llmTimeout, 90));
+                for (int attempt = 1; attempt <= 2; attempt++)
+                {
+                    int retryAfter = 0;
+                    try
+                    {
+                        waitTurn();
+                        HttpRequest.Builder rb = HttpRequest.newBuilder()
+                                .uri(URI.create(url))
+                                .header("Content-Type", "application/json")
+                                .header("Accept", "text/event-stream")
+                                .header("User-Agent", "PetHome-RuoYi/1.0")
+                                .timeout(Duration.ofSeconds(timeout))
+                                .POST(HttpRequest.BodyPublishers.ofString(json));
+                        if (StringUtils.isNotBlank(llmApiKey))
+                        {
+                            rb.header("Authorization", "Bearer " + llmApiKey);
+                        }
+                        HttpResponse<InputStream> resp = client.send(rb.build(), HttpResponse.BodyHandlers.ofInputStream());
+                        int code = resp.statusCode();
+                        if (code == 200)
+                        {
+                            StringBuilder full = new StringBuilder();
+                            try (BufferedReader reader = new BufferedReader(new InputStreamReader(resp.body(), StandardCharsets.UTF_8)))
+                            {
+                                String line;
+                                while ((line = reader.readLine()) != null)
+                                {
+                                    if (!line.startsWith("data:"))
+                                    {
+                                        continue;
+                                    }
+                                    String data = line.substring(5).trim();
+                                    if (data.isEmpty() || "[DONE]".equals(data))
+                                    {
+                                        continue;
+                                    }
+                                    try
+                                    {
+                                        JsonNode node = JSON.readTree(data);
+                                        JsonNode delta = node.path("choices").path(0).path("delta").path("content");
+                                        if (delta.isTextual() && delta.asText().length() > 0)
+                                        {
+                                            String piece = delta.asText();
+                                            full.append(piece);
+                                            anySent = true;
+                                            onDelta.accept(piece);
+                                        }
+                                    }
+                                    catch (Exception ignored)
+                                    {
+                                    }
+                                }
+                            }
+                            if (full.length() > 0)
+                            {
+                                return "ai";
+                            }
+                            log.warn("AI 流式返回 200 但无内容（第 {} 次）", attempt);
+                        }
+                        else if (code == 402 || code == 429)
+                        {
+                            retryAfter = retryAfterSeconds("", resp.headers().firstValue("retry-after").orElse(null));
+                            log.warn("AI 流式触发限流({})，建议等待 {}s（第 {} 次）", code, retryAfter, attempt);
+                        }
+                        else
+                        {
+                            log.warn("AI 流式返回非 200：{}", code);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        log.warn("AI 流式调用异常（第 {} 次）：{}", attempt, e.getMessage());
+                    }
+                    if (anySent)
+                    {
+                        // 已经推了部分内容，不再重试，避免前端出现重复文本
+                        return "ai";
+                    }
+                    if (attempt < 2)
+                    {
+                        if (retryAfter > 12)
+                        {
+                            break;
+                        }
+                        long wait = retryAfter > 0 ? retryAfter * 1000L + 300L : 1200L;
+                        try { Thread.sleep(wait); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                    }
+                }
+            }
+        }
+
+        // 降级：本地规则一次性推送
+        String fallback = localReply(lastUser, scene);
+        onDelta.accept(fallback);
+        return "rule";
     }
 
     /** 组装系统提示词：平台能力 + 在售宠物 + 当前用户业务数据 + 场景补充 */

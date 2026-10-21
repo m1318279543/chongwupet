@@ -53,6 +53,22 @@ public class PetCart extends BaseEntity
     @Excel(name = "状态", readConverterExp = "0=正常,3=已取消")
     private String status;
 
+    /** 订单号（同次结算共享） */
+    @Excel(name = "订单号")
+    private String orderNo;
+
+    /** 支付状态（0待支付 1已支付） */
+    @Excel(name = "支付状态", readConverterExp = "0=待支付,1=已支付")
+    private String payStatus;
+
+    /** 支付方式（alipay/wechat/balance） */
+    @Excel(name = "支付方式")
+    private String payMethod;
+
+    /** 支付时间 */
+    @Excel(name = "支付时间", dateFormat = "yyyy-MM-dd HH:mm:ss")
+    private java.util.Date payTime;
+
     public Long getCartId() { return cartId; }
     public void setCartId(Long cartId) { this.cartId = cartId; }
 
@@ -83,6 +99,18 @@ public class PetCart extends BaseEntity
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
+    public String getOrderNo() { return orderNo; }
+    public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
+
+    public String getPayStatus() { return payStatus; }
+    public void setPayStatus(String payStatus) { this.payStatus = payStatus; }
+
+    public String getPayMethod() { return payMethod; }
+    public void setPayMethod(String payMethod) { this.payMethod = payMethod; }
+
+    public java.util.Date getPayTime() { return payTime; }
+    public void setPayTime(java.util.Date payTime) { this.payTime = payTime; }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
@@ -94,6 +122,8 @@ public class PetCart extends BaseEntity
             .append("qty", getQty())
             .append("amount", getAmount())
             .append("status", getStatus())
+            .append("orderNo", getOrderNo())
+            .append("payStatus", getPayStatus())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("remark", getRemark())

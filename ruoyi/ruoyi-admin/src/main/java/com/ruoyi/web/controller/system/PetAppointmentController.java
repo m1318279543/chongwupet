@@ -21,8 +21,10 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.PetAppointment;
 import com.ruoyi.system.service.IPetAppointmentService;
+import com.ruoyi.system.service.IPetNotificationService;
 
 /**
  * 预约管理 Controller
@@ -38,6 +40,18 @@ public class PetAppointmentController extends BaseController
 {
     @Autowired
     private IPetAppointmentService petAppointmentService;
+
+    @Autowired
+    private IPetNotificationService petNotificationService;
+
+    /** 预约状态 -> 中文 */
+    private static String statusText(String status)
+    {
+        if ("1".equals(status)) return "已确认";
+        if ("2".equals(status)) return "已完成";
+        if ("3".equals(status)) return "已取消";
+        return "待处理";
+    }
 
     /**
      * 查询预约列表：管理员看全部，普通用户只看自己的
@@ -107,16 +121,29 @@ public class PetAppointmentController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody PetAppointment petAppointment)
     {
+        PetAppointment origin = petAppointmentService.selectPetAppointmentByAppointmentId(petAppointment.getAppointmentId());
         if (!SecurityUtils.isAdmin())
         {
-            PetAppointment origin = petAppointmentService.selectPetAppointmentByAppointmentId(petAppointment.getAppointmentId());
             if (origin == null || origin.getUserId() == null || !origin.getUserId().equals(SecurityUtils.getUserId()))
             {
                 return error("只能修改自己的预约");
             }
             petAppointment.setUserId(origin.getUserId());
         }
-        return toAjax(petAppointmentService.updatePetAppointment(petAppointment));
+        int rows = petAppointmentService.updatePetAppointment(petAppointment);
+        // 管理员改状态时给预约人发站内通知
+        if (rows > 0 && origin != null && SecurityUtils.isAdmin()
+                && StringUtils.isNotBlank(petAppointment.getStatus())
+                && !petAppointment.getStatus().equals(origin.getStatus()))
+        {
+            String st = petAppointment.getStatus();
+            petNotificationService.push(origin.getUserId(), origin.getUserName(), "appointment",
+                    "预约" + statusText(st),
+                    "你预约看宠「" + (origin.getPetName() == null ? "" : origin.getPetName()) + "」的记录状态已更新为「"
+                            + statusText(st) + "」" + ("2".equals(st) ? "，感谢你的信任，期待毛孩子到家 🐾" : "，可到「我的预约」查看详情。"),
+                    origin.getAppointmentId());
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -137,7 +164,13 @@ public class PetAppointmentController extends BaseController
         {
             return error("只能取消自己的预约");
         }
+        boolean byAdmin = SecurityUtils.isAdmin() && !SecurityUtils.getUserId().equals(origin.getUserId());
         petAppointmentService.cancelPetAppointment(appointmentId, reason);
+        petNotificationService.push(origin.getUserId(), origin.getUserName(), "appointment",
+                byAdmin ? "预约已被管理员取消" : "预约已取消",
+                "你预约看宠「" + (origin.getPetName() == null ? "" : origin.getPetName()) + "」的记录已取消"
+                        + (StringUtils.isNotBlank(reason) ? "，原因：" + reason : "") + "。",
+                appointmentId);
         return success("预约已取消");
     }
 

@@ -38,6 +38,16 @@ public class PetCartServiceImpl implements IPetCartService
     }
 
     @Override
+    public int payOrder(String orderNo, Long userId, String payMethod)
+    {
+        if (orderNo == null || orderNo.isEmpty() || userId == null)
+        {
+            throw new ServiceException("订单号缺失，无法支付");
+        }
+        return petCartMapper.updatePayStatus(orderNo, userId, payMethod);
+    }
+
+    @Override
     public int insertPetCart(PetCart petCart)
     {
         if (petCart.getStatus() == null || petCart.getStatus().isEmpty())

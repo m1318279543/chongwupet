@@ -35,6 +35,15 @@ export function exportPetCart(query) {
   });
 }
 
+// 模拟支付：按订单号支付名下待支付订单
+export function payPetCart(orderNo, payMethod) {
+  return request({
+    url: "/pet/cart/pay/" + orderNo,
+    method: "post",
+    data: { payMethod: payMethod || "alipay" },
+  });
+}
+
 // 取消订单（登录用户取消自己的订单，后端会写入取消记录）
 export function cancelPetCart(cartId, reason) {
   return request({

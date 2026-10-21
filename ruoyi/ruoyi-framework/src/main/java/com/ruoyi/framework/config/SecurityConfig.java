@@ -106,7 +106,7 @@ public class SecurityConfig
                     // 宠物前台浏览接口：游客可看列表和详情（增删改仍需权限）
                     .requestMatchers(HttpMethod.GET, "/pet/info/list", "/pet/category/list", "/pet/info/*").permitAll()
                     // 宠物社交互动：游客可浏览点赞数与评论内容（点赞/发表评论仍需登录）
-                    .requestMatchers(HttpMethod.GET, "/pet/like/status/**", "/pet/comment/list").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/pet/like/status/**", "/pet/comment/list", "/pet/comment/stat", "/pet/comment/statGroup").permitAll()
                     // 宠物健康服务档案：游客可读，后台维护需权限
                     .requestMatchers(HttpMethod.GET, "/pet/health/**").permitAll()
                     // 宠物喜好：游客可读，后台维护需权限
@@ -118,7 +118,7 @@ public class SecurityConfig
                     // AI 宠物智能匹配问卷：游客可提交问卷（登录后用协同过滤增强）
                     .requestMatchers(HttpMethod.POST, "/pet/match/recommend").permitAll()
                     // 全站 AI 助手：游客可用（服务端有 IP 限流）
-                    .requestMatchers(HttpMethod.POST, "/pet/ai/chat", "/pet/ai/parse").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/pet/ai/chat", "/pet/ai/parse", "/pet/ai/stream").permitAll()
                     // 静态资源，可匿名访问
                     .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**.html", "/**.css", "/**.js", "/profile/**").permitAll()
                     .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**", "/druid/**").permitAll()

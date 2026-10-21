@@ -29,3 +29,43 @@ export function aiInsight(days = 7) {
     timeout: 70000
   })
 }
+
+// 流式对话（SSE）：onDelta 收到增量文本；resolve({ source, final })
+export function aiChatStream(data, onDelta, signal) {
+  const base = import.meta.env.VITE_APP_BASE_API || '/dev-api'
+  return fetch(base + '/pet/ai/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    signal
+  }).then(async (resp) => {
+    if (!resp.ok || !resp.body) throw new Error('HTTP ' + resp.status)
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buf = ''
+    let result = { source: 'ai', final: '' }
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      // SSE 以空行分隔事件
+      let idx
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const raw = buf.slice(0, idx)
+        buf = buf.slice(idx + 2)
+        for (const line of raw.split('\n')) {
+          const t = line.trim()
+          if (!t.startsWith('data:')) continue
+          const payload = t.slice(5).trim()
+          if (!payload) continue
+          try {
+            const evt = JSON.parse(payload)
+            if (evt.delta && onDelta) onDelta(evt.delta)
+            if (evt.done) result = { source: evt.source || 'ai', final: evt.final || '' }
+          } catch (e) { /* 忽略不完整片段 */ }
+        }
+      }
+    }
+    return result
+  })
+}

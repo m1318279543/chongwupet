@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetNotificationMapper">
+
+    <resultMap type="PetNotification" id="PetNotificationResult">
+        <result property="notifyId"   column="notify_id"   />
+        <result property="userId"     column="user_id"     />
+        <result property="userName"   column="user_name"   />
+        <result property="type"       column="type"        />
+        <result property="title"      column="title"       />
+        <result property="content"    column="content"     />
+        <result property="refId"      column="ref_id"      />
+        <result property="isRead"     column="is_read"     />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="selectPetNotificationVo">
+        select notify_id, user_id, user_name, type, title, content, ref_id, is_read, create_time
+        from pet_notification
+    </sql>
+
+    <select id="selectPetNotificationByNotifyId" parameterType="Long" resultMap="PetNotificationResult">
+        <include refid="selectPetNotificationVo"/>
+        where notify_id = #{notifyId}
+    </select>
+
+    <select id="selectPetNotificationList" parameterType="PetNotification" resultMap="PetNotificationResult">
+        <include refid="selectPetNotificationVo"/>
+        <where>
+            <if test="userId != null">AND user_id = #{userId}</if>
+            <if test="userName != null and userName != ''">AND user_name like concat('%', #{userName}, '%')</if>
+            <if test="type != null and type != ''">AND type = #{type}</if>
+            <if test="isRead != null and isRead != ''">AND is_read = #{isRead}</if>
+        </where>
+        order by notify_id desc
+    </select>
+
+    <select id="countUnread" parameterType="Long" resultType="int">
+        select count(*) from pet_notification where user_id = #{userId} and is_read = '0'
+    </select>
+
+    <select id="countUnreadByType" parameterType="Long" resultType="java.util.HashMap">
+        select type as "type", count(*) as "count"
+        from pet_notification
+        where user_id = #{userId} and is_read = '0'
+        group by type
+    </select>
+
+    <insert id="insertPetNotification" parameterType="PetNotification" useGeneratedKeys="true" keyProperty="notifyId">
+        insert into pet_notification(
+            <if test="userId != null">user_id,</if>
+            <if test="userName != null">user_name,</if>
+            <if test="type != null and type != ''">type,</if>
+            <if test="title != null">title,</if>
+            <if test="content != null">content,</if>
+            <if test="refId != null">ref_id,</if>
+            <if test="isRead != null and isRead != ''">is_read,</if>
+            create_time
+        )values(
+            <if test="userId != null">#{userId},</if>
+            <if test="userName != null">#{userName},</if>
+            <if test="type != null and type != ''">#{type},</if>
+            <if test="title != null">#{title},</if>
+            <if test="content != null">#{content},</if>
+            <if test="refId != null">#{refId},</if>
+            <if test="isRead != null and isRead != ''">#{isRead},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="markRead" parameterType="Long">
+        update pet_notification set is_read = '1' where notify_id = #{notifyId}
+    </update>
+
+    <update id="markAllRead" parameterType="Long">
+        update pet_notification set is_read = '1' where user_id = #{userId} and is_read = '0'
+    </update>
+
+</mapper>

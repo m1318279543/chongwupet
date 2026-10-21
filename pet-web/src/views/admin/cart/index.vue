@@ -46,6 +46,16 @@
       <el-table-column label="小计" align="center" width="110">
         <template #default="scope"><span class="amount">¥{{ scope.row.amount }}</span></template>
       </el-table-column>
+      <el-table-column label="订单号" align="center" prop="orderNo" width="180" show-overflow-tooltip />
+      <el-table-column label="支付状态" align="center" width="100">
+        <template #default="scope">
+          <el-tag v-if="scope.row.status === '3'" type="info" size="small">已取消</el-tag>
+          <el-tag v-else-if="scope.row.payStatus === '1'" type="success" size="small">
+            已支付{{ scope.row.payMethod === 'wechat' ? '·微信' : scope.row.payMethod === 'balance' ? '·余额' : '·支付宝' }}
+          </el-tag>
+          <el-tag v-else type="warning" size="small">待支付</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="提交时间" align="center" prop="createTime" width="180">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>

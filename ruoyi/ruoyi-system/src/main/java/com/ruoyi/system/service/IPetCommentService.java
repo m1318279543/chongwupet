@@ -1,6 +1,7 @@
 package com.ruoyi.system.service;
 
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.system.domain.PetComment;
 
 /**
@@ -16,6 +17,12 @@ public interface IPetCommentService
 
     /** 某目标（宠物/宠物粮）的正常状态评论数 */
     public int countByPetId(Long petId, String targetType);
+
+    /** 评分统计（单目标）：avg/count/分布 */
+    public Map<String, Object> scoreStat(Long petId, String targetType);
+
+    /** 评分统计（批量，列表角标） */
+    public List<Map<String, Object>> scoreStatBatch(java.util.List<Long> petIds, String targetType);
 
     public int insertPetComment(PetComment petComment);
 

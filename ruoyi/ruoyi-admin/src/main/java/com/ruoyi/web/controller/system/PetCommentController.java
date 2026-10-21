@@ -1,6 +1,8 @@
 package com.ruoyi.web.controller.system;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
@@ -58,6 +61,37 @@ public class PetCommentController extends BaseController
     }
 
     /**
+     * 评分统计（游客可读）：均值 + 评论数 + 星级分布
+     */
+    @GetMapping("/stat")
+    public AjaxResult stat(@RequestParam("petId") Long petId,
+                           @RequestParam(value = "targetType", defaultValue = "pet") String targetType)
+    {
+        Map<String, Object> m = new HashMap<>();
+        m.putAll(petCommentService.scoreStat(petId, targetType));
+        m.put("commentCount", petCommentService.countByPetId(petId, targetType));
+        return success(m);
+    }
+
+    /**
+     * 批量评分统计（列表卡片角标）：ids 为空时返回该类型全部
+     */
+    @GetMapping("/statGroup")
+    public AjaxResult statGroup(@RequestParam(value = "targetType", defaultValue = "pet") String targetType,
+                                @RequestParam(value = "ids", required = false) String ids)
+    {
+        java.util.List<Long> idList = new java.util.ArrayList<>();
+        if (ids != null && !ids.isEmpty())
+        {
+            for (String x : ids.split(","))
+            {
+                try { idList.add(Long.parseLong(x.trim())); } catch (Exception ignored) { }
+            }
+        }
+        return success(petCommentService.scoreStatBatch(idList, targetType));
+    }
+
+    /**
      * 发表评论（登录即可；parentId 非空时为回复）
      */
     @PostMapping
@@ -69,6 +103,16 @@ public class PetCommentController extends BaseController
         if (petComment.getParentId() == null)
         {
             petComment.setParentId(0L);
+        }
+        // 评分只在顶级评论生效，范围 1-5；回复一律不带分
+        if (petComment.getParentId() != null && petComment.getParentId() > 0)
+        {
+            petComment.setScore(null);
+        }
+        else if (petComment.getScore() != null)
+        {
+            int sc = petComment.getScore();
+            petComment.setScore(sc >= 1 && sc <= 5 ? sc : null);
         }
         return toAjax(petCommentService.insertPetComment(petComment));
     }

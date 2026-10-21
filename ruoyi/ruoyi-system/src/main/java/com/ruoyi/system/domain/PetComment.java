@@ -59,6 +59,11 @@ public class PetComment extends BaseEntity
     private String petName;
 
     /** 宠物图片（关联 pet_info 查询展示用，非本表字段） */
+
+    /** 评分（1-5，仅顶级评论） */
+    private Integer score;
+
+    /** 目标图片（冗余展示用） */
     private String image;
 
     public Long getCommentId()
@@ -170,6 +175,9 @@ public class PetComment extends BaseEntity
     {
         this.petName = petName;
     }
+
+    public Integer getScore() { return score; }
+    public void setScore(Integer score) { this.score = score; }
 
     public String getImage()
     {

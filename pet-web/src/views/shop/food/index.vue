@@ -27,7 +27,10 @@
             <el-tag size="small" type="success" effect="plain">{{ p.stage }}</el-tag>
           </div>
           <div class="desc">{{ p.desc }}</div>
-          <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
+          <div class="price-row">
+            <span class="rating-tag" v-if="foodRating(p.fid)">⭐ {{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
+            <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
+          </div>
         </div>
       </div>
     </section>
@@ -86,6 +89,8 @@ import { ElMessage } from 'element-plus'
 import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
 import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
+import { commentStatGroup } from '@/api/pet/petComment'
+import { onMounted } from 'vue'
 
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
@@ -94,6 +99,22 @@ const active = ref('cat')
 const filtered = computed(() => FOOD_LIST.filter(p => p.cat === active.value))
 
 // 详情弹窗
+// 评分角标：fid -> {avg,count}
+const ratingMap = ref({})
+function foodRating(fid) {
+  const r = ratingMap.value[fid]
+  return r && Number(r.count) > 0 ? r : null
+}
+async function loadRatings() {
+  try {
+    const res = await commentStatGroup('food')
+    const m = {}
+    for (const row of res.data || []) m[row.petId] = row
+    ratingMap.value = m
+  } catch (e) { /* 静默 */ }
+}
+onMounted(loadRatings)
+
 const detailVisible = ref(false)
 const detail = ref(null)
 const currentCat = computed(() => FOOD_CATEGORIES.find(c => c.id === detail.value?.cat) || {})
@@ -219,7 +240,10 @@ function addToCart(p) {
       .spec { font-size: 12px; }
     }
     .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
-    .price { font-size: 15px;
+    .price-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rating-tag { font-size: 12px; color: #d2691e; background: #fff7f1; border-radius: 10px;
+  padding: 2px 8px; white-space: nowrap; }
+.price { font-size: 15px;
       .unit { font-size: 11px; }
     }
   }

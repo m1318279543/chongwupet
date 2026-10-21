@@ -16,10 +16,23 @@ const service = axios.create({
 })
 
 // request 拦截器
+// 按用户 store 的区域（shop/admin）取对应 token。
+// 关键：路由守卫在「切区」（如商城 → /admin）时 pathname 还是旧区域，
+// 若按 location 判断会带错凭证；store.scope 在 ensureScope 里已先行切换，才是权威来源。
+import { useUserStore } from '@/store/modules/user'
+function scopeToken() {
+  try {
+    const store = useUserStore()
+    if (store && store.scope) return getToken(store.scope)
+  } catch (e) { /* pinia 未初始化时（如登录页首屏）按路径判断 */ }
+  return getToken()
+}
+
 service.interceptors.request.use(config => {
   const isToken = (config.headers || {}).isToken === false
-  if (getToken() && !isToken) {
-    config.headers['Authorization'] = 'Bearer ' + getToken()
+  const token = scopeToken()
+  if (token && !isToken) {
+    config.headers['Authorization'] = 'Bearer ' + token
   }
   // get 请求 params 拼到 url
   if (config.method === 'get' && config.params) {

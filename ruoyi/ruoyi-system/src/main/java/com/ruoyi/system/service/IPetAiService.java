@@ -28,6 +28,14 @@ public interface IPetAiService
     Map<String, Object> chat(List<Map<String, String>> messages, String scene, Long petId);
 
     /**
+     * 流式对话：模型增量内容通过 onDelta 回调实时推送；模型不可用时降级为本地规则回复一次性推送
+     *
+     * @return 内容来源（ai=大模型 / rule=本地规则降级）
+     */
+    String chatStream(List<Map<String, String>> messages, String scene, Long petId,
+                      java.util.function.Consumer<String> onDelta);
+
+    /**
      * 自然语言选宠需求解析（如「我住小户型，上班忙，预算 3000，想养只猫」）
      */
     Map<String, Object> parseMatchDemand(String text);

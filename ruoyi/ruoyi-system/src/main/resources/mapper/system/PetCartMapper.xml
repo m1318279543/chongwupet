@@ -13,6 +13,10 @@
         <result property="qty"        column="qty"         />
         <result property="amount"     column="amount"      />
         <result property="status"     column="status"      />
+        <result property="orderNo"    column="order_no"    />
+        <result property="payStatus"  column="pay_status"  />
+        <result property="payMethod"  column="pay_method"  />
+        <result property="payTime"    column="pay_time"    />
         <result property="createBy"   column="create_by"   />
         <result property="createTime" column="create_time" />
         <result property="remark"     column="remark"      />
@@ -20,7 +24,8 @@
 
     <sql id="selectPetCartVo">
         select c.cart_id, c.user_id, c.user_name, c.goods_name, c.goods_image, c.goods_spec,
-               c.price, c.qty, c.amount, c.status, c.create_by, c.create_time, c.remark
+               c.price, c.qty, c.amount, c.status, c.order_no, c.pay_status, c.pay_method, c.pay_time,
+               c.create_by, c.create_time, c.remark
         from pet_cart c
     </sql>
 
@@ -38,6 +43,12 @@
             </if>
             <if test="status != null and status != ''">
                 AND c.status = #{status}
+            </if>
+            <if test="orderNo != null and orderNo != ''">
+                AND c.order_no = #{orderNo}
+            </if>
+            <if test="payStatus != null and payStatus != ''">
+                AND c.pay_status = #{payStatus}
             </if>
         </where>
         order by c.cart_id desc
@@ -59,6 +70,8 @@
             <if test="qty != null">qty,</if>
             <if test="amount != null">amount,</if>
             <if test="status != null and status != ''">status,</if>
+            <if test="orderNo != null and orderNo != ''">order_no,</if>
+            <if test="payStatus != null and payStatus != ''">pay_status,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
             <if test="remark != null and remark != ''">remark,</if>
             create_time
@@ -72,6 +85,8 @@
             <if test="qty != null">#{qty},</if>
             <if test="amount != null">#{amount},</if>
             <if test="status != null and status != ''">#{status},</if>
+            <if test="orderNo != null and orderNo != ''">#{orderNo},</if>
+            <if test="payStatus != null and payStatus != ''">#{payStatus},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
             sysdate()
@@ -83,6 +98,12 @@
         update pet_cart
         set status = #{status}, update_time = sysdate()
         where cart_id = #{cartId}
+    </update>
+
+    <update id="updatePayStatus">
+        update pet_cart
+        set pay_status = '1', pay_method = #{payMethod}, pay_time = sysdate(), update_time = sysdate()
+        where order_no = #{orderNo} and user_id = #{userId} and pay_status = '0' and status != '3'
     </update>
 
     <delete id="deletePetCartByCartId" parameterType="Long">

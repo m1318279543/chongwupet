@@ -133,10 +133,12 @@ function checkout() {
   })
     .then(() => {
       submitPetCart(items)
-        .then(() => {
+        .then((res) => {
           cartStore.clear()
-          ElMessage.success('下单成功！我们会尽快为你安排发货 🎉')
-          setTimeout(() => router.push('/shop/order'), 800)
+          const orderNo = res?.data?.orderNo
+          ElMessage.success('下单成功！即将进入收银台 🎉')
+          // 带上订单号去订单页，自动弹出模拟收银台
+          setTimeout(() => router.push(orderNo ? { path: '/shop/order', query: { pay: orderNo } } : '/shop/order'), 600)
         })
         .catch(() => {})
     })

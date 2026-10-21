@@ -21,11 +21,13 @@
         <result property="avatar"     column="avatar"      />
         <result property="petName"    column="pet_name"    />
         <result property="image"      column="image"       />
+        <result property="score"      column="score"       />
     </resultMap>
 
     <sql id="selectPetCommentVo">
         select c.comment_id, c.pet_id, c.target_type, c.user_id, c.parent_id, c.reply_user, c.content, c.status, c.del_flag,
                c.create_by, c.create_time, c.update_by, c.update_time, c.remark,
+               c.score,
                u.user_name as user_name, u.avatar as avatar, p.pet_name as pet_name, p.image as image
         from pet_comment c
         left join sys_user u on u.user_id = c.user_id
@@ -67,6 +69,31 @@
         select count(*) from pet_comment where pet_id = #{petId} and target_type = #{targetType} and status = '0' and del_flag = '0'
     </select>
 
+    <select id="scoreStat" parameterType="map" resultType="java.util.HashMap">
+        select count(*)                                        as "count",
+               coalesce(round(avg(score), 1), 0)               as "avg",
+               sum(case when score = 1 then 1 else 0 end)      as "d1",
+               sum(case when score = 2 then 1 else 0 end)      as "d2",
+               sum(case when score = 3 then 1 else 0 end)      as "d3",
+               sum(case when score = 4 then 1 else 0 end)      as "d4",
+               sum(case when score = 5 then 1 else 0 end)      as "d5"
+        from pet_comment
+        where pet_id = #{petId} and target_type = #{targetType} and status = '0' and del_flag = '0' and score is not null
+    </select>
+
+    <select id="scoreStatBatch" resultType="java.util.HashMap">
+        select pet_id                                     as "petId",
+               count(*)                                   as "count",
+               coalesce(round(avg(score), 1), 0)          as "avg"
+        from pet_comment
+        where target_type = #{targetType} and status = '0' and del_flag = '0' and score is not null
+        <if test="petIds != null and petIds.size() > 0">
+          and pet_id in
+          <foreach item="id" collection="petIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        group by pet_id
+    </select>
+
     <insert id="insertPetComment" parameterType="PetComment" useGeneratedKeys="true" keyProperty="commentId">
         insert into pet_comment(
             <if test="petId != null">pet_id,</if>
@@ -75,6 +102,7 @@
             <if test="parentId != null">parent_id,</if>
             <if test="replyUser != null and replyUser != ''">reply_user,</if>
             <if test="content != null and content != ''">content,</if>
+            <if test="score != null">score,</if>
             <if test="status != null and status != ''">status,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
             <if test="remark != null and remark != ''">remark,</if>
@@ -86,6 +114,7 @@
             <if test="parentId != null">#{parentId},</if>
             <if test="replyUser != null and replyUser != ''">#{replyUser},</if>
             <if test="content != null and content != ''">#{content},</if>
+            <if test="score != null">#{score},</if>
             <if test="status != null and status != ''">#{status},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
             <if test="remark != null and remark != ''">#{remark},</if>

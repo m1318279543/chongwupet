@@ -9,6 +9,24 @@ export function listPetComment(query) {
   });
 }
 
+// 评分统计（单目标）：均值 + 评论数 + 星级分布
+export function commentStat(petId, targetType) {
+  return request({
+    url: "/pet/comment/stat",
+    method: "get",
+    params: { petId, targetType: targetType || "pet" },
+  });
+}
+
+// 批量评分统计（列表卡片角标）
+export function commentStatGroup(targetType) {
+  return request({
+    url: "/pet/comment/statGroup",
+    method: "get",
+    params: { targetType: targetType || "pet" },
+  });
+}
+
 // 后台评论管理列表（含隐藏评论，需要 pet:comment:manage 权限）
 export function listPetCommentManage(query) {
   return request({

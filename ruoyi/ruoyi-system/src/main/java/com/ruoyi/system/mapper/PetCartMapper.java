@@ -23,4 +23,8 @@ public interface PetCartMapper
 
     /** 修改订单状态（取消订单等） */
     public int updatePetCartStatus(@Param("cartId") Long cartId, @Param("status") String status);
+
+    /** 支付成功：按订单号批量更新支付状态 */
+    public int updatePayStatus(@Param("orderNo") String orderNo, @Param("userId") Long userId,
+                               @Param("payMethod") String payMethod);
 }

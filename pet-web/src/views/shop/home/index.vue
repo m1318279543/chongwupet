@@ -149,10 +149,41 @@
           <div class="floor">
             <div class="floor-head">
               <h2><span class="floor-emoji">🔍</span> {{ resultTitle }}</h2>
-              <span class="floor-count">共 {{ resultCount }} 只</span>
+              <span class="floor-count">共 {{ filteredPets.length }} 只</span>
             </div>
-            <div class="grid" v-if="resultPets.length">
-              <div class="pet-card" v-for="pet in resultPets" :key="pet.petId" @click="goDetail(pet.petId)">
+            <!-- 组合筛选条 -->
+            <div class="filter-bar" v-if="displayPets.length > 0">
+              <div class="fb-item">
+                <span class="fb-label">性别</span>
+                <el-radio-group v-model="fGender" size="small">
+                  <el-radio-button value="">全部</el-radio-button>
+                  <el-radio-button value="0">公</el-radio-button>
+                  <el-radio-button value="1">母</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div class="fb-item">
+                <span class="fb-label">价格</span>
+                <el-select v-model="fPrice" size="small" style="width: 130px">
+                  <el-option label="全部价格" value="" />
+                  <el-option label="¥0 - 500" value="0-500" />
+                  <el-option label="¥500 - 2000" value="500-2000" />
+                  <el-option label="¥2000 - 5000" value="2000-5000" />
+                  <el-option label="¥5000 以上" value="5000-" />
+                </el-select>
+              </div>
+              <div class="fb-item">
+                <span class="fb-label">排序</span>
+                <el-radio-group v-model="fSort" size="small">
+                  <el-radio-button value="">默认</el-radio-button>
+                  <el-radio-button value="asc">价格低→高</el-radio-button>
+                  <el-radio-button value="desc">价格高→低</el-radio-button>
+                </el-radio-group>
+              </div>
+              <el-checkbox v-model="fOnSale" size="small">仅看在售</el-checkbox>
+              <el-button v-if="hasFilter" link type="primary" size="small" @click="clearExtraFilter">清除筛选</el-button>
+            </div>
+            <div class="grid" v-if="filteredPets.length">
+              <div class="pet-card" v-for="pet in filteredPets" :key="pet.petId" @click="goDetail(pet.petId)">
                 <div class="pet-image" :style="{ background: petGradient(pet.petId) }">
                   <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy" />
                   <span v-else class="pet-emoji">{{ petEmoji(pet.categoryId) }}</span>
@@ -170,6 +201,7 @@
                   <div class="pet-bottom">
                     <span class="pet-price" v-if="pet.price > 0">¥<em>{{ pet.price }}</em></span>
                     <span class="pet-price free" v-else>协商领养</span>
+                    <span class="rating-tag" v-if="petRating(pet.petId)">⭐ {{ petRating(pet.petId).avg }}（{{ petRating(pet.petId).count }}）</span>
                     <span class="fav-btn" :class="{ active: isFav(pet.petId) }" @click.stop="toggleFav(pet.petId)">
                       {{ isFav(pet.petId) ? '❤️' : '🤍' }}
                     </span>
@@ -211,6 +243,7 @@
                   <div class="pet-bottom">
                     <span class="pet-price" v-if="pet.price > 0">¥<em>{{ pet.price }}</em></span>
                     <span class="pet-price free" v-else>协商领养</span>
+                    <span class="rating-tag" v-if="petRating(pet.petId)">⭐ {{ petRating(pet.petId).avg }}（{{ petRating(pet.petId).count }}）</span>
                     <span class="fav-btn" :class="{ active: isFav(pet.petId) }" @click.stop="toggleFav(pet.petId)">
                       {{ isFav(pet.petId) ? '❤️' : '🤍' }}
                     </span>
@@ -249,6 +282,7 @@ import { Search } from '@element-plus/icons-vue'
 import { listPetInfo } from '@/api/pet/petInfo'
 import { listCategory } from '@/api/pet/category'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
+import { commentStatGroup } from '@/api/pet/petComment'
 import { FOOD_CATEGORIES, FOOD_LIST } from '@/views/shop/food/foodData'
 import { useUserStore } from '@/store/modules/user'
 
@@ -270,6 +304,33 @@ const categoryCount = ref(0)
 const loading = ref(false)
 const myFavorites = ref([])
 
+// 组合筛选状态
+const fGender = ref('')
+const fPrice = ref('')
+const fSort = ref('')
+const fOnSale = ref(false)
+const hasFilter = computed(() => fGender.value !== '' || fPrice.value !== '' || fSort.value !== '' || fOnSale.value)
+function clearExtraFilter() {
+  fGender.value = ''
+  fPrice.value = ''
+  fSort.value = ''
+  fOnSale.value = false
+}
+
+// 评分角标：petId -> {avg,count}
+const ratingMap = ref({})
+function petRating(petId) {
+  const r = ratingMap.value[petId]
+  return r && Number(r.count) > 0 ? r : null
+}
+async function loadRatings() {
+  try {
+    const res = await commentStatGroup('pet')
+    const m = {}
+    for (const row of res.data || []) m[row.petId] = row
+    ratingMap.value = m
+  } catch (e) { /* 静默 */ }
+}
 const features = [
   { icon: '🩺', title: '健康筛查', desc: '每只宠物入站前完成体检' },
   { icon: '📸', title: '真实信息', desc: '实物拍摄，所见即所得' },
@@ -366,7 +427,22 @@ const displayPets = computed(() => {
 const showResult = computed(() => !!keyword.value || activeFilter.value)
 const resultPets = computed(() => keyword.value ? petList.value : displayPets.value)
 const resultTitle = computed(() => keyword.value ? '搜索结果' : (activeValue.value || '全部'))
-const resultCount = computed(() => keyword.value ? total.value : displayPets.value.length)
+
+// 组合筛选后的结果（性别/价格/在售/排序，纯前端过滤）
+const filteredPets = computed(() => {
+  let list = resultPets.value.slice()
+  if (fGender.value !== '') list = list.filter((p) => p.gender === fGender.value)
+  if (fPrice.value) {
+    const [min, max] = fPrice.value.endsWith('-')
+      ? [Number(fPrice.value.slice(0, -1)), Infinity]
+      : fPrice.value.split('-').map(Number)
+    list = list.filter((p) => (p.price || 0) >= min && (p.price || 0) <= max)
+  }
+  if (fOnSale.value) list = list.filter((p) => p.status !== '1')
+  if (fSort.value === 'asc') list.sort((a, b) => (a.price || 0) - (b.price || 0))
+  else if (fSort.value === 'desc') list.sort((a, b) => (b.price || 0) - (a.price || 0))
+  return list
+})
 
 // 楼层模式：取每个分类的前6只
 function floorPets(catId) {
@@ -484,6 +560,7 @@ onMounted(() => {
   loadCategories()
   loadAllPets()
   loadMyFavorites()
+  loadRatings()
 })
 </script>
 
@@ -596,6 +673,14 @@ onMounted(() => {
 /* ⑥ 楼层 */
 .floors { background: #f7f7f7; padding: 32px 0; min-height: 400px; }
 .floors-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.filter-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 16px; background: #fff; border-radius: 12px; margin-bottom: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+  .fb-item { display: flex; align-items: center; gap: 8px; }
+  .fb-label { font-size: 13px; color: #909399; flex-shrink: 0; }
+}
+.rating-tag { font-size: 12px; color: #d2691e; background: #fff7f1; border-radius: 10px;
+  padding: 2px 8px; white-space: nowrap; }
 .floor { background: #fff; border-radius: 8px; overflow: hidden; margin-bottom: 24px; padding: 24px; }
 .floor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
   h2 { font-size: 22px; color: #303133; margin: 0; .floor-emoji { font-size: 26px; margin-right: 8px; } }
