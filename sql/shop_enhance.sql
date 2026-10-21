@@ -36,3 +36,9 @@ UPDATE pet_comment SET score = CASE WHEN comment_id % 3 = 0 THEN 4 ELSE 5 END
 WHERE parent_id = 0 AND status = '0' AND del_flag = '0' AND target_type = 'pet' AND score IS NULL;
 UPDATE pet_comment SET score = CASE WHEN comment_id % 4 = 0 THEN 4 ELSE 5 END
 WHERE parent_id = 0 AND status = '0' AND del_flag = '0' AND target_type = 'food' AND score IS NULL;
+
+-- ⑤ 历史订单补单号（早期 pet_cart 行没有 order_no，导致订单页"去支付"打到 /pay/undefined）
+-- 按 create_time + cart_id 生成，保证唯一且可读
+UPDATE pet_cart
+SET order_no = CONCAT('ORD', DATE_FORMAT(IFNULL(create_time, NOW()), '%Y%m%d%H%i%s'), LPAD(cart_id, 4, '0'))
+WHERE order_no IS NULL OR order_no = '';

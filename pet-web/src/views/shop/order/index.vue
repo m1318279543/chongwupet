@@ -27,11 +27,11 @@
 
     <!-- 订单列表（按订单号分组，一单多品） -->
     <div class="order-list" v-else v-loading="loading">
-      <div class="order-card" v-for="g in shownGroups" :key="g.orderNo"
+      <div class="order-card" v-for="g in shownGroups" :key="g.groupKey"
            :class="{ canceled: g.canceled, unpaid: g.unpaid }">
         <div class="order-head">
           <div class="head-left">
-            <span class="order-no">订单 {{ g.orderNo }}</span>
+            <span class="order-no">{{ g.legacy ? '历史订单（未生成单号）' : '订单 ' + g.orderNo }}</span>
             <el-tag v-if="g.canceled" type="info" size="small">已取消</el-tag>
             <el-tag v-else-if="g.unpaid" type="warning" size="small">待支付</el-tag>
             <el-tag v-else type="success" size="small">已支付 · {{ methodText(g.payMethod) }}</el-tag>
@@ -41,14 +41,19 @@
               <el-icon><Clock /></el-icon>{{ g.createTime }}
             </span>
             <el-button
-              v-if="g.unpaid"
+              v-if="g.unpaid && !g.legacy"
               type="warning" size="small" round
               @click="openCashier(g)"
             >去支付</el-button>
             <el-button
+              v-else-if="g.unpaid && g.legacy"
+              type="info" size="small" round plain
+              @click="legacyTip"
+            >历史订单</el-button>
+            <el-button
               v-else-if="!g.canceled"
               type="danger" link size="small"
-              :loading="cancelingId === g.orderNo"
+              :loading="cancelingId === g.groupKey"
               @click="cancelOrder(g)"
             >取消订单</el-button>
           </div>
@@ -166,7 +171,9 @@ const groups = computed(() => {
     const key = o.orderNo || 'C' + o.cartId
     if (!map.has(key)) {
       map.set(key, {
-        orderNo: key,
+        orderNo: o.orderNo || '',
+        groupKey: key,
+        legacy: !o.orderNo,
         items: [],
         canceled: false,
         unpaid: false,
@@ -210,8 +217,21 @@ function openCashier(g) {
   }, 1000)
 }
 
+function legacyTip() {
+  ElMessageBox.alert(
+    '这笔订单是系统早期数据，缺少支付单号，无法在线支付。请到「宠物粮」页重新下单，我们会立即为你安排发货。',
+    '历史订单',
+    { confirmButtonText: '去逛逛', type: 'info' }
+  ).then(() => router.push('/shop/food')).catch(() => {})
+}
+
 async function doPay() {
   if (!current.value || paying.value) return
+  if (!current.value.orderNo) {
+    paying.value = false
+    legacyTip()
+    return
+  }
   paying.value = true
   try {
     await payPetCart(current.value.orderNo, payMethod.value)
@@ -221,7 +241,8 @@ async function doPay() {
     // 支付成功会生成站内通知，通知铃铛立即刷新
     window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
   } catch (e) {
-    ElMessage.error(e?.msg || e?.message || '支付失败，请稍后再试')
+    // 错误提示已由 request 拦截器统一弹出（含后端真实业务原因），此处不再重复弹
+    console.warn('[pay] 支付失败:', e?.msg || e?.message || e)
   } finally {
     paying.value = false
   }
@@ -245,7 +266,7 @@ function cancelOrder(g) {
       type: 'warning'
     }
   ).then(async ({ value }) => {
-    cancelingId.value = g.orderNo
+    cancelingId.value = g.groupKey
     try {
       for (const o of g.items.filter((x) => x.status !== '3')) {
         await cancelPetCart(o.cartId, value || '')

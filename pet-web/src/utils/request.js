@@ -48,9 +48,19 @@ service.interceptors.request.use(config => {
 })
 
 // response 拦截器
+// 后端给的业务提示优先展示（如"订单不可支付"），
+// 只有 msg 缺失或是异常堆栈时，才退回 errorCode 的通用文案（500=系统异常）。
+function pickMsg(code, raw) {
+  const fallback = errorCode[code] || errorCode['default']
+  if (!raw || raw === 'null' || raw === 'undefined') return fallback
+  const s = String(raw)
+  if (s.length > 100 || /Exception|Error|at\s+[\w.$]+\(/.test(s)) return fallback
+  return s
+}
+
 service.interceptors.response.use(res => {
   const code = res.data.code || 200
-  const msg = errorCode[code] || res.data.msg || errorCode['default']
+  const msg = pickMsg(code, res.data.msg)
   // 二进制直接返回
   if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
     return res.data
