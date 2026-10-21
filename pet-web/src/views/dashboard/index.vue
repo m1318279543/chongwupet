@@ -18,6 +18,12 @@
           <el-radio-button :value="7">近 7 天</el-radio-button>
           <el-radio-button :value="30">近 30 天</el-radio-button>
           <el-radio-button :value="90">近 90 天</el-radio-button>
+          <el-radio-button :value="180">近 180 天</el-radio-button>
+        </el-radio-group>
+        <el-radio-group v-model="granularity" size="small" @change="rerenderTrends">
+          <el-radio-button value="day">按天</el-radio-button>
+          <el-radio-button value="week">按周</el-radio-button>
+          <el-radio-button value="month">按月</el-radio-button>
         </el-radio-group>
         <el-select v-model="intervalSec" size="small" style="width: 96px" @change="resetRealtimeTimer">
           <el-option :value="10" label="10 秒" />
@@ -73,16 +79,38 @@
 
     <!-- KPI -->
     <section class="kpi-grid">
-      <div v-for="k in kpis" :key="k.key" class="kpi-card" :style="{ '--accent': k.color }">
+      <div
+        v-for="k in kpis"
+        :key="k.key"
+        class="kpi-card"
+        :class="{ clickable: !!k.nav }"
+        :style="{ '--accent': k.color }"
+        :title="k.nav ? '点击查看明细' : ''"
+        @click="goKpi(k)"
+      >
         <div class="kpi-head">
           <span class="kpi-label">{{ k.label }}</span>
           <span v-if="k.growth !== null" class="badge" :class="growthClass(k.growth)">
             {{ growthText(k.growth) }}
           </span>
-          <span v-else class="badge flat">区间</span>
+          <span v-else-if="!k.noGrowth" class="badge flat">区间</span>
         </div>
         <div class="kpi-value">{{ k.value }}</div>
-        <div class="kpi-sub">{{ k.sub }}</div>
+        <svg v-if="k.spark && k.spark.length > 1" class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none">
+          <polyline
+            :points="k.spark"
+            fill="none"
+            stroke="var(--accent)"
+            stroke-width="2"
+            stroke-linejoin="round"
+            stroke-linecap="round"
+            opacity="0.55"
+          />
+        </svg>
+        <div class="kpi-sub">
+          {{ k.sub }}
+          <span v-if="k.nav" class="kpi-go">明细 →</span>
+        </div>
       </div>
     </section>
 
@@ -91,7 +119,10 @@
       <div class="card">
         <div class="card-head">
           <h3>业务趋势</h3>
-          <span>订单 / 预约 / 咨询（左轴） · 营业额（右轴）</span>
+          <span class="head-right">
+            <span>订单 / 预约 / 咨询（左轴） · 营业额（右轴）</span>
+            <button class="exp-btn" title="导出 PNG" @click="exportChart('trend', '业务趋势')">⤓</button>
+          </span>
         </div>
         <div ref="trendRef" class="chart chart-lg"></div>
       </div>
@@ -120,15 +151,24 @@
     <!-- 分布 -->
     <section class="grid grid-3">
       <div class="card">
-        <div class="card-head"><h3>预约状态分布</h3><span>区间内</span></div>
+        <div class="card-head">
+          <h3>预约状态分布</h3>
+          <span class="head-right"><span>区间内</span><button class="exp-btn" title="导出 PNG" @click="exportChart('aptStatus', '预约状态分布')">⤓</button></span>
+        </div>
         <div ref="aptStatusRef" class="chart chart-md"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>订单状态分布</h3><span>区间内</span></div>
+        <div class="card-head">
+          <h3>订单状态分布</h3>
+          <span class="head-right"><span>区间内</span><button class="exp-btn" title="导出 PNG" @click="exportChart('orderStatus', '订单状态分布')">⤓</button></span>
+        </div>
         <div ref="orderStatusRef" class="chart chart-md"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>在售宠物分类</h3><span>库存结构</span></div>
+        <div class="card-head">
+          <h3>在售宠物分类</h3>
+          <span class="head-right"><span>库存结构</span><button class="exp-btn" title="导出 PNG" @click="exportChart('category', '在售宠物分类')">⤓</button></span>
+        </div>
         <div ref="categoryRef" class="chart chart-md"></div>
       </div>
     </section>
@@ -136,19 +176,49 @@
     <!-- 排行 -->
     <section class="grid grid-2">
       <div class="card">
-        <div class="card-head"><h3>预约热度 TOP8</h3><span>{{ rangeText }}预约次数</span></div>
+        <div class="card-head">
+          <h3>预约热度 TOP8</h3>
+          <span class="head-right"><span>{{ rangeText }}预约次数</span><button class="exp-btn" title="导出 PNG" @click="exportChart('topPets', '预约热度TOP8')">⤓</button></span>
+        </div>
         <div ref="topPetsRef" class="chart chart-md"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>热销商品 TOP8</h3><span>{{ rangeText }}成交金额</span></div>
+        <div class="card-head">
+          <h3>热销商品 TOP8</h3>
+          <span class="head-right"><span>{{ rangeText }}成交金额</span><button class="exp-btn" title="导出 PNG" @click="exportChart('topGoods', '热销商品TOP8')">⤓</button></span>
+        </div>
         <div ref="topGoodsRef" class="chart chart-md"></div>
+      </div>
+    </section>
+
+    <!-- 支付分析 -->
+    <section class="grid grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>支付趋势</h3>
+          <span class="head-right">
+            <span>成功 / 失败笔数（左轴） · 成功金额（右轴）</span>
+            <button class="exp-btn" title="导出 PNG" @click="exportChart('payTrend', '支付趋势')">⤓</button>
+          </span>
+        </div>
+        <div ref="payTrendRef" class="chart chart-md"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>订单支付状态</h3>
+          <span class="head-right"><span>订单号维度 · 全量</span><button class="exp-btn" title="导出 PNG" @click="exportChart('payStatus', '订单支付状态')">⤓</button></span>
+        </div>
+        <div ref="payStatusRef" class="chart chart-md"></div>
       </div>
     </section>
 
     <!-- 时段 -->
     <section class="grid grid-1">
       <div class="card">
-        <div class="card-head"><h3>24 小时活跃分布</h3><span>下单与预约的时段偏好</span></div>
+        <div class="card-head">
+          <h3>24 小时活跃分布</h3>
+          <span class="head-right"><span>下单与预约的时段偏好</span><button class="exp-btn" title="导出 PNG" @click="exportChart('hourly', '24小时活跃分布')">⤓</button></span>
+        </div>
         <div ref="hourlyRef" class="chart chart-sm"></div>
       </div>
     </section>
@@ -161,7 +231,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
@@ -175,6 +246,7 @@ import {
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getDashboardAll, getDashboardRealtime } from '@/api/pet/dashboard'
+import { paymentOverview, paymentTrend } from '@/api/pet/petPayment'
 import { aiInsight } from '@/api/pet/petAi'
 
 echarts.use([
@@ -190,9 +262,15 @@ echarts.use([
 ])
 
 // ------------------------------------------------------------------ 状态
+const router = useRouter()
 const days = ref(30)
+const granularity = ref('day') // day | week | month
 const loading = ref(false)
 const refreshing = ref(false)
+
+/* ---------- 支付指标（pet_payment_log） ---------- */
+const payOverview = ref(null)
+const payTrend = ref([]) // [{day, okCount, failCount, okAmount}]
 
 /* ---------- AI 经营洞察 ---------- */
 const aiLoading = ref(false)
@@ -226,6 +304,8 @@ const categoryRef = ref(null)
 const topPetsRef = ref(null)
 const topGoodsRef = ref(null)
 const hourlyRef = ref(null)
+const payTrendRef = ref(null)
+const payStatusRef = ref(null)
 
 let trendChart = null
 let aptStatusChart = null
@@ -234,6 +314,8 @@ let categoryChart = null
 let topPetsChart = null
 let topGoodsChart = null
 let hourlyChart = null
+let payTrendChart = null
+let payStatusChart = null
 
 let realtimeTimer = null
 let fullTimer = null
@@ -246,61 +328,175 @@ const feed = computed(() => realtime.value?.feed || [])
 const trend = computed(() => dashboard.value?.trend || null)
 const rangeText = computed(() => `近 ${days.value} 天`)
 
-const kpis = computed(() => {
+/* 支付流水按天补零对齐区间（与业务趋势同一天轴） */
+function payTrendDaily() {
+  const dates = dashboard.value?.trend?.dates || []
+  const map = {}
+  for (const it of payTrend.value || []) map[String(it.day).slice(0, 10)] = it
+  return dates.map((d) => {
+    const it = map[d] || {}
+    return {
+      okCount: Number(it.okCount || 0),
+      failCount: Number(it.failCount || 0),
+      okAmount: Number(it.okAmount || 0),
+    }
+  })
+}
+
+/* 按天/周/月聚合：dates + 多条数值序列 → 聚合后 labels + 序列 */
+function aggregateSeries(dates, seriesArr) {
+  if (granularity.value === 'day' || !dates || dates.length === 0) {
+    return { labels: dates, seriesArr }
+  }
+  const keys = []
+  const idxOf = new Map()
+  dates.forEach((d) => {
+    let k
+    if (granularity.value === 'month') {
+      k = d.slice(0, 7)
+    } else {
+      const dt = new Date(d + 'T00:00:00')
+      const off = (dt.getDay() + 6) % 7 // 周一为一周开始
+      dt.setDate(dt.getDate() - off)
+      k = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+    }
+    if (!idxOf.has(k)) {
+      idxOf.set(k, keys.length)
+      keys.push(k)
+    }
+  })
+  const out = seriesArr.map(() => keys.map(() => 0))
+  dates.forEach((d, i) => {
+    const gi = idxOf.get(granularity.value === 'month' ? d.slice(0, 7) : weekKey(d))
+    seriesArr.forEach((s, si) => {
+      out[si][gi] += Number(s?.[i] || 0)
+    })
+  })
+  function weekKey(dd) {
+    const dt = new Date(dd + 'T00:00:00')
+    const off = (dt.getDay() + 6) % 7
+    dt.setDate(dt.getDate() - off)
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+  }
+  const labels = keys.map((k) => (granularity.value === 'month' ? k : k.slice(5)))
+  return { labels, seriesArr: out }
+}
+
+/* ---------- 数字滚动动画 ---------- */
+const animVals = reactive({})
+const tweenFrames = {}
+function animateTo(key, target) {
+  if (!isFinite(target)) return
+  const from = animVals[key] === undefined ? 0 : Number(animVals[key])
+  cancelAnimationFrame(tweenFrames[key])
+  const t0 = performance.now()
+  const dur = 700
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur)
+    const e = 1 - Math.pow(1 - p, 3) // easeOutCubic
+    animVals[key] = from + (target - from) * e
+    if (p < 1) tweenFrames[key] = requestAnimationFrame(step)
+  }
+  tweenFrames[key] = requestAnimationFrame(step)
+}
+
+/* ---------- 迷你趋势线（SVG 折线点串） ---------- */
+function sparkline(series) {
+  const arr = (series || []).map(Number)
+  if (arr.length < 2) return ''
+  const max = Math.max(...arr)
+  const min = Math.min(...arr)
+  if (max === min) return arr.map((_, i) => `${(i * 100) / (arr.length - 1)},13`).join(' ')
+  return arr
+    .map((v, i) => {
+      const x = (i * 100) / (arr.length - 1)
+      const y = 24 - ((v - min) / (max - min)) * 22 // 2 ~ 24
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+}
+
+/* ---------- KPI 定义（含钻取导航） ---------- */
+function buildKpis() {
   const o = overview.value
   if (!o) return []
   const t = todayStat.value || {}
-  return [
+  const pay = payOverview.value || {}
+  const trend = dashboard.value?.trend || null
+  const payDays = payTrendDaily() // 与区间对齐的支付日数据 [{okCount,failCount,okAmount}]
+  const defs = [
     {
-      key: 'revenue',
-      label: '营业额',
-      value: '¥' + money(o.revenue),
+      key: 'revenue', label: '营业额', color: '#ff8c42', nav: '/admin/payment',
+      raw: Number(o.revenue || 0), fmt: (v) => '¥' + money(v),
       growth: o.growth?.revenue ?? null,
       sub: `今日 ¥${money(t.todayRevenue || 0)} · 客单价 ¥${money(o.avgOrderAmount || 0)}`,
-      color: '#ff8c42',
+      sparkSrc: trend ? trend.revenue : null,
     },
     {
-      key: 'orders',
-      label: '订单量',
-      value: fmtInt(o.orders),
+      key: 'payAmount', label: '支付金额', color: '#c9a227', nav: '/admin/payment', noGrowth: true,
+      raw: Number(pay.paidAmount || 0), fmt: (v) => '¥' + money(v),
+      sub: `成功 ${fmtInt(pay.paidOrders || 0)} 单 · 待收 ¥${money(pay.unpaidAmount || 0)}`,
+      sparkSrc: payDays.map((d) => d.okAmount),
+    },
+    {
+      key: 'orders', label: '订单量', color: '#5b8def', nav: '/admin/cart',
+      raw: Number(o.orders || 0), fmt: (v) => fmtInt(v),
       growth: o.growth?.orders ?? null,
       sub: `今日 ${t.todayOrders || 0} 单 · 待处理 ${o.pendingOrders}`,
-      color: '#5b8def',
+      sparkSrc: trend ? trend.orders : null,
     },
     {
-      key: 'appointments',
-      label: '预约量',
-      value: fmtInt(o.appointments),
+      key: 'appointments', label: '预约量', color: '#52c41a', nav: '/admin/appointment',
+      raw: Number(o.appointments || 0), fmt: (v) => fmtInt(v),
       growth: o.growth?.appointments ?? null,
       sub: `今日 ${t.todayAppointments || 0} 单 · 待处理 ${o.pendingAppointments}`,
-      color: '#52c41a',
+      sparkSrc: trend ? trend.appointments : null,
     },
     {
-      key: 'consults',
-      label: '咨询量',
-      value: fmtInt((o.consults || 0) + (o.doctorConsults || 0)),
+      key: 'consults', label: '咨询量', color: '#9254de', nav: '/admin/consult',
+      raw: Number((o.consults || 0) + (o.doctorConsults || 0)), fmt: (v) => fmtInt(v),
       growth: o.growth?.consults ?? null,
       sub: `今日 ${(t.todayConsults || 0) + (t.todayDoctorConsults || 0)} 次 · 待回复 ${o.pendingConsults}`,
-      color: '#9254de',
+      sparkSrc: trend ? trend.consults : null,
     },
     {
-      key: 'social',
-      label: '互动量',
-      value: fmtInt((o.favorites || 0) + (o.comments || 0) + (o.likes || 0)),
+      key: 'payRate', label: '支付成功率', color: '#13c2c2', nav: '/admin/payment', noGrowth: true,
+      raw: Number(pay.totalOrders || 0) > 0 ? (Number(pay.paidOrders || 0) / Number(pay.totalOrders)) * 100 : 0,
+      fmt: (v) => v.toFixed(1) + '%',
+      sub: `失败 ${fmtInt(pay.failOrders || 0)} 单 · 取消 ${fmtInt(pay.canceledOrders || 0)} 单`,
+      sparkSrc: payDays.map((d) => (d.okCount + d.failCount > 0 ? (d.okCount / (d.okCount + d.failCount)) * 100 : 0)),
+    },
+    {
+      key: 'social', label: '互动量', color: '#2f54eb', nav: '/admin/favorite',
+      raw: Number((o.favorites || 0) + (o.comments || 0) + (o.likes || 0)), fmt: (v) => fmtInt(v),
       growth: o.growth?.favorites ?? null,
       sub: `收藏 ${o.favorites} · 评论 ${o.comments} · 点赞 ${o.likes}`,
-      color: '#13c2c2',
+      sparkSrc: null,
     },
     {
-      key: 'cancel',
-      label: '取消率',
-      value: `${o.cancelRate}%`,
-      growth: null,
+      key: 'cancel', label: '取消率', color: '#f56c6c', nav: '/admin/cancel', noGrowth: true,
+      raw: Number(o.cancelRate || 0), fmt: (v) => v.toFixed(1) + '%',
       sub: `取消 ${o.cancels} 笔 · 今日 ${t.todayCancels || 0} 笔`,
-      color: '#f56c6c',
+      sparkSrc: null,
     },
   ]
-})
+  return defs.map((d) => ({
+    ...d,
+    value: d.fmt(animVals[d.key] !== undefined ? animVals[d.key] : d.raw),
+    spark: d.sparkSrc ? sparkline(d.sparkSrc) : '',
+  }))
+}
+
+const kpis = computed(buildKpis)
+
+// 触发数字滚动：数据每次刷新后调用
+function animateKpis() {
+  for (const k of buildKpis()) animateTo(k.key, k.raw)
+}
+
+function goKpi(k) {
+  if (k.nav) router.push(k.nav)
+}
 
 // ------------------------------------------------------------------ 工具函数
 function money(v) {
@@ -365,10 +561,21 @@ function fmtEventTime(t) {
 async function loadAll(showLoading = false) {
   if (showLoading) loading.value = true
   try {
-    const res = await getDashboardAll(days.value)
+    const [res] = await Promise.all([
+      getDashboardAll(days.value),
+      // 支付指标：独立接口，失败不影响主看板
+      (async () => {
+        try {
+          const [ov, tr] = await Promise.all([paymentOverview(), paymentTrend(days.value)])
+          payOverview.value = ov?.data || null
+          payTrend.value = tr?.data?.items || []
+        } catch (e) { /* 静默：支付接口无权限或异常时隐藏支付卡数据 */ }
+      })(),
+    ])
     dashboard.value = res.data
     updatedAt.value = res.data?.generatedAt || ''
     await nextTick()
+    animateKpis()
     renderAll()
   } catch (e) {
     // 请求层已统一提示
@@ -413,7 +620,31 @@ function renderAll() {
   renderCategory()
   renderTopPets()
   renderTopGoods()
+  renderPayTrend()
+  renderPayStatus()
   renderHourly()
+}
+
+// 切换聚合粒度后仅重渲染两张趋势图
+function rerenderTrends() {
+  renderTrend()
+  renderPayTrend()
+}
+
+// 导出图表 PNG
+function exportChart(name, title) {
+  const chart = {
+    trend: trendChart, aptStatus: aptStatusChart, orderStatus: orderStatusChart,
+    category: categoryChart, topPets: topPetsChart, topGoods: topGoodsChart,
+    payTrend: payTrendChart, payStatus: payStatusChart, hourly: hourlyChart,
+  }[name]
+  if (!chart) return
+  const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff' })
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${title}_${days.value}天.png`
+  a.click()
+  ElMessage.success('图表已导出 PNG')
 }
 
 function ensureCharts() {
@@ -424,6 +655,8 @@ function ensureCharts() {
   if (!topPetsChart && topPetsRef.value) topPetsChart = echarts.init(topPetsRef.value)
   if (!topGoodsChart && topGoodsRef.value) topGoodsChart = echarts.init(topGoodsRef.value)
   if (!hourlyChart && hourlyRef.value) hourlyChart = echarts.init(hourlyRef.value)
+  if (!payTrendChart && payTrendRef.value) payTrendChart = echarts.init(payTrendRef.value)
+  if (!payStatusChart && payStatusRef.value) payStatusChart = echarts.init(payStatusRef.value)
 }
 
 const AXIS_LABEL = { color: '#909399', fontSize: 11 }
@@ -433,7 +666,15 @@ function renderTrend() {
   if (!trend.value) return
   ensureCharts()
   if (!trendChart) return
-  const t = trend.value
+  const raw = trend.value
+  const agg = aggregateSeries(raw.dates, [raw.orders, raw.appointments, raw.consults, raw.revenue])
+  const t = {
+    dates: agg.labels,
+    orders: agg.seriesArr[0],
+    appointments: agg.seriesArr[1],
+    consults: agg.seriesArr[2],
+    revenue: agg.seriesArr[3],
+  }
   const showZoom = t.dates.length > 31
   trendChart.setOption(
     {
@@ -703,6 +944,90 @@ function renderTopGoods() {
   )
 }
 
+function renderPayTrend() {
+  const dates = dashboard.value?.trend?.dates || []
+  const pay = payTrendDaily()
+  if (!dates.length || !pay.length) return
+  ensureCharts()
+  if (!payTrendChart) return
+  const agg = aggregateSeries(dates, [pay.map((d) => d.okCount), pay.map((d) => d.failCount), pay.map((d) => d.okAmount)])
+  const labels = agg.labels
+  const okCounts = agg.seriesArr[0]
+  const failCounts = agg.seriesArr[1]
+  const amounts = agg.seriesArr[2]
+  const showZoom = labels.length > 31
+  payTrendChart.setOption(
+    {
+      color: ['#52c41a', '#f56c6c', '#c9a227'],
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross', label: { backgroundColor: '#606266' } },
+        backgroundColor: 'rgba(255,255,255,.96)',
+        borderColor: '#ebeef5',
+        textStyle: { color: '#303133', fontSize: 12 },
+        formatter: (params) => {
+          const idx = params[0].dataIndex
+          let html = `<div style="font-weight:600;margin-bottom:5px">${labels[idx]}</div>`
+          params.forEach((p) => {
+            const isMoney = p.seriesName === '成功金额'
+            const val = isMoney ? '¥' + money(p.value) : `${p.value} 笔`
+            html += `<div style="display:flex;justify-content:space-between;gap:20px;line-height:20px"><span>${p.marker}${p.seriesName}</span><b>${val}</b></div>`
+          })
+          return html
+        },
+      },
+      legend: { top: 0, right: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 6, textStyle: { color: '#606266', fontSize: 12 } },
+      grid: { left: 6, right: 10, top: 42, bottom: showZoom ? 40 : 6, containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: labels,
+        axisLine: { lineStyle: { color: '#e4e7ed' } },
+        axisTick: { show: false },
+        axisLabel: { ...AXIS_LABEL, formatter: (v) => (String(v).length > 7 ? v.slice(5) : v) },
+      },
+      yAxis: [
+        { type: 'value', name: '笔数', nameTextStyle: { color: '#b1b3b8', fontSize: 11 }, splitLine: SPLIT_LINE, axisLabel: AXIS_LABEL },
+        {
+          type: 'value', name: '金额', nameTextStyle: { color: '#b1b3b8', fontSize: 11 }, splitLine: { show: false },
+          axisLabel: { ...AXIS_LABEL, formatter: (v) => (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) },
+        },
+      ],
+      series: [
+        { name: '支付成功', type: 'bar', stack: 'pay', barWidth: labels.length > 45 ? 5 : 10, itemStyle: { color: '#52c41a', borderRadius: [3, 3, 0, 0] }, data: okCounts },
+        { name: '支付失败', type: 'bar', stack: 'pay', barWidth: labels.length > 45 ? 5 : 10, itemStyle: { color: '#f56c6c', borderRadius: [3, 3, 0, 0] }, data: failCounts },
+        {
+          name: '成功金额', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 4,
+          showSymbol: labels.length <= 31, lineStyle: { width: 2, color: '#c9a227' }, itemStyle: { color: '#c9a227' },
+          data: amounts,
+        },
+      ],
+      dataZoom: showZoom
+        ? [
+            { type: 'inside' },
+            { type: 'slider', height: 16, bottom: 2, borderColor: 'transparent', fillerColor: 'rgba(82,196,26,.12)', handleSize: 14 },
+          ]
+        : [{ type: 'inside' }],
+    },
+    true
+  )
+}
+
+function renderPayStatus() {
+  const pay = payOverview.value
+  ensureCharts()
+  if (!payStatusChart) return
+  if (!pay) {
+    payStatusChart.clear()
+    return
+  }
+  const items = [
+    { name: '已支付', value: Number(pay.paidOrders || 0) },
+    { name: '待支付', value: Number(pay.unpaidOrders || 0) },
+    { name: '已取消', value: Number(pay.canceledOrders || 0) },
+  ]
+  payStatusChart.setOption(pieOption(items, ['#52c41a', '#5b8def', '#c8c9cc']), true)
+}
+
 function renderHourly() {
   const h = dashboard.value?.hourly || { hours: [], orders: [], appointments: [] }
   ensureCharts()
@@ -746,7 +1071,7 @@ function renderHourly() {
 function handleResize() {
   clearTimeout(resizeTimer)
   resizeTimer = setTimeout(() => {
-    ;[trendChart, aptStatusChart, orderStatusChart, categoryChart, topPetsChart, topGoodsChart, hourlyChart].forEach((c) => c && c.resize())
+    ;[trendChart, aptStatusChart, orderStatusChart, categoryChart, topPetsChart, topGoodsChart, hourlyChart, payTrendChart, payStatusChart].forEach((c) => c && c.resize())
   }, 120)
 }
 
@@ -761,9 +1086,10 @@ onUnmounted(() => {
   clearInterval(realtimeTimer)
   clearInterval(fullTimer)
   clearTimeout(resizeTimer)
+  Object.values(tweenFrames).forEach((f) => cancelAnimationFrame(f))
   window.removeEventListener('resize', handleResize)
-  ;[trendChart, aptStatusChart, orderStatusChart, categoryChart, topPetsChart, topGoodsChart, hourlyChart].forEach((c) => c && c.dispose())
-  trendChart = aptStatusChart = orderStatusChart = categoryChart = topPetsChart = topGoodsChart = hourlyChart = null
+  ;[trendChart, aptStatusChart, orderStatusChart, categoryChart, topPetsChart, topGoodsChart, hourlyChart, payTrendChart, payStatusChart].forEach((c) => c && c.dispose())
+  trendChart = aptStatusChart = orderStatusChart = categoryChart = topPetsChart = topGoodsChart = hourlyChart = payTrendChart = payStatusChart = null
 })
 </script>
 
@@ -939,15 +1265,15 @@ onUnmounted(() => {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
 
 .kpi-card {
-  background: #fff;
+  background: linear-gradient(160deg, #ffffff 0%, #fdfdfc 100%);
   border-radius: 10px;
-  padding: 16px 18px;
+  padding: 16px 18px 14px;
   border: 1px solid #eef0f3;
   position: relative;
   overflow: hidden;
@@ -960,12 +1286,38 @@ onUnmounted(() => {
     top: 0;
     bottom: 0;
     width: 3px;
+    background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #ffffff));
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -30px;
+    top: -30px;
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
     background: var(--accent);
+    opacity: 0.05;
+    pointer-events: none;
   }
 
   &:hover {
     box-shadow: 0 6px 18px rgba(31, 35, 41, 0.07);
     transform: translateY(-2px);
+  }
+
+  &.clickable {
+    cursor: pointer;
+  }
+
+  &.clickable:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, #eef0f3);
+
+    .kpi-go {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 }
 
@@ -1008,9 +1360,17 @@ onUnmounted(() => {
   font-size: 25px;
   font-weight: 700;
   color: #1f2329;
-  margin: 8px 0 4px;
+  margin: 8px 0 2px;
   letter-spacing: -0.5px;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-spark {
+  display: block;
+  width: 100%;
+  height: 26px;
+  margin: 2px 0 4px;
 }
 
 .kpi-sub {
@@ -1019,6 +1379,20 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.kpi-go {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s, transform 0.2s;
 }
 
 .grid {
@@ -1063,11 +1437,39 @@ onUnmounted(() => {
     font-size: 14px;
     font-weight: 600;
     color: #303133;
+    flex-shrink: 0;
   }
 
   span {
     font-size: 11px;
     color: #a8abb2;
+  }
+
+  .head-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .exp-btn {
+    flex-shrink: 0;
+    border: 1px solid #e4e7ed;
+    background: #fff;
+    color: #909399;
+    font-size: 12px;
+    line-height: 16px;
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      color: #ff8c42;
+      border-color: #ffd4a8;
+      background: #fff7f1;
+    }
   }
 }
 
@@ -1207,7 +1609,12 @@ onUnmounted(() => {
 
 @media (max-width: 1400px) {
   .kpi-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .kpi-value {
+    font-size: 22px;
   }
 }
 
