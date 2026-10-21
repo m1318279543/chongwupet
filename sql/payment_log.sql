@@ -17,13 +17,21 @@ CREATE TABLE IF NOT EXISTS `pet_payment_log` (
   KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付流水';
 
--- 演示数据：给最近若干笔订单补一些失败记录（演示数据清理：DELETE FROM pet_payment_log WHERE log_id <= 12）
+-- 失败流水：不再伪造通道原因，改为按真实规则生成——订单金额超过钱包余额时，余额支付必然失败
+-- 依赖先执行 sql/wallet.sql；清理：DELETE FROM pet_payment_log WHERE result = 'fail'
+DELETE FROM `pet_payment_log` WHERE `reason` LIKE '微信支付通道返回：余额不足%';
+
 INSERT INTO `pet_payment_log` (`order_no`, `user_id`, `user_name`, `pay_method`, `amount`, `items`, `result`, `reason`, `create_time`)
-SELECT c.order_no, c.user_id, c.user_name, 'wechat', c.amount, 1, 'fail', '微信支付通道返回：余额不足', DATE_ADD(c.create_time, INTERVAL 3 MINUTE)
+SELECT c.order_no, c.user_id, c.user_name, 'balance', c.amount, 1, 'fail',
+       CONCAT('余额不足（可用 ¥', FORMAT(w.balance, 2), '，本单需 ¥', FORMAT(c.amount, 2), '）'),
+       DATE_ADD(c.create_time, INTERVAL 3 MINUTE)
 FROM pet_cart c
+JOIN pet_wallet w ON w.user_id = c.user_id
 WHERE c.order_no IS NOT NULL AND c.status = '0' AND (c.pay_status IS NULL OR c.pay_status = '0')
-  AND c.cart_id IN (SELECT cart_id FROM (SELECT cart_id FROM pet_cart WHERE order_no IS NOT NULL AND status = '0' AND (pay_status IS NULL OR pay_status = '0') ORDER BY cart_id DESC LIMIT 4) t)
-  AND NOT EXISTS (SELECT 1 FROM pet_payment_log l WHERE l.order_no = c.order_no AND l.result = 'fail');
+  AND c.amount > w.balance
+  AND NOT EXISTS (SELECT 1 FROM pet_payment_log l WHERE l.order_no = c.order_no AND l.result = 'fail')
+ORDER BY c.cart_id DESC
+LIMIT 4;
 
 INSERT INTO `pet_payment_log` (`order_no`, `user_id`, `user_name`, `pay_method`, `amount`, `items`, `result`, `reason`, `create_time`)
 SELECT c.order_no, c.user_id, c.user_name, c.pay_method, c.amount, 1, 'success', '支付成功', c.pay_time

@@ -20,9 +20,12 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import com.ruoyi.system.domain.PetPaymentLog;
 import com.ruoyi.system.service.IPetNotificationService;
 import com.ruoyi.system.service.IPetPaymentLogService;
+import com.ruoyi.system.service.IPetWalletService;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -51,6 +54,9 @@ public class PetCartController extends BaseController
 
     @Autowired
     private IPetPaymentLogService paymentLogService;
+
+    @Autowired
+    private IPetWalletService walletService;
 
     /** 生成订单号：ORD + 时间戳 + 3 位随机数 */
     private static String genOrderNo()
@@ -162,6 +168,24 @@ public class PetCartController extends BaseController
         pl.setAmount(total);
         pl.setItems(snapshot.size());
 
+        // 平台余额通道：真实校验并扣减余额，不足则直接失败（后台能看到真实原因与可用余额）
+        boolean isBalance = "balance".equals(payMethod);
+        BigDecimal payAmount = BigDecimal.valueOf(total).setScale(2, RoundingMode.HALF_UP);
+        boolean deducted = false;
+        if (isBalance && total > 0 && !snapshot.isEmpty())
+        {
+            deducted = walletService.tryDeduct(userId, payAmount);
+            if (!deducted)
+            {
+                BigDecimal bal = walletService.getBalance(userId);
+                String reason = String.format("余额不足（可用 ¥%.2f，本单需 ¥%.2f）", bal.doubleValue(), total);
+                pl.setResult("fail");
+                pl.setReason(shorten(reason));
+                paymentLogService.record(pl);
+                return error(reason);
+            }
+        }
+
         int n;
         try
         {
@@ -169,6 +193,7 @@ public class PetCartController extends BaseController
         }
         catch (Exception e)
         {
+            if (deducted) walletService.refund(userId, payAmount);
             pl.setResult("fail");
             pl.setReason(shorten("支付异常：" + e.getMessage()));
             paymentLogService.record(pl);
@@ -179,6 +204,7 @@ public class PetCartController extends BaseController
 
         if (n <= 0)
         {
+            if (deducted) walletService.refund(userId, payAmount);
             pl.setResult("fail");
             pl.setReason(snapshot.isEmpty() ? "订单不存在或不属于当前用户" : "订单不可支付（已支付或已取消）");
             paymentLogService.record(pl);
@@ -193,7 +219,15 @@ public class PetCartController extends BaseController
                 null);
 
         pl.setResult("success");
-        pl.setReason("通过" + method + "支付成功");
+        if (isBalance)
+        {
+            BigDecimal after = walletService.getBalance(userId);
+            pl.setReason(shorten(String.format("通过平台余额支付成功，余额 ¥%.2f", after.doubleValue())));
+        }
+        else
+        {
+            pl.setReason("通过" + method + "支付成功");
+        }
         paymentLogService.record(pl);
 
         Map<String, Object> data = new HashMap<>();

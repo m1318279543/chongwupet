@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetWalletMapper">
+
+    <resultMap type="PetWallet" id="PetWalletResult">
+        <result property="userId"     column="user_id"     />
+        <result property="balance"    column="balance"     />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <select id="selectByUserId" parameterType="Long" resultMap="PetWalletResult">
+        select user_id, balance, update_time from pet_wallet where user_id = #{userId}
+    </select>
+
+    <insert id="ensureWallet" parameterType="Long">
+        insert into pet_wallet (user_id, balance, update_time)
+        values (#{userId}, 0.00, now())
+        on duplicate key update user_id = user_id
+    </insert>
+
+    <update id="increaseBalance">
+        update pet_wallet
+        set balance = balance + #{amount}, update_time = now()
+        where user_id = #{userId}
+    </update>
+
+    <update id="decreaseBalance">
+        update pet_wallet
+        set balance = balance - #{amount}, update_time = now()
+        where user_id = #{userId} and balance &gt;= #{amount}
+    </update>
+
+</mapper>

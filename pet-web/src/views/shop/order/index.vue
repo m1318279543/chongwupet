@@ -97,10 +97,17 @@
             <span class="pm-icon" :style="{ background: m.bg }">{{ m.icon }}</span>
             <div class="pm-info">
               <b>{{ m.name }}</b>
-              <em>{{ m.desc }}</em>
+              <em>{{ methodDesc(m) }}</em>
             </div>
             <span class="pm-check">{{ payMethod === m.key ? '✓' : '' }}</span>
           </div>
+        </div>
+        <div class="balance-tip" v-if="payMethod === 'balance' && walletBalance != null">
+          <template v-if="balanceShort">
+            <span class="bt-text warn">余额不足：可用 ¥{{ money(walletBalance) }}，本单需 ¥{{ money(currentTotal) }}</span>
+            <el-button link type="warning" size="small" :loading="recharging" @click="askRecharge">去充值</el-button>
+          </template>
+          <span class="bt-text" v-else>可用余额 ¥{{ money(walletBalance) }}，支付后剩余 ¥{{ money(walletBalance - currentTotal) }}</span>
         </div>
         <div class="cashier-tip">
           <el-icon><InfoFilled /></el-icon>
@@ -133,6 +140,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { listPetCart, cancelPetCart, payPetCart } from '@/api/pet/petCart'
+import { getMyWallet, rechargeWallet } from '@/api/pet/petWallet'
 
 const router = useRouter()
 const route = useRoute()
@@ -154,6 +162,56 @@ const payMethod = ref('alipay')
 const current = ref(null)
 const countdown = ref(0)
 let countdownTimer = null
+
+// 平台余额：真实钱包余额，余额支付会真实扣减
+const walletBalance = ref(null)
+const recharging = ref(false)
+const currentTotal = computed(() => (current.value ? current.value.total : 0))
+const balanceShort = computed(() => walletBalance.value != null && walletBalance.value + 1e-9 < currentTotal.value)
+
+function money(v) {
+  return Number(v || 0).toFixed(2)
+}
+function methodDesc(m) {
+  if (m.key === 'balance' && walletBalance.value != null) return '可用 ¥' + money(walletBalance.value)
+  return m.desc
+}
+async function loadWallet() {
+  if (!isLogged.value) return
+  try {
+    const res = await getMyWallet()
+    walletBalance.value = Number((res.data && res.data.balance) || 0)
+  } catch (e) {
+    walletBalance.value = null
+  }
+}
+
+// 余额不足时引导充值（演示环境模拟充值，不产生真实扣款）
+async function askRecharge() {
+  const need = Math.max(0, currentTotal.value - (walletBalance.value || 0))
+  const suggest = Math.max(50, Math.ceil((need + 20) / 50) * 50)
+  let input
+  try {
+    const r = await ElMessageBox.prompt(
+      `当前可用 ¥${money(walletBalance.value)}，本单需 ¥${money(currentTotal.value)}。\n演示环境可直接充值，不会真实扣款：`,
+      '余额不足',
+      { confirmButtonText: '确认充值', cancelButtonText: '换个通道支付', inputValue: String(suggest), inputPattern: /^\d+(\.\d{1,2})?$/, inputErrorMessage: '请输入正确金额' }
+    )
+    input = r.value
+  } catch (e) {
+    return
+  }
+  recharging.value = true
+  try {
+    const res = await rechargeWallet(Number(input))
+    walletBalance.value = Number((res.data && res.data.balance) || 0)
+    ElMessage.success('充值成功，当前余额 ¥' + money(walletBalance.value))
+  } catch (e) {
+    console.warn('[recharge] 充值失败:', e?.msg || e?.message || e)
+  } finally {
+    recharging.value = false
+  }
+}
 
 const methods = [
   { key: 'alipay', icon: '💰', name: '支付宝', desc: '推荐使用，秒到账', bg: 'linear-gradient(135deg,#1677ff,#69b1ff)' },
@@ -205,6 +263,7 @@ function openCashier(g) {
   paySuccess.value = false
   payMethod.value = 'alipay'
   cashierOpen.value = true
+  loadWallet()
   countdown.value = 15 * 60
   if (countdownTimer) clearInterval(countdownTimer)
   countdownTimer = setInterval(() => {
@@ -242,7 +301,13 @@ async function doPay() {
     window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
   } catch (e) {
     // 错误提示已由 request 拦截器统一弹出（含后端真实业务原因），此处不再重复弹
-    console.warn('[pay] 支付失败:', e?.msg || e?.message || e)
+    const msg = e?.msg || e?.message || ''
+    console.warn('[pay] 支付失败:', msg || e)
+    // 余额不足：默认弹窗已提示原因，这里再给一个一键充值入口
+    if (/余额不足/.test(msg)) {
+      walletBalance.value = walletBalance.value == null ? 0 : walletBalance.value
+      loadWallet()
+    }
   } finally {
     paying.value = false
   }
@@ -307,7 +372,10 @@ function getList() {
       loading.value = false
     })
 }
-onMounted(getList)
+onMounted(() => {
+  getList()
+  loadWallet()
+})
 onBeforeUnmount(() => {
   if (countdownTimer) clearInterval(countdownTimer)
 })
@@ -373,6 +441,11 @@ onBeforeUnmount(() => {
     .pm-info { flex: 1; b { display: block; font-size: 14px; color: #303133; }
       em { font-size: 12px; color: #909399; font-style: normal; } }
     .pm-check { color: #ff8c42; font-weight: 700; width: 18px; text-align: center; }
+  }
+  .balance-tip { display: flex; align-items: center; gap: 8px; margin-top: 12px;
+    padding: 9px 12px; background: #fffaf5; border: 1px solid #ffe1c7; border-radius: 8px;
+    .bt-text { font-size: 12.5px; color: #8a6a52; }
+    .bt-text.warn { color: #e6541f; font-weight: 600; }
   }
   .cashier-tip { display: flex; align-items: center; gap: 6px; margin-top: 14px;
     padding: 9px 12px; background: #f5f7fa; border-radius: 8px; font-size: 12.5px; color: #909399; }
