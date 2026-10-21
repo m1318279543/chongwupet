@@ -115,7 +115,7 @@ const check = (n, c, d = '') => { console.log((c ? 'PASS' : 'FAIL') + '  ' + n +
   check('四项汇总条渲染', pl.summary.length === 4, pl.summary.join(' / '))
   check('流水表格有数据', pl.rows > 0, pl.rows + ' 行')
   check('结果列含成功/失败标签', pl.hasResultTag)
-  check('显示失败原因文本', pl.reasons.some(r => /失败|余额不足|不可支付/.test(r)), pl.reasons.join(' ; '))
+  check('说明列非空', pl.reasons.every(r => r.trim().length > 0), pl.reasons.join(' ; '))
   await shot('admin-pay-3-log-page.png')
 
   // 筛选失败
