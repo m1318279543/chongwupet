@@ -29,7 +29,7 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
   const evaluate = async (e) => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value }
   await send('Page.enable'); await send('Runtime.enable')
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true })
-  if (TOKEN) { await send('Network.enable'); await send('Network.setCookie', { name: 'Admin-Token', value: TOKEN, url: BASE + '/', path: '/' }) }
+  if (TOKEN) { await send('Network.enable'); await send('Network.setCookie', { name: 'Shop-Token', value: TOKEN, url: BASE + '/', path: '/' }) }
 
   await send('Page.navigate', { url: BASE + '/shop/match' }); await sleep(4000)
   for (let i = 0; i < 10; i++) {

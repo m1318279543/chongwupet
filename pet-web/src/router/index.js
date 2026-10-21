@@ -94,16 +94,20 @@ router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   const needAdmin = to.path === '/admin' || to.path.startsWith('/admin')
   const isAdminLogin = to.path === '/admin/login'
+
+  // 前后台各自一套登录态：进入后台区就切到 Admin-Token，回到前台切回 Shop-Token
+  userStore.ensureScope(needAdmin ? 'admin' : 'shop')
+
   const isAdminUser = () => Array.isArray(userStore.roles) && userStore.roles.includes('admin')
 
   // 后台登录页：不受当前登录身份限制（前台已登录普通账号也能来切管理员账号）
-  // 若当前已经是管理员，直接进控制台
+  // 若当前后台已经登录管理员，直接进控制台
   if (isAdminLogin) {
     if (userStore.token && isAdminUser()) return next('/admin/dashboard')
     return next()
   }
 
-  // 未登录
+  // 未登录（只看当前区域的 token，前台登录不会影响后台，反之亦然）
   if (!userStore.token) {
     if (isGuestAllowed(to.path)) return next()
     return next(needAdmin ? '/admin/login' : '/shop/home')
@@ -116,15 +120,16 @@ router.beforeEach(async (to, from, next) => {
     try {
       await userStore.getInfo()
     } catch {
-      // token 失效：游客页仍可访问，否则按区域回各自入口
-      userStore.resetState()
+      // token 失效：只清当前区域的登录态，另一端账号不受影响
+      userStore.clearSession()
       if (isGuestAllowed(to.path)) return next()
       return next(needAdmin ? '/admin/login' : '/shop/home')
     }
   }
 
-  // 后台仅管理员：不是管理员就送到后台登录页换账号，而不是赶回前台
+  // 后台仅管理员：当前后台 token 不是管理员就清掉，送到后台登录页换账号
   if (needAdmin && !isAdminUser()) {
+    userStore.clearSession()
     ElMessage.warning('后台仅限管理员账号，请使用管理员账号登录')
     return next('/admin/login')
   }

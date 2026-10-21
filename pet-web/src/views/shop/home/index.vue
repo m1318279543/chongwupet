@@ -476,7 +476,7 @@ function goDetail(petId) {
 }
 
 function logout() {
-  userStore.resetState()
+  userStore.clearSession()
   ElMessage.success('已退出登录')
 }
 

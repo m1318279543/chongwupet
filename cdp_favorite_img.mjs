@@ -99,9 +99,9 @@ const check = (name, ok, extra = '') => {
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push(m.params.args.map((a) => a.description || a.value).join(' '))
   })
 
-  // 前端 cookie 名（RuoYi 默认 Admin-Token）
+  // 前端 cookie 名（RuoYi 默认 Shop-Token）
   const host = BASE.includes('localhost') ? 'localhost' : (BASE.includes('127.0.0.1') ? '127.0.0.1' : new URL(BASE).hostname)
-  await send('Network.setCookie', { name: 'Admin-Token', value: token, domain: host, path: '/' })
+  await send('Network.setCookie', { name: 'Shop-Token', value: token, domain: host, path: '/' })
   await send('Page.navigate', { url: BASE + '/shop/favorite' })
   await sleep(6000)
 

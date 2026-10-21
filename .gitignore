@@ -57,3 +57,8 @@ match-narrow-shot.png
 admin-gate-shot.png
 nav-w*.png
 remote-*.png
+
+# 测试用登录凭证（勿入库）
+.admintoken
+.rytoken
+.tok_*

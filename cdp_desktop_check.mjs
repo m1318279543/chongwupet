@@ -28,7 +28,7 @@ const connect=(url)=>new Promise((res,rej)=>{const ws=new WebSocket(url);ws.addE
   const evaluate=async(e)=>{const r=await send('Runtime.evaluate',{expression:e,returnByValue:true,awaitPromise:true});return r.result?.value}
   await send('Page.enable');await send('Runtime.enable')
   await send('Emulation.setDeviceMetricsOverride',{width:W,height:H,deviceScaleFactor:1,mobile:false})
-  if (TOKEN) { await send('Network.enable'); await send('Network.setCookie',{name:'Admin-Token',value:TOKEN,url:BASE+'/',path:'/'}) }
+  if (TOKEN) { await send('Network.enable'); await send('Network.setCookie',{name:'Shop-Token',value:TOKEN,url:BASE+'/',path:'/'}) }
   let pass=0,fail=0
   const check=(n,c,d)=>{console.log((c?'PASS':'FAIL')+'  '+n+'  '+d);c?pass++:fail++}
 

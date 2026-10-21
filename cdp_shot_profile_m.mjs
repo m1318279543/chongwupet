@@ -27,7 +27,7 @@ const connect=(url)=>new Promise((res,rej)=>{const ws=new WebSocket(url);ws.addE
   const send=(method,params={})=>new Promise(res=>{const mid=++id;pending.set(mid,res);ws.send(JSON.stringify({id:mid,method,params}))})
   await send('Page.enable');await send('Network.enable')
   await send('Emulation.setDeviceMetricsOverride',{width:W,height:H,deviceScaleFactor:2,mobile:true})
-  await send('Network.setCookie',{name:'Admin-Token',value:TOKEN,url:BASE+'/',path:'/'})
+  await send('Network.setCookie',{name:'Shop-Token',value:TOKEN,url:BASE+'/',path:'/'})
   await send('Page.navigate',{url:BASE+'/shop/profile'});await sleep(4500)
   let s=await send('Page.captureScreenshot',{format:'png'})
   fs.writeFileSync('av-mobile-profile.png',Buffer.from(s.data,'base64'))

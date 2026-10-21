@@ -33,8 +33,8 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
   ws.addEventListener('message', (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m.result); pending.delete(m.id) } })
   const send = (method, params = {}) => new Promise(res => { const mid = ++id; pending.set(mid, res); ws.send(JSON.stringify({ id: mid, method, params })) })
   const evaluate = async (e) => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value }
-  const setCookie = async (tok) => { await send('Network.enable'); await send('Network.setCookie', { name: 'Admin-Token', value: tok, url: BASE + '/', path: '/' }) }
-  const clearCookie = async () => { await send('Network.deleteCookies', { name: 'Admin-Token', url: BASE + '/' }) }
+  const setCookie = async (tok) => { await send('Network.enable'); await send('Network.setCookie', { name: 'Admin-Token', value: tok, url: BASE + '/', path: '/' }); await send('Network.setCookie', { name: 'Shop-Token', value: tok, url: BASE + '/', path: '/' }) }
+  const clearCookie = async () => { await send('Network.deleteCookies', { name: 'Admin-Token', url: BASE + '/' }); await send('Network.deleteCookies', { name: 'Shop-Token', url: BASE + '/' }) }
   await send('Page.enable'); await send('Runtime.enable')
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true })
 

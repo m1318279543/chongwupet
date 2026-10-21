@@ -70,7 +70,7 @@ try {
   await client.send('Runtime.enable')
   await client.send('Network.enable')
   await client.send('Page.enable')
-  await client.send('Network.setCookie', { name: 'Admin-Token', value: TOKEN, url: BASE + '/', path: '/' })
+  await client.send('Network.setCookie', { name: 'Shop-Token', value: TOKEN, url: BASE + '/', path: '/' })
 
   console.log(`目标: ${BASE}/shop/appointment`)
   console.log('─'.repeat(60))

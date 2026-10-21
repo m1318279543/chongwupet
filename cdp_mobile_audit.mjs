@@ -2,7 +2,7 @@
  * 手机端布局巡检：真实手机视口逐页检查横向溢出 / 元素越界
  * 用法: node cdp_mobile_audit.mjs [BASE] [宽度] [高度]
  *   BASE 默认 http://47.116.73.25
- *   env TOKEN 可选：注入 Admin-Token 用于需要登录的页面
+ *   env TOKEN 可选：注入 Shop-Token 用于需要登录的页面
  */
 import { spawn } from 'node:child_process'
 import os from 'node:os'
@@ -86,7 +86,7 @@ const connect = (url) => new Promise((res, rej) => {
 
   if (TOKEN) {
     await send('Network.enable')
-    await send('Network.setCookie', { name: 'Admin-Token', value: TOKEN, url: BASE + '/', path: '/' })
+    await send('Network.setCookie', { name: 'Shop-Token', value: TOKEN, url: BASE + '/', path: '/' })
   }
 
   const report = []

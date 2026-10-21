@@ -14,6 +14,7 @@ const W = 1280, H = 900
 const PORT = 9371
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const TOKEN = fs.existsSync('.admintoken') ? fs.readFileSync('.admintoken', 'utf8').trim() : ''
+const RY_TOKEN = fs.existsSync('.tok_ry') ? fs.readFileSync('.tok_ry', 'utf8').trim() : ''
 const IMG = path.resolve('test-avatar.png')
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cdp-av-'))
@@ -36,6 +37,7 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
   await send('Page.enable'); await send('Runtime.enable'); await send('DOM.enable'); await send('Network.enable')
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false })
   await send('Network.setCookie', { name: 'Admin-Token', value: TOKEN, url: BASE + '/', path: '/' })
+  if (RY_TOKEN) await send('Network.setCookie', { name: 'Shop-Token', value: RY_TOKEN, url: BASE + '/', path: '/' })
 
   let pass = 0, fail = 0
   const check = (n, c, d) => { console.log((c ? 'PASS' : 'FAIL') + '  ' + n + '  ' + (d ?? '')); c ? pass++ : fail++ }
@@ -160,7 +162,7 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
   const ryTokFile = '.tok_ry'
   if (fs.existsSync(ryTokFile)) {
     const ryTok = fs.readFileSync(ryTokFile, 'utf8').trim()
-    await send('Network.setCookie', { name: 'Admin-Token', value: ryTok, url: BASE + '/', path: '/' })
+    await send('Network.setCookie', { name: 'Shop-Token', value: ryTok, url: BASE + '/', path: '/' })
     await send('Page.navigate', { url: BASE + '/shop/profile' }); await sleep(4500)
     const sync = JSON.parse(await evaluate(`(() => {
       const img = document.querySelector('.avatar-img')

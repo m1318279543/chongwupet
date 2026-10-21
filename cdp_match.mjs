@@ -73,7 +73,7 @@ function connect(url) {
 
   if (TOKEN) {
     await client.send('Network.setCookie', {
-      name: 'Admin-Token', value: TOKEN, domain: 'localhost', path: '/', httpOnly: false,
+      name: 'Shop-Token', value: TOKEN, domain: 'localhost', path: '/', httpOnly: false,
     }).catch(() => {})
   }
 
