@@ -81,7 +81,7 @@ const router = createRouter({
 
 // 路由守卫：登录态 + 用户信息加载
 // 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约（页面内提示登录）
-const guestList = ['/login', '/shop/home', '/shop/match', '/backend', '/shop/favorite', '/shop/appointment', '/shop/doctor', '/shop/order']
+const guestList = ['/login', '/shop/home', '/shop/match', '/backend', '/shop/favorite', '/shop/appointment', '/shop/doctor', '/shop/order', '/shop/consult']
 function isGuestAllowed(path) {
   if (guestList.includes(path)) return true
   if (path.startsWith('/shop/pet/')) return true  // 宠物详情页游客可看

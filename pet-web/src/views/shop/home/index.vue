@@ -444,9 +444,9 @@ const filteredPets = computed(() => {
   return list
 })
 
-// 楼层模式：取每个分类的前6只
+// 楼层模式：每个分类只展示一行 4 张（其余通过「查看更多」进入筛选视图查看全部）
 function floorPets(catId) {
-  return allPets.value.filter(p => p.categoryId === catId).slice(0, 6)
+  return allPets.value.filter(p => p.categoryId === catId).slice(0, 4)
 }
 
 async function loadCategories() {
