@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetPaymentLogMapper">
+
+    <resultMap type="PetPaymentLog" id="PetPaymentLogResult">
+        <result property="logId"      column="log_id"      />
+        <result property="orderNo"    column="order_no"    />
+        <result property="userId"     column="user_id"     />
+        <result property="userName"   column="user_name"   />
+        <result property="payMethod"  column="pay_method"  />
+        <result property="amount"     column="amount"      />
+        <result property="items"      column="items"       />
+        <result property="result"     column="result"      />
+        <result property="reason"     column="reason"      />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="selectPaymentLogVo">
+        select l.log_id, l.order_no, l.user_id, l.user_name, l.pay_method, l.amount, l.items, l.result, l.reason, l.create_time
+        from pet_payment_log l
+    </sql>
+
+    <insert id="insertPaymentLog" parameterType="PetPaymentLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into pet_payment_log (order_no, user_id, user_name, pay_method, amount, items, result, reason, create_time)
+        values (#{orderNo}, #{userId}, #{userName}, #{payMethod}, #{amount}, #{items}, #{result}, #{reason}, sysdate())
+    </insert>
+
+    <select id="selectPaymentLogList" parameterType="PetPaymentLog" resultMap="PetPaymentLogResult">
+        <include refid="selectPaymentLogVo"/>
+        <where>
+            <if test="orderNo != null and orderNo != ''">
+                AND l.order_no like concat('%', #{orderNo}, '%')
+            </if>
+            <if test="userName != null and userName != ''">
+                AND l.user_name like concat('%', #{userName}, '%')
+            </if>
+            <if test="result != null and result != ''">
+                AND l.result = #{result}
+            </if>
+            <if test="payMethod != null and payMethod != ''">
+                AND l.pay_method = #{payMethod}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND l.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND l.create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by l.log_id desc
+    </select>
+
+    <select id="selectLatestByOrderNo" parameterType="String" resultMap="PetPaymentLogResult">
+        <include refid="selectPaymentLogVo"/>
+        where l.order_no = #{orderNo}
+        order by l.log_id desc limit 1
+    </select>
+
+    <!-- 订单维度总览：按订单号去重，取消单单独计 -->
+    <select id="selectOrderOverview" resultType="java.util.Map">
+        select
+            count(distinct case when c.status &lt;&gt; '3' then c.order_no end) as totalOrders,
+            count(distinct case when c.status &lt;&gt; '3' and c.pay_status = '1' then c.order_no end) as paidOrders,
+            ifnull(sum(case when c.status &lt;&gt; '3' and c.pay_status = '1' then c.amount else 0 end), 0) as paidAmount,
+            count(distinct case when c.status &lt;&gt; '3' and (c.pay_status is null or c.pay_status = '0') then c.order_no end) as unpaidOrders,
+            ifnull(sum(case when c.status &lt;&gt; '3' and (c.pay_status is null or c.pay_status = '0') then c.amount else 0 end), 0) as unpaidAmount,
+            count(distinct case when c.status &lt;&gt; '3' and (c.pay_status is null or c.pay_status = '0')
+                and exists (select 1 from pet_payment_log l where l.order_no = c.order_no and l.result = 'fail') then c.order_no end) as failOrders,
+            count(distinct case when c.status = '3' then c.order_no end) as canceledOrders,
+            ifnull(sum(case when c.status = '3' then c.amount else 0 end), 0) as canceledAmount
+        from pet_cart c
+        where c.order_no is not null and c.order_no &lt;&gt; ''
+    </select>
+
+    <select id="selectDailyTrend" parameterType="Integer" resultType="java.util.Map">
+        select date(l.create_time) as day,
+               count(case when l.result = 'success' then 1 end) as okCount,
+               count(case when l.result = 'fail' then 1 end) as failCount,
+               ifnull(sum(case when l.result = 'success' then l.amount else 0 end), 0) as okAmount
+        from pet_payment_log l
+        where l.create_time &gt;= date_sub(curdate(), interval #{days} day)
+        group by date(l.create_time)
+        order by day
+    </select>
+
+</mapper>

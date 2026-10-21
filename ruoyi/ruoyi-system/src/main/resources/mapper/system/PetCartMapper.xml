@@ -20,12 +20,18 @@
         <result property="createBy"   column="create_by"   />
         <result property="createTime" column="create_time" />
         <result property="remark"     column="remark"      />
+        <result property="lastPayResult" column="last_pay_result" />
+        <result property="lastPayReason" column="last_pay_reason" />
+        <result property="payAttempts"   column="pay_attempts"    />
     </resultMap>
 
     <sql id="selectPetCartVo">
         select c.cart_id, c.user_id, c.user_name, c.goods_name, c.goods_image, c.goods_spec,
                c.price, c.qty, c.amount, c.status, c.order_no, c.pay_status, c.pay_method, c.pay_time,
-               c.create_by, c.create_time, c.remark
+               c.create_by, c.create_time, c.remark,
+               (select l.result from pet_payment_log l where l.order_no = c.order_no order by l.log_id desc limit 1) as last_pay_result,
+               (select l.reason from pet_payment_log l where l.order_no = c.order_no order by l.log_id desc limit 1) as last_pay_reason,
+               (select count(1) from pet_payment_log l where l.order_no = c.order_no) as pay_attempts
         from pet_cart c
     </sql>
 
@@ -49,6 +55,33 @@
             </if>
             <if test="payStatus != null and payStatus != ''">
                 AND c.pay_status = #{payStatus}
+            </if>
+            <if test="payMethod != null and payMethod != ''">
+                AND c.pay_method = #{payMethod}
+            </if>
+            <!-- 支付状态分组筛选：已支付 / 待支付 / 支付失败 / 已取消 -->
+            <if test="payState != null and payState != ''">
+                <choose>
+                    <when test="payState == 'paid'">
+                        AND c.status &lt;&gt; '3' AND c.pay_status = '1'
+                    </when>
+                    <when test="payState == 'unpaid'">
+                        AND c.status &lt;&gt; '3' AND (c.pay_status IS NULL OR c.pay_status = '0')
+                    </when>
+                    <when test="payState == 'fail'">
+                        AND c.status &lt;&gt; '3' AND (c.pay_status IS NULL OR c.pay_status = '0')
+                        AND EXISTS (SELECT 1 FROM pet_payment_log l WHERE l.order_no = c.order_no AND l.result = 'fail')
+                    </when>
+                    <when test="payState == 'canceled'">
+                        AND c.status = '3'
+                    </when>
+                </choose>
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND c.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND c.create_time &lt;= #{params.endTime}
             </if>
         </where>
         order by c.cart_id desc

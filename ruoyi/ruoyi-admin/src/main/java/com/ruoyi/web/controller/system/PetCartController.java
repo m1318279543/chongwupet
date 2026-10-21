@@ -20,7 +20,9 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.system.domain.PetPaymentLog;
 import com.ruoyi.system.service.IPetNotificationService;
+import com.ruoyi.system.service.IPetPaymentLogService;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -46,6 +48,9 @@ public class PetCartController extends BaseController
 
     @Autowired
     private IPetNotificationService petNotificationService;
+
+    @Autowired
+    private IPetPaymentLogService paymentLogService;
 
     /** 生成订单号：ORD + 时间戳 + 3 位随机数 */
     private static String genOrderNo()
@@ -123,7 +128,8 @@ public class PetCartController extends BaseController
     }
 
     /**
-     * 模拟支付：按订单号支付当前用户名下待支付订单，成功后写站内通知
+     * 模拟支付：按订单号支付当前用户名下待支付订单，成功后写站内通知。
+     * 无论成功还是失败，都会往 pet_payment_log 写一条流水，后台可据此查看支付结果。
      */
     @Log(title = "订单支付", businessType = BusinessType.UPDATE)
     @PostMapping("/pay/{orderNo}")
@@ -132,34 +138,76 @@ public class PetCartController extends BaseController
     {
         String payMethod = body == null || body.get("payMethod") == null ? "alipay" : String.valueOf(body.get("payMethod"));
         Long userId = SecurityUtils.getUserId();
-        int n = petCartService.payOrder(orderNo, userId, payMethod);
-        if (n <= 0)
-        {
-            return error("订单不可支付（可能已支付或已取消）");
-        }
-        // 汇总本单信息写通知
+
+        // 支付前先取订单快照：失败时也要能记下金额与件数
         PetCart q = new PetCart();
         q.setUserId(userId);
         q.setOrderNo(orderNo);
+        List<PetCart> snapshot = petCartService.selectPetCartList(q);
         double total = 0;
         StringBuilder names = new StringBuilder();
-        for (PetCart c : petCartService.selectPetCartList(q))
+        for (PetCart c : snapshot)
         {
             if (c.getAmount() != null) total += c.getAmount();
             if (names.length() > 0) names.append("、");
             names.append(c.getGoodsName());
         }
+        total = Math.round(total * 100) / 100.0;
+
+        PetPaymentLog pl = new PetPaymentLog();
+        pl.setOrderNo(orderNo);
+        pl.setUserId(userId);
+        pl.setUserName(SecurityUtils.getUsername());
+        pl.setPayMethod(payMethod);
+        pl.setAmount(total);
+        pl.setItems(snapshot.size());
+
+        int n;
+        try
+        {
+            n = petCartService.payOrder(orderNo, userId, payMethod);
+        }
+        catch (Exception e)
+        {
+            pl.setResult("fail");
+            pl.setReason(shorten("支付异常：" + e.getMessage()));
+            paymentLogService.record(pl);
+            throw e;
+        }
+
         String method = "wechat".equals(payMethod) ? "微信支付" : "balance".equals(payMethod) ? "余额支付" : "支付宝";
+
+        if (n <= 0)
+        {
+            pl.setResult("fail");
+            pl.setReason(snapshot.isEmpty() ? "订单不存在或不属于当前用户" : "订单不可支付（已支付或已取消）");
+            paymentLogService.record(pl);
+            return error("订单不可支付（可能已支付或已取消）");
+        }
+
+        // 汇总本单信息写通知
         petNotificationService.push(userId, SecurityUtils.getUsername(), "order",
                 "订单支付成功",
                 "订单 " + orderNo + " 已通过" + method + "支付成功，共 ¥" + String.format("%.2f", total)
                         + "（" + names + "），我们会尽快为你安排发货。",
                 null);
+
+        pl.setResult("success");
+        pl.setReason("通过" + method + "支付成功");
+        paymentLogService.record(pl);
+
         Map<String, Object> data = new HashMap<>();
         data.put("orderNo", orderNo);
         data.put("items", n);
-        data.put("total", Math.round(total * 100) / 100.0);
+        data.put("total", total);
         return AjaxResult.success("支付成功", data);
+    }
+
+    /** 失败原因限长，避免超出 reason 字段（255） */
+    private String shorten(String s)
+    {
+        if (s == null) return null;
+        return s.length() > 240 ? s.substring(0, 240) : s;
     }
 
     /**

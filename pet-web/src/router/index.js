@@ -18,6 +18,7 @@ const routes = [
       { path: 'appointment', component: () => import('@/views/admin/appointment/index.vue'), meta: { title: '预约管理' } },
       { path: 'favorite', component: () => import('@/views/admin/favorite/index.vue'), meta: { title: '收藏管理' } },
       { path: 'cart', component: () => import('@/views/admin/cart/index.vue'), meta: { title: '购物车管理' } },
+      { path: 'payment', component: () => import('@/views/admin/payment/index.vue'), meta: { title: '支付流水' } },
       { path: 'like', component: () => import('@/views/admin/like/index.vue'), meta: { title: '点赞管理' } },
       { path: 'comment', component: () => import('@/views/admin/comment/index.vue'), meta: { title: '评论管理' } },
       { path: 'preference', component: () => import('@/views/admin/preference/index.vue'), meta: { title: '宠物喜好' } },

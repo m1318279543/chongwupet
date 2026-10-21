@@ -69,6 +69,18 @@ public class PetCart extends BaseEntity
     @Excel(name = "支付时间", dateFormat = "yyyy-MM-dd HH:mm:ss")
     private java.util.Date payTime;
 
+    /** 查询用：paid/unpaid/fail/canceled（非表字段） */
+    private String payState;
+
+    /** 最近一次支付尝试结果 success/fail（来自 pet_payment_log，非表字段） */
+    private String lastPayResult;
+
+    /** 最近一次支付尝试说明（失败原因） */
+    private String lastPayReason;
+
+    /** 支付尝试次数 */
+    private Integer payAttempts;
+
     public Long getCartId() { return cartId; }
     public void setCartId(Long cartId) { this.cartId = cartId; }
 
@@ -107,6 +119,18 @@ public class PetCart extends BaseEntity
 
     public String getPayMethod() { return payMethod; }
     public void setPayMethod(String payMethod) { this.payMethod = payMethod; }
+
+    public String getPayState() { return payState; }
+    public void setPayState(String payState) { this.payState = payState; }
+
+    public String getLastPayResult() { return lastPayResult; }
+    public void setLastPayResult(String lastPayResult) { this.lastPayResult = lastPayResult; }
+
+    public String getLastPayReason() { return lastPayReason; }
+    public void setLastPayReason(String lastPayReason) { this.lastPayReason = lastPayReason; }
+
+    public Integer getPayAttempts() { return payAttempts; }
+    public void setPayAttempts(Integer payAttempts) { this.payAttempts = payAttempts; }
 
     public java.util.Date getPayTime() { return payTime; }
     public void setPayTime(java.util.Date payTime) { this.payTime = payTime; }

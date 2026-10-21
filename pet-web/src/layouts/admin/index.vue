@@ -28,6 +28,7 @@
           </template>
           <el-menu-item index="/admin/appointment">预约管理</el-menu-item>
           <el-menu-item index="/admin/cart">购物车管理</el-menu-item>
+          <el-menu-item index="/admin/payment">支付流水</el-menu-item>
           <el-menu-item index="/admin/favorite">收藏管理</el-menu-item>
           <el-menu-item index="/admin/like">点赞管理</el-menu-item>
           <el-menu-item index="/admin/comment">评论管理</el-menu-item>
@@ -158,6 +159,7 @@ const pageTitle = computed(() => {
     '/admin/appointment': '预约管理',
     '/admin/favorite': '收藏管理',
     '/admin/cart': '购物车管理',
+    '/admin/payment': '支付流水',
     '/admin/like': '点赞管理',
     '/admin/comment': '评论管理',
     '/admin/health': '健康档案',
