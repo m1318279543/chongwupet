@@ -125,7 +125,7 @@ function checkout() {
   const count = cartStore.selectedCount
   const items = cartStore.items
     .filter((i) => i.checked)
-    .map((i) => ({ goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
+    .map((i) => ({ goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
   ElMessageBox.confirm(`确认提交订单？共 ${count} 件商品，合计 ¥${amount}`, '提交订单', {
     type: 'success',
     confirmButtonText: '确认下单',
@@ -147,30 +147,30 @@ function checkout() {
 </script>
 
 <style scoped lang="scss">
-.cart-page { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.cart-page { max-width: var(--container-md); margin: 0 auto; padding: 24px; }
 .page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px;
-  h1 { font-size: 24px; color: #303133; margin: 0; }
-  .sub { color: #909399; font-size: 14px; }
+  h1 { font-size: 24px; color: var(--text-1); margin: 0; }
+  .sub { color: var(--text-3); font-size: 14px; }
 }
 .empty { text-align: center; padding: 80px 0; background: #fff; border-radius: 14px;
   .empty-icon { font-size: 64px; opacity: .5; }
-  .empty-text { color: #909399; font-size: 16px; margin: 16px 0 24px; }
+  .empty-text { color: var(--text-3); font-size: 16px; margin: 16px 0 24px; }
 }
 .cart-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.05); }
-.row { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f5f5f5;
+.row { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--bg-sunken);
   &:last-child { border-bottom: none; }
-  &.head { background: #fafafa; color: #909399; font-size: 13px; }
-  &.item:hover { background: #fffdf9; }
+  &.head { background: var(--bg-page); color: var(--text-3); font-size: 13px; }
+  &.item:hover { background: var(--brand-50); }
 }
 .col-check { width: 70px; flex-shrink: 0; }
 .col-goods { flex: 1; display: flex; align-items: center; gap: 14px;
-  .thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: #f7f7f7; }
-  .goods-info { .name { font-size: 15px; color: #303133; font-weight: 600; }
-    .spec { font-size: 13px; color: #909399; margin-top: 4px; } }
+  .thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: var(--bg-page); }
+  .goods-info { .name { font-size: 15px; color: var(--text-1); font-weight: 600; }
+    .spec { font-size: 13px; color: var(--text-3); margin-top: 4px; } }
 }
-.col-price { width: 100px; color: #606266; font-size: 14px; }
+.col-price { width: 100px; color: var(--text-2); font-size: 14px; }
 .col-qty { width: 140px; }
-.col-sub { width: 110px; color: #ff8c42; font-weight: 700; font-size: 15px; }
+.col-sub { width: 110px; color: var(--brand-500); font-weight: 700; font-size: 15px; }
 .col-op { width: 70px; text-align: right; }
 
 .checkout-bar { display: flex; align-items: center; justify-content: space-between;
@@ -178,12 +178,12 @@ function checkout() {
   box-shadow: 0 4px 16px rgba(0,0,0,.05);
   .cb-left { display: flex; align-items: center; gap: 16px; }
   .cb-right { display: flex; align-items: center; gap: 12px;
-    .sel-tip { color: #909399; font-size: 14px; }
-    .total-label { color: #606266; font-size: 14px; }
-    .total-price { color: #ff8c42; font-size: 24px; font-weight: 700; }
+    .sel-tip { color: var(--text-3); font-size: 14px; }
+    .total-label { color: var(--text-2); font-size: 14px; }
+    .total-price { color: var(--brand-500); font-size: 24px; font-weight: 700; }
   }
 }
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .row.head { display: none; }
   .row.item { flex-wrap: wrap; gap: 8px;
     .col-goods { width: 100%; }

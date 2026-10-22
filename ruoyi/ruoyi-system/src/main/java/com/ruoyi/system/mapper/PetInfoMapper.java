@@ -21,4 +21,13 @@ public interface PetInfoMapper
     public int deletePetInfoByPetId(Long petId);
 
     public int deletePetInfoByPetIds(Long[] petIds);
+
+    /**
+     * 下单占位：仅在「在售」时改成「已售」，返回 0 说明已被别人订走。
+     * 用带条件的 UPDATE 做 CAS，避免两个人同时下单买走同一只。
+     */
+    public int lockPet(Long petId);
+
+    /** 取消订单时把宠物放回「在售」 */
+    public int releasePet(Long petId);
 }

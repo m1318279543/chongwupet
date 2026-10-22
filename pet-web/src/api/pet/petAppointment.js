@@ -42,6 +42,23 @@ export function delPetAppointment(appointmentId) {
   });
 }
 
+// 我的预约（只返回当前账号自己的，前台使用）
+export function listMyAppointments() {
+  return request({
+    url: "/pet/appointment/mine",
+    method: "get",
+  });
+}
+
+// 门店可约时段（游客可查）
+export function getAppointmentSlots(storeId, date) {
+  return request({
+    url: "/pet/appointment/slots",
+    method: "get",
+    params: { storeId, date },
+  });
+}
+
 // 取消预约（登录用户取消自己的预约，后端会写入取消记录）
 export function cancelPetAppointment(appointmentId, reason) {
   return request({

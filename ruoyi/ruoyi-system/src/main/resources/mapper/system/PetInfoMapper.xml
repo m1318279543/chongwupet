@@ -5,6 +5,7 @@
     <resultMap type="PetInfo" id="PetInfoResult">
         <result property="petId"     column="pet_id"     />
         <result property="categoryId"  column="category_id"   />
+        <result property="storeId"  column="store_id"   />
         <result property="petName"  column="pet_name"   />
         <result property="breed"  column="breed"   />
         <result property="age"  column="age"   />
@@ -22,7 +23,7 @@
     </resultMap>
 
     <sql id="selectPetInfoVo">
-        select pet_id, category_id, pet_name, breed, age, gender, price, image, status, description, like_count, create_by, create_time, update_by, update_time, remark
+        select pet_id, category_id, store_id, pet_name, breed, age, gender, price, image, status, description, like_count, create_by, create_time, update_by, update_time, remark
         from pet_info
     </sql>
 
@@ -31,6 +32,9 @@
         <where>
             <if test="categoryId != null">
                 AND category_id = #{categoryId}
+            </if>
+            <if test="storeId != null">
+                AND store_id = #{storeId}
             </if>
             <if test="petName != null and petName != ''">
                 AND pet_name like concat('%', #{petName}, '%')
@@ -96,6 +100,18 @@
             update_time = sysdate()
         </set>
         where pet_id = #{petId}
+    </update>
+
+    <!-- 下单占位：只有「在售」才更新成功，天然防并发抢购 -->
+    <update id="lockPet" parameterType="Long">
+        update pet_info set status = '1', update_time = sysdate()
+        where pet_id = #{petId} and status = '0'
+    </update>
+
+    <!-- 取消订单回滚 -->
+    <update id="releasePet" parameterType="Long">
+        update pet_info set status = '0', update_time = sysdate()
+        where pet_id = #{petId} and status = '1'
     </update>
 
     <delete id="deletePetInfoByPetId" parameterType="Long">

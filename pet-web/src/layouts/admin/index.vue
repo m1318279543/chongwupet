@@ -1,65 +1,42 @@
 <template>
   <el-container class="admin-layout">
-    <!-- 侧边栏 -->
-    <el-aside width="220px" class="sidebar">
+    <!-- 侧边栏：分组边界来自 layouts/admin/menu.js，标题/权限/图标全部来自 route.meta
+         以前这里硬编码了 30 个 el-menu-item，和 router、pageTitle 表各存一份，新增页面要改三处 -->
+    <el-aside :width="isNarrow ? '64px' : '220px'" class="sidebar">
       <div class="logo">
         <span class="icon">🐾</span>
-        <span class="text">宠物管理后台</span>
+        <span v-if="!isNarrow" class="text">宠物管理后台</span>
       </div>
-      <el-menu :default-active="activeMenu" :router="true" class="menu" background-color="#2b2b36" text-color="#bfcbd9" active-text-color="#ff8c42">
-        <el-menu-item index="/admin/dashboard">
-          <el-icon><DataLine /></el-icon><span>数据看板</span>
-        </el-menu-item>
+      <el-menu
+        :default-active="activeMenu"
+        :router="true"
+        :collapse="isNarrow"
+        :collapse-transition="false"
+        class="menu"
+        background-color="#2b2b36"
+        text-color="#bfcbd9"
+        active-text-color="var(--brand-500)"
+      >
+        <template v-for="group in menuGroups" :key="group.key">
+          <el-menu-item v-if="!group.title" :index="group.children[0].path">
+            <el-icon><component :is="group.children[0].icon || 'Menu'" /></el-icon>
+            <template #title>{{ group.children[0].title }}</template>
+          </el-menu-item>
 
-        <el-sub-menu index="petBase">
-          <template #title>
-            <el-icon><Goods /></el-icon><span>宠物资料</span>
-          </template>
-          <el-menu-item index="/admin/category">宠物分类</el-menu-item>
-          <el-menu-item index="/admin/info">宠物信息</el-menu-item>
-          <el-menu-item index="/admin/health">健康档案</el-menu-item>
-          <el-menu-item index="/admin/preference">宠物喜好</el-menu-item>
-          <el-menu-item index="/admin/issue">健康百科</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="petBiz">
-          <template #title>
-            <el-icon><Tickets /></el-icon><span>业务数据</span>
-          </template>
-          <el-menu-item index="/admin/appointment">预约管理</el-menu-item>
-          <el-menu-item index="/admin/cart">购物车管理</el-menu-item>
-          <el-menu-item index="/admin/payment">支付流水</el-menu-item>
-          <el-menu-item index="/admin/favorite">收藏管理</el-menu-item>
-          <el-menu-item index="/admin/like">点赞管理</el-menu-item>
-          <el-menu-item index="/admin/comment">评论管理</el-menu-item>
-          <el-menu-item index="/admin/consult">客服管理</el-menu-item>
-          <el-menu-item index="/admin/doctor">医生咨询记录</el-menu-item>
-          <el-menu-item index="/admin/cancel">取消记录</el-menu-item>
-          <el-menu-item index="/admin/match">智能匹配记录</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="sys">
-          <template #title>
-            <el-icon><Setting /></el-icon><span>系统管理</span>
-          </template>
-          <el-menu-item index="/admin/system/user" v-hasPermi="['system:user:list']">用户管理</el-menu-item>
-          <el-menu-item index="/admin/system/role" v-hasPermi="['system:role:list']">角色管理</el-menu-item>
-          <el-menu-item index="/admin/system/menu" v-hasPermi="['system:menu:list']">菜单管理</el-menu-item>
-          <el-menu-item index="/admin/system/dept" v-hasPermi="['system:dept:list']">部门管理</el-menu-item>
-          <el-menu-item index="/admin/system/log" v-hasPermi="['monitor:operlog:list','monitor:logininfor:list']">系统日志</el-menu-item>
-          <el-menu-item index="/admin/system/online" v-hasPermi="['monitor:online:list']">在线用户</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="monitor">
-          <template #title>
-            <el-icon><Odometer /></el-icon><span>系统监控</span>
-          </template>
-          <el-menu-item index="/admin/monitor/server" v-hasPermi="['monitor:server:list']">服务监控</el-menu-item>
-          <el-menu-item index="/admin/monitor/cache" v-hasPermi="['monitor:cache:list']">缓存监控</el-menu-item>
-        </el-sub-menu>
+          <el-sub-menu v-else :index="group.key">
+            <template #title>
+              <el-icon><component :is="group.icon || 'Menu'" /></el-icon>
+              <span>{{ group.title }}</span>
+            </template>
+            <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
+              {{ item.title }}
+            </el-menu-item>
+          </el-sub-menu>
+        </template>
 
         <el-menu-item index="/shop/home">
-          <el-icon><Monitor /></el-icon><span>前往前台</span>
+          <el-icon><Monitor /></el-icon>
+          <template #title>前往前台</template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -137,11 +114,13 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { DataLine, Goods, Calendar, Star, Monitor, ArrowDown, Setting, Pointer, ChatDotRound, FirstAidKit, Histogram, ChatLineRound, ChatLineSquare, CircleClose, IceCream, ShoppingCart, MagicStick, Tickets, Odometer } from '@element-plus/icons-vue'
+import { Monitor } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
+import { hasPermi } from '@/permission'
+import { MENU_GROUPS } from './menu'
 import { getToken } from '@/utils/auth'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { updateUserProfile } from '@/api/system/user'
@@ -151,35 +130,35 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
-const pageTitle = computed(() => {
-  const map = {
-    '/admin/dashboard': '数据看板',
-    '/admin/category': '宠物分类管理',
-    '/admin/info': '宠物信息管理',
-    '/admin/appointment': '预约管理',
-    '/admin/favorite': '收藏管理',
-    '/admin/cart': '购物车管理',
-    '/admin/payment': '支付流水',
-    '/admin/like': '点赞管理',
-    '/admin/comment': '评论管理',
-    '/admin/health': '健康档案',
-    '/admin/preference': '宠物喜好',
-    '/admin/issue': '健康百科',
-    '/admin/consult': '客服管理',
-    '/admin/doctor': '宠物医生咨询记录',
-    '/admin/cancel': '取消记录',
-    '/admin/match': '智能匹配记录',
-    '/admin/system/user': '用户管理',
-    '/admin/system/role': '角色管理',
-    '/admin/system/menu': '菜单管理',
-    '/admin/system/dept': '部门管理',
-    '/admin/system/log': '系统日志',
-    '/admin/system/online': '在线用户',
-    '/admin/monitor/server': '服务监控',
-    '/admin/monitor/cache': '缓存监控'
-  }
-  return map[route.path] || '宠物管理后台'
-})
+
+// 窄屏折叠为图标栏（以前 220px 侧栏在手机上只剩 150px 内容区）
+const mq = window.matchMedia('(max-width: 1000px)')
+const isNarrow = ref(mq.matches)
+const onMq = (e) => { isNarrow.value = e.matches }
+onMounted(() => mq.addEventListener('change', onMq))
+onBeforeUnmount(() => mq.removeEventListener('change', onMq))
+
+// 菜单 = 分组结构 × 路由 meta，按当前账号权限过滤
+const allRoutes = router.getRoutes()
+function metaOf(path) {
+  const rec = allRoutes.find((r) => r.path === path)
+  return rec ? rec.meta || {} : {}
+}
+function allowed(m) {
+  if (!m.perm) return true
+  return hasPermi(Array.isArray(m.perm) ? m.perm : [m.perm])
+}
+const menuGroups = computed(() =>
+  MENU_GROUPS.map((g) => ({
+    key: g.key,
+    title: g.title,
+    icon: g.icon,
+    children: g.items
+      .map((path) => ({ path, ...metaOf(path) }))
+      .filter((c) => c.title && allowed(c))
+  })).filter((g) => g.children.length > 0)
+)
+const pageTitle = computed(() => route.meta.title || '宠物管理后台')
 const avatarText = computed(() => (userStore.nickName || userStore.userName || 'U').charAt(0).toUpperCase())
 
 // ---------- 个人资料（头像上传 + 昵称修改） ----------
@@ -269,20 +248,21 @@ function handleCommand(cmd) {
 .header {
   background: #fff; display: flex; align-items: center; justify-content: space-between;
   box-shadow: 0 1px 4px rgba(0,0,0,.06); z-index: 10;
-  .page-title { font-size: 18px; font-weight: 600; color: #303133; }
+  .page-title { font-size: 18px; font-weight: 600; color: var(--text-1); }
   .ruoyi-link { margin-right: 16px; }
   .user { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  .avatar { background: #ff8c42; color: #fff; font-weight: 600; }
-  .name { font-size: 14px; color: #303133; }
+  .avatar { background: var(--brand-500); color: #fff; font-weight: 600; }
+  .name { font-size: 14px; color: var(--text-1); }
 }
-.main { background: #f5f7fa; padding: 20px; }
+// el-main 默认就有 20px padding，.app-container 也有 20px —— 以前叠加成 40px
+.main { background: var(--bg-page); padding: 0; }
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .pf-dialog { display: flex; gap: 20px; align-items: flex-start; }
 .pf-upload { cursor: pointer; }
 .pf-avatar-box {
   position: relative; width: 96px; height: 96px; border-radius: 50%;
-  overflow: hidden; background: #ff8c42; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: var(--brand-500); display: flex; align-items: center; justify-content: center;
   img { width: 100%; height: 100%; object-fit: cover; }
   .pf-avatar-text { color: #fff; font-size: 32px; font-weight: 600; }
   .pf-mask {

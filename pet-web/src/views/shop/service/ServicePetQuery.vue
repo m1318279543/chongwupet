@@ -3,18 +3,18 @@
     <!-- 查询工具条：分类筛选 + 关键词搜索 -->
     <div class="toolbar">
       <div class="cats">
-        <button
-          class="cat"
-          :class="{ active: selectedCat === 0 }"
-          @click="selectedCat = 0"
-        >全部（{{ allList.length }}）</button>
+        <button class="cat" :class="{ active: selectedCat === 0 }" @click="selectedCat = 0">
+          全部<em>{{ allList.length }}</em>
+        </button>
         <button
           v-for="c in categories"
           :key="c.id"
           class="cat"
           :class="{ active: selectedCat === c.id }"
           @click="selectedCat = c.id"
-        >{{ c.emoji }} {{ c.name }}<span class="cnt">{{ countByCat(c.id) }}</span></button>
+        >
+          {{ c.name }}<em>{{ countByCat(c.id) }}</em>
+        </button>
       </div>
       <div class="search">
         <el-input
@@ -28,89 +28,87 @@
 
     <p class="coverage">
       已收录 <b>{{ allList.length }}</b> 只宠物真实档案 · 覆盖 <b>{{ categories.length }}</b> 个品类 ·
-      当前显示 <b>{{ filtered.length }}</b> 只
+      当前筛选出 <b>{{ filtered.length }}</b> 只
     </p>
 
-    <!-- 结果卡片网格 -->
+    <!-- 字段组切换：一个查询区看四个侧面，不再每个板块挂一份 -->
+    <div class="grp-tabs" role="tablist" aria-label="档案字段组">
+      <button
+        v-for="g in GROUPS"
+        :key="g.key"
+        type="button"
+        class="grp"
+        :class="{ active: activeGroup === g.key }"
+        role="tab"
+        :aria-selected="activeGroup === g.key"
+        @click="activeGroup = g.key"
+      >{{ g.label }}</button>
+    </div>
+
+    <!-- 结果卡片网格（与 AI 选宠共用同一个卡片组件） -->
     <div class="grid" v-loading="loading">
-      <div class="card" v-for="p in filtered" :key="p.petId">
-        <div class="pic" @click="goDetail(p)">
-          <img v-if="isImage(p.image)" :src="p.image" :alt="p.petName" loading="lazy" />
-          <span v-else class="emoji">{{ petEmoji(p.categoryId) }}</span>
-          <span class="cat-tag">{{ catName(p.categoryId) }}</span>
-          <span class="lv" v-if="p.healthLevel" :class="levelClass(p.healthLevel)">{{ p.healthLevel }}</span>
-        </div>
-        <div class="info">
-          <div class="head">
-            <h3 @click="goDetail(p)">{{ p.petName }}</h3>
-            <span class="breed">{{ p.breed || '未知品种' }}</span>
-          </div>
-          <p class="meta" v-if="ageText(p)">🎂 {{ ageText(p) }} · {{ catFamily(p.categoryId) }}</p>
-
-          <!-- 当前板块字段 -->
-          <ul class="facts">
-            <li v-for="(f, i) in fieldOf(section, p)" :key="i">
-              <span class="k">{{ f.label }}</span>
-              <span class="v" :class="f.cls">{{ f.value }}</span>
-            </li>
-          </ul>
-
-          <!-- 展开完整档案：补齐其它三个板块 -->
-          <div class="expand" v-if="expanded.has(p.petId)">
-            <template v-for="g in otherGroups" :key="g">
-              <div class="grp-title">{{ groupTitle(g) }}</div>
-              <ul class="facts sub">
-                <li v-for="(f, i) in fieldOf(g, p)" :key="i">
-                  <span class="k">{{ f.label }}</span>
-                  <span class="v" :class="f.cls">{{ f.value }}</span>
-                </li>
-              </ul>
-            </template>
-          </div>
-
-          <div class="row">
-            <span class="price" v-if="p.price">¥{{ p.price }}</span>
-            <span class="spacer" />
-            <el-button link type="primary" size="small" @click="toggle(p.petId)">
-              {{ expanded.has(p.petId) ? '收起完整档案 ▲' : '展开完整档案 ▼' }}
-            </el-button>
-            <el-button type="primary" size="small" round @click="goDetail(p)">查看详情</el-button>
-          </div>
-        </div>
-      </div>
+      <PetMiniCard
+        v-for="p in visible"
+        :key="p.petId"
+        :to="'/shop/pet/' + p.petId"
+        :image="isImage(p.image) ? p.image : ''"
+        :placeholder="catName(p.categoryId)"
+        :name="p.petName"
+        :sub="p.breed && p.breed !== p.petName ? p.breed : ''"
+        :meta="metaOf(p)"
+        :price="p.price"
+        :badge="p.healthLevel || ''"
+        :tone="levelTone(p.healthLevel)"
+      >
+        <ul class="facts">
+          <li v-for="(f, i) in fieldOf(activeGroup, p)" :key="i">
+            <span class="k">{{ f.label }}</span>
+            <span class="v" :class="f.cls">{{ f.value }}</span>
+          </li>
+        </ul>
+      </PetMiniCard>
     </div>
 
     <div class="empty" v-if="!loading && filtered.length === 0">没有匹配的宠物，换个关键词或分类试试</div>
+
+    <div class="more" v-if="filtered.length > visible.length">
+      <el-button round @click="pageSize += PAGE">
+        加载更多（还有 {{ filtered.length - visible.length }} 只）
+      </el-button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { listOnSaleHealth } from '@/api/pet/petHealth'
+import PetMiniCard from '@/components/shop/PetMiniCard.vue'
 import { CATEGORIES, FIELD_GROUPS } from './serviceData'
 
-const props = defineProps({ section: { type: String, required: true } })
+const PAGE = 12
+const pageSize = ref(PAGE)
 
-const router = useRouter()
 const categories = CATEGORIES
 const allList = ref([])
 const loading = ref(true)
 const selectedCat = ref(0)
 const keyword = ref('')
-const expanded = ref(new Set())
 
-const GROUP_TITLES = { health: '🩺 健康筛查', origin: '📋 真实信息', care: '🐾 专业养护', after: '🛡️ 售后无忧' }
-const ALL_GROUPS = ['health', 'origin', 'care', 'after']
-const otherGroups = computed(() => ALL_GROUPS.filter(g => g !== props.section))
+// 四个字段组 = 原四个板块；在卡片上切换，替代「每个板块一份查询区」
+const GROUPS = [
+  { key: 'health', label: '健康筛查' },
+  { key: 'origin', label: '来源档案' },
+  { key: 'care', label: '养护要点' },
+  { key: 'after', label: '售后保障' }
+]
+const activeGroup = ref('health')
 
-function groupTitle(g) { return GROUP_TITLES[g] }
-function countByCat(id) { return allList.value.filter(p => p.categoryId === id).length }
+function countByCat(id) { return allList.value.filter((p) => p.categoryId === id).length }
 
 const filtered = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
-  return allList.value.filter(p => {
+  return allList.value.filter((p) => {
     if (selectedCat.value !== 0 && p.categoryId !== selectedCat.value) return false
     if (kw) {
       const hay = ((p.petName || '') + ' ' + (p.breed || '')).toLowerCase()
@@ -120,13 +118,21 @@ const filtered = computed(() => {
   })
 })
 
+// 一次只渲染一屏多一点，避免全部档案把页面撑到两万像素
+const visible = computed(() => filtered.value.slice(0, pageSize.value))
+watch([keyword, selectedCat, activeGroup], () => {
+  pageSize.value = PAGE
+})
+
 // 把原始字段配置转成 {label, value, cls}
+// badge 类型（健康等级）已由卡片左上角角标呈现，列表里不再重复
 function fieldOf(group, p) {
-  return (FIELD_GROUPS[group] || []).map(f => {
+  return (FIELD_GROUPS[group] || [])
+    .filter((f) => f.type !== 'badge')
+    .map((f) => {
     let cls = ''
     let value = f.get(p)
-    if (f.type === 'badge') cls = levelClass(p.healthLevel) + ' badge'
-    else if (f.type === 'tag') cls = 'tag ' + skillTag(p.skillLevel)
+    if (f.type === 'tag') cls = 'tag ' + skillTag(p.skillLevel)
     else if (f.type === 'ok') cls = 'ok'
     else if (f.type === 'mono') cls = 'mono'
     if (value == null || value === '' || value === '—') value = '—'
@@ -134,18 +140,12 @@ function fieldOf(group, p) {
   })
 }
 
-function toggle(id) {
-  const s = new Set(expanded.value)
-  s.has(id) ? s.delete(id) : s.add(id)
-  expanded.value = s
-}
-
-function catName(id) { return (categories.find(c => c.id === id) || {}).name || '宠物' }
-function catFamily(id) { return (categories.find(c => c.id === id) || {}).family || '' }
-function petEmoji(id) { return (categories.find(c => c.id === id) || {}).emoji || '🐾' }
+function catName(id) { return (categories.find((c) => c.id === id) || {}).name || '宠物' }
+function catFamily(id) { return (categories.find((c) => c.id === id) || {}).family || '' }
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
-function levelClass(l) { return l === '优秀' ? 'lv-good' : l === '良好' ? 'lv-ok' : 'lv-warn' }
+function levelTone(l) { return l === '优秀' ? 'success' : l === '良好' ? 'brand' : 'plain' }
 function skillTag(s) { return s === '入门' ? 't-success' : s === '进阶' ? 't-warning' : 't-danger' }
+
 function ageText(p) {
   if (!p.birthDate) return ''
   const b = new Date(p.birthDate)
@@ -159,14 +159,18 @@ function ageText(p) {
   const m = months % 12
   return m ? `${y} 岁 ${m} 个月` : `${y} 岁`
 }
-function goDetail(p) { router.push('/shop/pet/' + p.petId) }
+
+function metaOf(p) {
+  return [ageText(p), catFamily(p.categoryId)].filter(Boolean).join(' · ')
+}
 
 onMounted(async () => {
   loading.value = true
   try {
     const res = await listOnSaleHealth({ pageNum: 1, pageSize: 300 })
     const d = res.data || {}
-    allList.value = d.rows || []
+    // 档案表里存在少量没有对应宠物记录的孤儿数据，前台直接过滤掉
+    allList.value = (d.rows || []).filter((r) => r.petName)
   } catch (e) {
     allList.value = []
   } finally {
@@ -176,78 +180,188 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.pet-query { margin-top: 8px; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
-  .cats { display: flex; flex-wrap: wrap; gap: 8px;
-    .cat { border: 1px solid #ffe0c7; background: #fff; color: #606266; border-radius: 20px;
-      padding: 7px 16px; font-size: 14px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 6px;
-      .cnt { font-size: 12px; color: #c0a08a; background: #fff4e6; border-radius: 10px; padding: 0 7px; }
-      &:hover { border-color: #ff8c42; color: #ff8c42; }
-      &.active { background: linear-gradient(135deg, #ff9a56, #ff6b9d); color: #fff; border-color: transparent;
-        .cnt { background: rgba(255,255,255,.25); color: #fff; }
-      }
-    }
-  }
-  .search { width: 300px; max-width: 100%; }
-}
-.coverage { color: #909399; font-size: 13px; margin: 14px 2px 6px;
-  b { color: #ff6b9d; }
-}
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 18px; min-height: 120px;
-  .card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.05);
-    transition: transform .2s, box-shadow .2s; display: flex; flex-direction: column;
-    &:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.1); }
-    .pic { position: relative; height: 168px; background: #fff4e6; display: flex; align-items: center; justify-content: center; cursor: pointer;
-      img { width: 100%; height: 100%; object-fit: cover; display: block; }
-      .emoji { font-size: 66px; }
-      .cat-tag { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.5); color: #fff;
-        font-size: 12px; border-radius: 12px; padding: 2px 10px; }
-      .lv { position: absolute; top: 10px; right: 10px; color: #fff; font-size: 12px; border-radius: 12px; padding: 2px 10px;
-        &.lv-good { background: #67c23a; } &.lv-ok { background: #409eff; } &.lv-warn { background: #e6a23c; }
-      }
-    }
-    .info { padding: 14px 16px 14px; flex: 1; display: flex; flex-direction: column;
-      .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-        h3 { margin: 0; font-size: 17px; color: #303133; cursor: pointer;
-          &:hover { color: #ff6b9d; } }
-        .breed { color: #909399; font-size: 13px; }
-      }
-      .meta { margin: 4px 0 10px; color: #a0a0a0; font-size: 12px; }
-      .facts { margin: 0 0 8px; padding: 0; list-style: none;
-        li { display: flex; gap: 8px; font-size: 13px; line-height: 1.9; color: #606266;
-          .k { flex: 0 0 64px; color: #909399; }
-          .v { flex: 1; word-break: break-all;
-            &.ok { color: #67c23a; font-weight: 600; }
-            &.mono { font-family: Consolas, monospace; color: #909399; }
-            &.badge { display: inline-block; width: fit-content; padding: 1px 10px; border-radius: 10px; color: #fff; font-size: 12px;
-              &.lv-good { background: #67c23a; } &.lv-ok { background: #409eff; } &.lv-warn { background: #e6a23c; } }
-            &.tag { display: inline-block; width: fit-content; padding: 1px 10px; border-radius: 10px; font-size: 12px; color: #fff;
-              &.t-success { background: #67c23a; } &.t-warning { background: #e6a23c; } &.t-danger { background: #f56c6c; } }
-          }
-        }
-        &.sub { margin-bottom: 12px; }
-      }
-      .grp-title { font-size: 13px; color: #ff6b9d; font-weight: 600; margin: 6px 0 2px; }
-      .expand { background: #fafafa; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-      .row { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px;
-        .price { color: #f56c6c; font-weight: 700; font-size: 18px; }
-        .spacer { flex: 1; }
-      }
-    }
-  }
-}
-.empty { text-align: center; color: #c0c4cc; padding: 40px 0; }
+.pet-query { margin-top: 4px; }
 
-/* 手机端：档案卡图片等比缩小（4:3），高度不超过约三分之一屏 */
-@media (max-width: 640px) {
-  .pet-query { margin-top: 4px; }
-  .grid { grid-template-columns: minmax(0, 1fr); gap: 12px;
-    .card .pic {
-      height: auto;
-      aspect-ratio: 4 / 3;
-      max-height: min(200px, 32vh);
-      .emoji { font-size: 48px; }
+/* ---------- 工具条 ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 0.16s, background 0.16s, color 0.16s;
+
+  em {
+    font-style: normal;
+    font-size: 11.5px;
+    padding: 0 5px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-page);
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &:hover {
+    border-color: var(--brand-300);
+    color: var(--brand-700);
+  }
+
+  &.active {
+    background: var(--brand-600);
+    border-color: var(--brand-600);
+    color: #fff;
+
+    em {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
     }
+  }
+}
+
+.search { width: 300px; max-width: 100%; }
+
+.coverage {
+  margin: 14px 0;
+  font-size: 12.5px;
+  color: var(--text-3);
+
+  b {
+    color: var(--text-1);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ---------- 字段组切换 ---------- */
+.grp-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 14px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+}
+
+.grp {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+
+  &:hover { color: var(--text-1); }
+
+  &.active {
+    background: var(--bg-card);
+    color: var(--text-1);
+    font-weight: 600;
+    box-shadow: var(--shadow-card);
+  }
+}
+
+/* ---------- 结果网格 ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+  min-height: 120px;
+}
+
+/* ---------- 卡片内档案字段 ---------- */
+.facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1px;
+
+  li {
+    display: flex;
+    gap: 8px;
+    font-size: 12.5px;
+    line-height: 1.75;
+
+    .k {
+      flex: 0 0 62px;
+      color: var(--text-3);
+    }
+    .v {
+      flex: 1;
+      min-width: 0;
+      color: var(--text-2);
+      word-break: break-all;
+
+      &.ok { color: var(--success-500); font-weight: 600; }
+      &.mono { font-family: var(--font-num); font-size: 11.5px; color: var(--text-3); }
+
+      &.tag {
+        flex: 0 0 auto;
+        width: fit-content;
+        padding: 0 8px;
+        border-radius: var(--radius-xs);
+        font-size: 11.5px;
+        line-height: 1.6;
+        color: #fff;
+
+        &.t-success { background: var(--success-500); }
+        &.t-warning { background: var(--warning-500); }
+        &.t-danger { background: var(--danger-500); }
+      }
+    }
+  }
+}
+
+.empty {
+  padding: 48px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+@media (max-width: 768px) {
+  .search { width: 100%; }
+
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .grp-tabs {
+    display: flex;
+    width: 100%;
+
+    .grp { flex: 1; padding: 7px 6px; }
   }
 }
 </style>

@@ -78,7 +78,7 @@ service.interceptors.response.use(res => {
         import('@/store/modules/user').then(({ default: useUserStore }) => {
           useUserStore().logOut().then(() => {
             // 后台区域过期回后台登录页，前台回商城登录页
-            location.href = location.pathname.startsWith('/admin') ? '/admin/login' : '/login'
+            location.href = location.pathname.startsWith('/admin') ? '/admin/login' : '/shop/home'
           })
         })
       }).catch(() => {
@@ -87,10 +87,10 @@ service.interceptors.response.use(res => {
     }
     return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
   } else if (code === 500) {
-    ElMessage({ message: msg, type: 'error' })
+    ElMessage({ message: msg, type: 'error', grouping: true })
     return Promise.reject(new Error(msg))
   } else if (code !== 200) {
-    ElMessage({ message: msg, type: 'error' })
+    ElMessage({ message: msg, type: 'error', grouping: true })
     return Promise.reject(new Error(msg))
   } else {
     return Promise.resolve(res.data)
@@ -105,7 +105,7 @@ service.interceptors.response.use(res => {
   } else if (message.includes('Request failed with status code')) {
     message = '系统接口' + message.slice(-3) + '异常'
   }
-  ElMessage({ message, type: 'error', duration: 5000 })
+  ElMessage({ message, type: 'error', duration: 5000, grouping: true })
   return Promise.reject(error)
 })
 

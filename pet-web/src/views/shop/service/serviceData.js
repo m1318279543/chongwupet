@@ -15,7 +15,7 @@ export const CATEGORIES = [
 // 四个服务板块：标题 / 口号 / 承诺卡片 / 流程
 export const SERVICES = [
   {
-    slug: 'health', icon: '🩺', title: '健康筛查',
+    slug: 'health', icon: '🩺', title: '健康筛查', short: '28 项入店体检',
     slogan: '每一只在售宠物都经过 28 项专业健康筛查，健康看得见',
     points: [
       { icon: '💉', title: '疫苗接种', desc: '猫三联 / 犬四联按龄接种，提供完整疫苗本与接种记录' },
@@ -29,7 +29,7 @@ export const SERVICES = [
     petDesc: '按宠物类型筛选或搜索名字，即可查看每只宠物的疫苗、体检、驱虫与遗传病筛查真实记录'
   },
   {
-    slug: 'origin', icon: '📋', title: '真实信息',
+    slug: 'origin', icon: '📋', title: '真实信息', short: '一宠一档可溯',
     slogan: '所见即所得：每一只宠物的品种、年龄、来源都真实可溯',
     points: [
       { icon: '📸', title: '实拍照片', desc: '页面照片均为本店实拍，拒绝网络盗图，支持到店比对' },
@@ -64,7 +64,7 @@ export const SERVICES = [
     }
   },
   {
-    slug: 'care', icon: '🐾', title: '专业养护',
+    slug: 'care', icon: '🐾', title: '专业养护', short: '分品类养护指南',
     slogan: '从接回家到养成健康毛孩子，专业团队全程陪跑',
     points: [
       { icon: '🍚', title: '科学喂养', desc: '按月龄提供喂养方案：粮食品牌、喂食量、过渡换粮指南' },
@@ -103,7 +103,7 @@ export const SERVICES = [
     }
   },
   {
-    slug: 'after', icon: '🛡️', title: '售后无忧',
+    slug: 'after', icon: '🛡️', title: '售后无忧', short: '7 天健康保障',
     slogan: '签订正规购宠合同，7 天健康保障 + 终身售后咨询',
     points: [
       { icon: '📝', title: '正规合同', desc: '签订购宠合同，明确品种、健康状态与双方责任' },

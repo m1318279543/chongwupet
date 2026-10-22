@@ -116,24 +116,24 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.consult { background: #f7f8fa; min-height: 100vh; padding: 28px 16px; }
-.consult-inner { max-width: 760px; margin: 0 auto;
-  h1 { font-size: 22px; color: #303133; margin: 0 0 6px; }
-  .sub { color: #909399; font-size: 13px; margin: 0 0 20px; }
+.consult { background: var(--bg-page); padding: 28px 16px; }
+.consult-inner { max-width: var(--container-sm); margin: 0 auto;
+  h1 { font-size: 22px; color: var(--text-1); margin: 0 0 6px; }
+  .sub { color: var(--text-3); font-size: 13px; margin: 0 0 20px; }
 }
 .form-card, .list-card { margin-bottom: 18px; border-radius: 14px; }
-.consult-item { border: 1px solid #f0f0f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: #fcfcfd;
+.consult-item { border: 1px solid var(--border-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: var(--bg-page);
   .q { display: flex; align-items: flex-start; gap: 10px;
-    .tag { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: #ff8c42; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
-    .tag.ans { background: #67c23a; }
-    .q-text { font-size: 14px; color: #303133; line-height: 1.6; }
-    .q-time { font-size: 12px; color: #c0c4cc; margin-top: 2px; }
+    .tag { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-500); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+    .tag.ans { background: var(--success-500); }
+    .q-text { font-size: 14px; color: var(--text-1); line-height: 1.6; }
+    .q-time { font-size: 12px; color: var(--text-4); margin-top: 2px; }
   }
-  .a { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #f0f0f0;
-    .a-text { font-size: 14px; color: #606266; line-height: 1.7;
-      &.muted { color: #c0c4cc; }
+  .a { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-2);
+    .a-text { font-size: 14px; color: var(--text-2); line-height: 1.7;
+      &.muted { color: var(--text-4); }
     }
-    .a-time { font-size: 12px; color: #c0c4cc; margin-top: 2px; }
+    .a-time { font-size: 12px; color: var(--text-4); margin-top: 2px; }
   }
 }
 </style>

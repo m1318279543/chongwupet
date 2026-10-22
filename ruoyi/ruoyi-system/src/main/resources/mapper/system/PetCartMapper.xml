@@ -5,6 +5,10 @@
     <resultMap type="PetCart" id="PetCartResult">
         <result property="cartId"     column="cart_id"     />
         <result property="userId"     column="user_id"     />
+        <result property="storeId"    column="store_id"    />
+        <result property="customerId" column="customer_id" />
+        <result property="goodsId"    column="goods_id"    />
+        <result property="skuId"      column="sku_id"      />
         <result property="userName"   column="user_name"   />
         <result property="goodsName"  column="goods_name"  />
         <result property="goodsImage" column="goods_image" />
@@ -26,7 +30,7 @@
     </resultMap>
 
     <sql id="selectPetCartVo">
-        select c.cart_id, c.user_id, c.user_name, c.goods_name, c.goods_image, c.goods_spec,
+        select c.cart_id, c.user_id, c.store_id, c.customer_id, c.goods_id, c.sku_id, c.user_name, c.goods_name, c.goods_image, c.goods_spec,
                c.price, c.qty, c.amount, c.status, c.order_no, c.pay_status, c.pay_method, c.pay_time,
                c.create_by, c.create_time, c.remark,
                (select l.result from pet_payment_log l where l.order_no = c.order_no order by l.log_id desc limit 1) as last_pay_result,
@@ -55,6 +59,12 @@
             </if>
             <if test="payStatus != null and payStatus != ''">
                 AND c.pay_status = #{payStatus}
+            </if>
+            <if test="storeId != null">
+                AND c.store_id = #{storeId}
+            </if>
+            <if test="customerId != null">
+                AND c.customer_id = #{customerId}
             </if>
             <if test="payMethod != null and payMethod != ''">
                 AND c.pay_method = #{payMethod}
@@ -95,6 +105,10 @@
     <insert id="insertPetCart" parameterType="PetCart" useGeneratedKeys="true" keyProperty="cartId">
         insert into pet_cart(
             <if test="userId != null">user_id,</if>
+            <if test="storeId != null">store_id,</if>
+            <if test="customerId != null">customer_id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="skuId != null">sku_id,</if>
             <if test="userName != null and userName != ''">user_name,</if>
             <if test="goodsName != null and goodsName != ''">goods_name,</if>
             <if test="goodsImage != null and goodsImage != ''">goods_image,</if>
@@ -110,6 +124,10 @@
             create_time
         )values(
             <if test="userId != null">#{userId},</if>
+            <if test="storeId != null">#{storeId},</if>
+            <if test="customerId != null">#{customerId},</if>
+            <if test="goodsId != null">#{goodsId},</if>
+            <if test="skuId != null">#{skuId},</if>
             <if test="userName != null and userName != ''">#{userName},</if>
             <if test="goodsName != null and goodsName != ''">#{goodsName},</if>
             <if test="goodsImage != null and goodsImage != ''">#{goodsImage},</if>

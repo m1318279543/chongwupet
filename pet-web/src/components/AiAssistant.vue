@@ -242,19 +242,19 @@ defineExpose({ open: () => { open.value = true }, ask })
   height: 56px;
   border: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b35, #ff9f5e);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-400));
   color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 22px rgba(255, 107, 53, 0.38);
+  box-shadow: 0 8px 22px rgb(var(--brand-600-rgb) / 0.38);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
 .ai-fab:hover {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 12px 26px rgba(255, 107, 53, 0.45);
+  box-shadow: 0 12px 26px rgb(var(--brand-600-rgb) / 0.45);
 }
 .ai-fab .fab-emoji {
   font-size: 24px;
@@ -267,13 +267,13 @@ defineExpose({ open: () => { open.value = true }, ask })
   font-size: 9px;
   font-weight: 700;
   background: #fff;
-  color: #ff6b35;
+  color: var(--brand-600);
   border-radius: 6px;
   padding: 0 3px;
   line-height: 12px;
 }
 .ai-fab.active {
-  background: #303133;
+  background: var(--text-1);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
   width: 44px;
   height: 44px;
@@ -294,7 +294,7 @@ defineExpose({ open: () => { open.value = true }, ask })
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #f2f2f2;
+  border: 1px solid var(--bg-sunken);
 }
 
 .ai-head {
@@ -302,15 +302,15 @@ defineExpose({ open: () => { open.value = true }, ask })
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: linear-gradient(135deg, #fff7f1, #fff);
-  border-bottom: 1px solid #f5f5f5;
+  background: linear-gradient(135deg, var(--brand-50), #fff);
+  border-bottom: 1px solid var(--bg-sunken);
   flex-shrink: 0;
 }
 .ai-avatar {
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff6b35, #ffb27a);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-300));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,11 +326,11 @@ defineExpose({ open: () => { open.value = true }, ask })
 }
 .ai-title strong {
   font-size: 14px;
-  color: #303133;
+  color: var(--text-1);
 }
 .ai-status {
   font-size: 11px;
-  color: #67c23a;
+  color: var(--success-500);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -343,14 +343,14 @@ defineExpose({ open: () => { open.value = true }, ask })
   background: currentColor;
 }
 .ai-status.off {
-  color: #e6a23c;
+  color: var(--warning-500);
 }
 .ai-icon-btn {
   width: 28px;
   height: 28px;
   border: 0;
   background: transparent;
-  color: #909399;
+  color: var(--text-3);
   border-radius: 8px;
   cursor: pointer;
   display: flex;
@@ -358,8 +358,8 @@ defineExpose({ open: () => { open.value = true }, ask })
   justify-content: center;
 }
 .ai-icon-btn:hover {
-  background: #f5f5f5;
-  color: #606266;
+  background: var(--bg-sunken);
+  color: var(--text-2);
 }
 
 /* 消息区 */
@@ -367,7 +367,7 @@ defineExpose({ open: () => { open.value = true }, ask })
   flex: 1;
   overflow-y: auto;
   padding: 14px;
-  background: #fafafa;
+  background: var(--bg-page);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -388,11 +388,11 @@ defineExpose({ open: () => { open.value = true }, ask })
   white-space: pre-wrap;
   word-break: break-word;
   background: #fff;
-  color: #303133;
-  border: 1px solid #f0f0f0;
+  color: var(--text-1);
+  border: 1px solid var(--border-2);
 }
 .msg.user .bubble {
-  background: linear-gradient(135deg, #ff6b35, #ff9f5e);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-400));
   color: #fff;
   border-color: transparent;
   border-bottom-right-radius: 4px;
@@ -401,15 +401,15 @@ defineExpose({ open: () => { open.value = true }, ask })
   border-bottom-left-radius: 4px;
 }
 .bubble.error {
-  background: #fff8f0;
-  border-color: #ffe0c2;
-  color: #b25a1e;
+  background: var(--brand-50);
+  border-color: var(--brand-100);
+  color: var(--brand-700);
 }
 .cursor {
   display: inline-block;
   width: 2px;
   height: 13px;
-  background: #ff8c42;
+  background: var(--brand-500);
   margin-left: 1px;
   vertical-align: -2px;
   animation: blink 0.9s steps(1) infinite;
@@ -429,7 +429,7 @@ defineExpose({ open: () => { open.value = true }, ask })
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ffb27a;
+  background: var(--brand-300);
   animation: bounce 1.1s infinite;
 }
 .bubble.thinking i:nth-child(2) {
@@ -455,13 +455,13 @@ defineExpose({ open: () => { open.value = true }, ask })
   flex-wrap: wrap;
   gap: 6px;
   padding: 0 14px 8px;
-  background: #fafafa;
+  background: var(--bg-page);
   flex-shrink: 0;
 }
 .ai-quick button {
-  border: 1px solid #ffe0cc;
+  border: 1px solid var(--brand-100);
   background: #fff;
-  color: #d2691e;
+  color: var(--brand-700);
   font-size: 12px;
   padding: 5px 10px;
   border-radius: 14px;
@@ -470,8 +470,8 @@ defineExpose({ open: () => { open.value = true }, ask })
   text-align: left;
 }
 .ai-quick button:hover {
-  background: #fff7f1;
-  border-color: #ffb27a;
+  background: var(--brand-50);
+  border-color: var(--brand-300);
 }
 
 /* 输入区 */
@@ -481,30 +481,30 @@ defineExpose({ open: () => { open.value = true }, ask })
   gap: 8px;
   padding: 10px 12px;
   background: #fff;
-  border-top: 1px solid #f2f2f2;
+  border-top: 1px solid var(--bg-sunken);
   flex-shrink: 0;
 }
 .ai-input textarea {
   flex: 1;
   resize: none;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--border-1);
   border-radius: 12px;
   padding: 8px 10px;
   font-size: 13.5px;
   line-height: 1.5;
   max-height: 84px;
   font-family: inherit;
-  color: #303133;
+  color: var(--text-1);
   outline: none;
-  background: #fafafa;
+  background: var(--bg-page);
 }
 .ai-input textarea:focus {
-  border-color: #ffb27a;
+  border-color: var(--brand-300);
   background: #fff;
 }
 .ai-send {
   border: 0;
-  background: linear-gradient(135deg, #ff6b35, #ff9f5e);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-400));
   color: #fff;
   font-size: 13px;
   padding: 0 16px;
@@ -540,7 +540,7 @@ defineExpose({ open: () => { open.value = true }, ask })
 }
 
 /* 手机端：占满底部，方便输入 */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .ai-fab {
     right: 14px;
     bottom: 18px;

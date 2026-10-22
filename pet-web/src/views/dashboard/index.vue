@@ -439,7 +439,7 @@ function buildKpis() {
       sparkSrc: payDays.map((d) => d.okAmount),
     },
     {
-      key: 'orders', label: '订单量', color: '#5b8def', nav: '/admin/cart',
+      key: 'orders', label: '订单量', color: '#5b8def', nav: '/admin/order',
       raw: Number(o.orders || 0), fmt: (v) => fmtInt(v),
       growth: o.growth?.orders ?? null,
       sub: `今日 ${t.todayOrders || 0} 单 · 待处理 ${o.pendingOrders}`,

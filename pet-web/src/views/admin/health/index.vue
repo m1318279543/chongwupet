@@ -321,16 +321,16 @@ onMounted(getList)
 .health-admin { padding: 4px; }
 .search-card { margin-bottom: 14px; }
 .table-card {
-  .card-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: #606266; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--text-2); }
 }
 .pet-cell { display: flex; align-items: center; gap: 10px;
   .thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; }
-  .thumb-emoji { width: 44px; height: 44px; border-radius: 8px; background: #fff4e6; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .thumb-emoji { width: 44px; height: 44px; border-radius: 8px; background: var(--brand-50); display: flex; align-items: center; justify-content: center; font-size: 20px; }
   .pet-meta { display: flex; flex-direction: column; line-height: 1.4;
-    .sub { color: #909399; font-size: 12px; }
+    .sub { color: var(--text-3); font-size: 12px; }
   }
 }
-.cell-sm { font-size: 13px; color: #303133; }
-.cell-sub { color: #909399; font-size: 12px; margin-top: 2px; }
+.cell-sm { font-size: 13px; color: var(--text-1); }
+.cell-sub { color: var(--text-3); font-size: 12px; margin-top: 2px; }
 .pager { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

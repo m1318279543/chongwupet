@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetServiceOrderMapper">
+
+    <resultMap type="PetServiceOrder" id="PetServiceOrderResult">
+        <result property="serviceId"    column="service_id"    />
+        <result property="serviceNo"    column="service_no"    />
+        <result property="appointmentId" column="appointment_id" />
+        <result property="storeId"      column="store_id"      />
+        <result property="storeName"    column="store_name"    />
+        <result property="customerId"   column="customer_id"   />
+        <result property="customerName" column="customer_name" />
+        <result property="userId"       column="user_id"       />
+        <result property="petId"        column="pet_id"        />
+        <result property="petName"      column="pet_name"      />
+        <result property="itemId"       column="item_id"       />
+        <result property="itemName"     column="item_name"     />
+        <result property="itemType"     column="item_type"     />
+        <result property="price"        column="price"         />
+        <result property="staffId"      column="staff_id"      />
+        <result property="staffName"    column="staff_name"    />
+        <result property="appointTime"  column="appoint_time"  />
+        <result property="startTime"    column="start_time"    />
+        <result property="finishTime"   column="finish_time"   />
+        <result property="status"       column="status"        />
+        <result property="payStatus"    column="pay_status"    />
+        <result property="score"        column="score"         />
+        <result property="comment"      column="comment"       />
+        <result property="source"       column="source"        />
+        <result property="delFlag"      column="del_flag"      />
+        <result property="remark"       column="remark"        />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"     column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+    </resultMap>
+
+    <sql id="selectPetServiceOrderVo">
+        select o.service_id, o.service_no, o.appointment_id, o.store_id, o.customer_id, o.user_id,
+               o.customer_name, o.pet_id, o.pet_name, o.item_id, o.item_name, o.item_type, o.price,
+               o.staff_id, o.staff_name, o.appoint_time, o.start_time, o.finish_time, o.status,
+               o.pay_status, o.score, o.comment, o.source, o.del_flag, o.remark,
+               o.create_by, o.create_time, o.update_by, o.update_time,
+               s.store_name
+        from pet_service_order o
+        left join pet_store s on s.store_id = o.store_id
+    </sql>
+
+    <select id="selectPetServiceOrderList" parameterType="PetServiceOrder" resultMap="PetServiceOrderResult">
+        <include refid="selectPetServiceOrderVo"/>
+        <where>
+            o.del_flag = '0'
+            <if test="serviceNo != null and serviceNo != ''">
+                AND o.service_no like concat('%', #{serviceNo}, '%')
+            </if>
+            <if test="storeId != null">
+                AND o.store_id = #{storeId}
+            </if>
+            <if test="appointmentId != null">
+                AND o.appointment_id = #{appointmentId}
+            </if>
+            <if test="customerId != null">
+                AND o.customer_id = #{customerId}
+            </if>
+            <if test="userId != null">
+                AND o.user_id = #{userId}
+            </if>
+            <if test="petId != null">
+                AND o.pet_id = #{petId}
+            </if>
+            <if test="staffId != null">
+                AND o.staff_id = #{staffId}
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+            <if test="payStatus != null and payStatus != ''">
+                AND o.pay_status = #{payStatus}
+            </if>
+            <if test="itemType != null and itemType != ''">
+                AND o.item_type = #{itemType}
+            </if>
+            <if test="petName != null and petName != ''">
+                AND (o.pet_name like concat('%', #{petName}, '%')
+                     or o.customer_name like concat('%', #{petName}, '%')
+                     or o.service_no like concat('%', #{petName}, '%'))
+            </if>
+            <if test="queryDate != null and queryDate != ''">
+                AND date(o.appoint_time) = #{queryDate}
+            </if>
+        </where>
+        order by (date(o.appoint_time) = curdate()) desc,
+                 (case o.status when '0' then 0 when '1' then 1 when '2' then 2 else 9 end),
+                 o.appoint_time asc, o.service_id desc
+    </select>
+
+    <select id="selectPetServiceOrderById" parameterType="Long" resultMap="PetServiceOrderResult">
+        <include refid="selectPetServiceOrderVo"/>
+        where o.service_id = #{serviceId}
+    </select>
+
+    <insert id="insertPetServiceOrder" parameterType="PetServiceOrder" useGeneratedKeys="true" keyProperty="serviceId">
+        insert into pet_service_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="serviceNo != null and serviceNo != ''">service_no,</if>
+            <if test="appointmentId != null">appointment_id,</if>
+            <if test="storeId != null">store_id,</if>
+            <if test="customerId != null">customer_id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="customerName != null">customer_name,</if>
+            <if test="petId != null">pet_id,</if>
+            <if test="petName != null">pet_name,</if>
+            <if test="itemId != null">item_id,</if>
+            <if test="itemName != null">item_name,</if>
+            <if test="itemType != null">item_type,</if>
+            <if test="price != null">price,</if>
+            <if test="staffId != null">staff_id,</if>
+            <if test="staffName != null">staff_name,</if>
+            <if test="appointTime != null">appoint_time,</if>
+            <if test="status != null">status,</if>
+            <if test="payStatus != null">pay_status,</if>
+            <if test="source != null">source,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="serviceNo != null and serviceNo != ''">#{serviceNo},</if>
+            <if test="appointmentId != null">#{appointmentId},</if>
+            <if test="storeId != null">#{storeId},</if>
+            <if test="customerId != null">#{customerId},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="customerName != null">#{customerName},</if>
+            <if test="petId != null">#{petId},</if>
+            <if test="petName != null">#{petName},</if>
+            <if test="itemId != null">#{itemId},</if>
+            <if test="itemName != null">#{itemName},</if>
+            <if test="itemType != null">#{itemType},</if>
+            <if test="price != null">#{price},</if>
+            <if test="staffId != null">#{staffId},</if>
+            <if test="staffName != null">#{staffName},</if>
+            <if test="appointTime != null">#{appointTime},</if>
+            <if test="status != null">#{status},</if>
+            <if test="payStatus != null">#{payStatus},</if>
+            <if test="source != null">#{source},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updatePetServiceOrder" parameterType="PetServiceOrder">
+        update pet_service_order
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="itemId != null">item_id = #{itemId},</if>
+            <if test="itemName != null">item_name = #{itemName},</if>
+            <if test="itemType != null">item_type = #{itemType},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="staffId != null">staff_id = #{staffId},</if>
+            <if test="staffName != null">staff_name = #{staffName},</if>
+            <if test="appointTime != null">appoint_time = #{appointTime},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="finishTime != null">finish_time = #{finishTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="payStatus != null">pay_status = #{payStatus},</if>
+            <if test="score != null">score = #{score},</if>
+            <if test="comment != null">comment = #{comment},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where service_id = #{serviceId}
+    </update>
+
+    <update id="deletePetServiceOrderByIds" parameterType="Long">
+        update pet_service_order set del_flag = '2' where service_id in
+        <foreach item="serviceId" collection="array" open="(" separator="," close=")">
+            #{serviceId}
+        </foreach>
+    </update>
+
+    <insert id="insertPetServiceLog" parameterType="PetServiceLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into pet_service_log (service_id, from_status, to_status, operator, remark, create_time)
+        values (#{serviceId}, #{fromStatus}, #{toStatus}, #{operator}, #{remark}, sysdate())
+    </insert>
+
+    <select id="selectPetServiceLogs" parameterType="Long" resultType="com.ruoyi.system.domain.PetServiceLog">
+        select log_id as logId, service_id as serviceId, from_status as fromStatus, to_status as toStatus,
+               operator, remark, create_time as createTime
+        from pet_service_log
+        where service_id = #{serviceId}
+        order by log_id asc
+    </select>
+
+    <select id="selectStatusCount" resultType="java.util.LinkedHashMap">
+        select status as status, count(*) as cnt
+        from pet_service_order
+        where del_flag = '0'
+        <if test="storeId != null">and store_id = #{storeId}</if>
+        <if test="date != null and date != ''">and date(appoint_time) = #{date}</if>
+        group by status
+    </select>
+
+    <select id="selectDayRevenue" resultType="java.math.BigDecimal">
+        select ifnull(sum(price), 0)
+        from pet_service_order
+        where del_flag = '0' and status = '3'
+        <if test="storeId != null">and store_id = #{storeId}</if>
+        <if test="date != null and date != ''">and date(finish_time) = #{date}</if>
+    </select>
+
+    <select id="selectStaffRank" resultType="java.util.LinkedHashMap">
+        select ifnull(o.staff_name, '未指派') as staffName, count(*) as cnt, ifnull(sum(o.price), 0) as amount
+        from pet_service_order o
+        where o.del_flag = '0' and o.status = '3'
+        <if test="storeId != null">and o.store_id = #{storeId}</if>
+        <if test="date != null and date != ''">and date(o.finish_time) = #{date}</if>
+        group by o.staff_id, o.staff_name
+        order by cnt desc
+        limit 5
+    </select>
+
+</mapper>

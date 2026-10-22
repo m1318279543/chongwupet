@@ -50,6 +50,10 @@ Thumbs.db
 *.tmp
 *.bak
 
+# 会话工作目录（截图/补丁脚本/记忆，不入库）
+.runtime/
+.workbuddy/
+
 # 手机端巡检产物
 mobile-*.png
 mobile-report-*.json

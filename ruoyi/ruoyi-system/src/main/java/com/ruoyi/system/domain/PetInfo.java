@@ -24,6 +24,9 @@ public class PetInfo extends BaseEntity
     @Excel(name = "分类ID")
     private Long categoryId;
 
+    /** 所属门店 */
+    private Long storeId;
+
     /** 宠物名称 */
     @Excel(name = "宠物名称")
     private String petName;
@@ -75,6 +78,16 @@ public class PetInfo extends BaseEntity
     public void setPetId(Long petId)
     {
         this.petId = petId;
+    }
+
+    public Long getStoreId()
+    {
+        return storeId;
+    }
+
+    public void setStoreId(Long storeId)
+    {
+        this.storeId = storeId;
     }
 
     public Long getCategoryId()

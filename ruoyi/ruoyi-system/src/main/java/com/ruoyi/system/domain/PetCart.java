@@ -22,6 +22,18 @@ public class PetCart extends BaseEntity
     @Excel(name = "用户ID")
     private Long userId;
 
+    /** 门店ID */
+    private Long storeId;
+
+    /** 客户ID */
+    private Long customerId;
+
+    /** 商品ID */
+    private Long goodsId;
+
+    /** SKU ID */
+    private Long skuId;
+
     /** 用户名（关联 sys_user 查询展示用，非本表字段） */
     @Excel(name = "用户名")
     private String userName;
@@ -86,6 +98,18 @@ public class PetCart extends BaseEntity
 
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+
+    public Long getStoreId() { return storeId; }
+    public void setStoreId(Long storeId) { this.storeId = storeId; }
+
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
+
+    public Long getGoodsId() { return goodsId; }
+    public void setGoodsId(Long goodsId) { this.goodsId = goodsId; }
+
+    public Long getSkuId() { return skuId; }
+    public void setSkuId(Long skuId) { this.skuId = skuId; }
 
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }

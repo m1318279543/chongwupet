@@ -33,6 +33,24 @@ cd /root/pet-deploy
 sudo bash deploy.sh
 ```
 
+## 老版本升级（服务器已有旧版部署时用这个）
+
+平台化改造（门店/客户/服务工单/商品库存/订单主表/宠物下单/退款/采购）之后，**不能只换 jar 和前端**——
+服务器库还是旧结构，新接口会全部报错。正确流程：
+
+```bash
+# 本机上传（deploy 目录需先在本机组好包：ruoyi-admin.jar / web.tar.gz / pet_upgrade.sql / uploads.tar.gz）
+scp -r deploy/ root@<公网IP>:/root/pet-deploy
+
+# 服务器上执行（迁移数据库 → 换 jar → 换前端 → 重启 → 自检）
+cd /root/pet-deploy
+sudo bash upgrade.sh
+```
+
+- `pet_upgrade.sql` 合并了全部 12 个平台化补丁，**可重复执行**（跑几次都一样），首跑前无需备份也不会丢数据
+- 升级后新增后台菜单：订单管理、退款管理、采购管理；店长账号需**退出重登**刷新权限
+- 演示前重置某只被锁定的宠物：`UPDATE pet_info SET status='0' WHERE pet_id=?;`
+
 ## 部署后
 
 - 商城：`http://<公网IP>/shop/home`

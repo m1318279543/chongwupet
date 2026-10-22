@@ -27,14 +27,17 @@
 
     <!-- 订单列表（按订单号分组，一单多品） -->
     <div class="order-list" v-else v-loading="loading">
-      <div class="order-card" v-for="g in shownGroups" :key="g.groupKey"
+      <div class="order-card" v-for="g in shownGroups" :key="g.orderNo"
            :class="{ canceled: g.canceled, unpaid: g.unpaid }">
         <div class="order-head">
           <div class="head-left">
-            <span class="order-no">{{ g.legacy ? '历史订单（未生成单号）' : '订单 ' + g.orderNo }}</span>
-            <el-tag v-if="g.canceled" type="info" size="small">已取消</el-tag>
+            <span class="order-no">订单 {{ g.orderNo }}</span>
+            <el-tag v-if="g.refund && g.refund.status === '1'" type="info" size="small">已退款</el-tag>
+            <el-tag v-else-if="g.refund && g.refund.status === '0'" type="warning" size="small">退款审核中</el-tag>
+            <el-tag v-else-if="g.canceled" type="info" size="small">已取消</el-tag>
             <el-tag v-else-if="g.unpaid" type="warning" size="small">待支付</el-tag>
-            <el-tag v-else type="success" size="small">已支付 · {{ methodText(g.payMethod) }}</el-tag>
+            <el-tag v-else-if="g.shipped" type="primary" size="small">{{ g.isPet ? '已支付 · 待接宠' : '已支付 · 待发货' }}</el-tag>
+            <el-tag v-else type="success" size="small">已完成</el-tag>
           </div>
           <div class="head-right">
             <span class="order-time">
@@ -46,27 +49,31 @@
               @click="openCashier(g)"
             >去支付</el-button>
             <el-button
-              v-else-if="g.unpaid && g.legacy"
-              type="info" size="small" round plain
-              @click="legacyTip"
-            >历史订单</el-button>
+              v-if="canRefund(g)"
+              type="warning" link size="small"
+              :loading="refundingNo === g.orderNo"
+              @click="askRefund(g)"
+            >申请退款</el-button>
             <el-button
-              v-else-if="!g.canceled"
+              v-if="g.unpaid"
               type="danger" link size="small"
-              :loading="cancelingId === g.groupKey"
+              :loading="cancelingId === g.orderNo"
               @click="cancelOrder(g)"
             >取消订单</el-button>
           </div>
         </div>
-        <div class="order-body" v-for="o in g.items" :key="o.cartId">
+        <div class="order-body" v-for="o in g.items" :key="o.itemId">
           <img :src="o.goodsImage" class="thumb" v-if="o.goodsImage" @error="onImgErr" />
           <div class="goods-info">
-            <div class="name">{{ o.goodsName }}</div>
+            <div class="name">
+              {{ o.goodsName }}
+              <em v-if="o.itemType === '2'" class="pet-flag">宠物</em>
+            </div>
             <div class="spec">{{ o.goodsSpec }}</div>
           </div>
           <div class="col-price">¥{{ o.price }}</div>
           <div class="col-qty">×{{ o.qty }}</div>
-          <div class="col-sub">¥{{ (o.amount != null ? o.amount : o.price * o.qty).toFixed(2) }}</div>
+          <div class="col-sub">¥{{ Number(o.amount != null ? o.amount : o.price * o.qty).toFixed(2) }}</div>
         </div>
         <div class="order-total" v-if="g.items.length > 1">
           <span>共 {{ g.items.length }} 件，合计：</span>
@@ -126,7 +133,7 @@
         <div class="s-icon">✅</div>
         <h3>支付成功！</h3>
         <p class="s-amount">¥{{ current ? current.total.toFixed(2) : '' }}</p>
-        <p class="s-tip">我们会尽快为你安排发货，可在「我的订单」查看进度</p>
+        <p class="s-tip">{{ current && current.isPet ? '请带上身份证到门店接它回家，可在「我的订单」查看进度' : '我们会尽快为你安排发货，可在「我的订单」查看进度' }}</p>
         <el-button type="warning" round @click="closeCashier">完成</el-button>
       </div>
     </el-dialog>
@@ -139,7 +146,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
-import { listPetCart, cancelPetCart, payPetCart } from '@/api/pet/petCart'
+import { listMyOrders, payOrder, cancelOrder as cancelOrderApi } from '@/api/pet/petOrder'
+import { listMyRefunds, applyRefund } from '@/api/pet/petRefund'
 import { getMyWallet, rechargeWallet } from '@/api/pet/petWallet'
 
 const router = useRouter()
@@ -152,6 +160,8 @@ const rows = ref([])
 const loading = ref(false)
 const filter = ref('all')
 const cancelingId = ref(null)
+const refundingNo = ref(null)
+const refundMap = ref({})
 const payingNo = ref(null)
 
 // 收银台状态
@@ -216,40 +226,26 @@ async function askRecharge() {
 const methods = [
   { key: 'alipay', icon: '💰', name: '支付宝', desc: '推荐使用，秒到账', bg: 'linear-gradient(135deg,#1677ff,#69b1ff)' },
   { key: 'wechat', icon: '💬', name: '微信支付', desc: '微信快捷支付', bg: 'linear-gradient(135deg,#07c160,#5bd98a)' },
-  { key: 'balance', icon: '🐾', name: '平台余额', desc: '演示专用通道', bg: 'linear-gradient(135deg,#ff8c42,#ffb27a)' }
+  { key: 'balance', icon: '🐾', name: '平台余额', desc: '演示专用通道', bg: 'var(--grad-brand)' }
 ]
 function methodText(m) {
   return m === 'wechat' ? '微信' : m === 'balance' ? '余额' : m === 'alipay' ? '支付宝' : '线上'
 }
 
-// 按订单号分组（老数据没有单号时按 cartId 兜底）
-const groups = computed(() => {
-  const map = new Map()
-  for (const o of rows.value) {
-    const key = o.orderNo || 'C' + o.cartId
-    if (!map.has(key)) {
-      map.set(key, {
-        orderNo: o.orderNo || '',
-        groupKey: key,
-        legacy: !o.orderNo,
-        items: [],
-        canceled: false,
-        unpaid: false,
-        paid: false,
-        payMethod: o.payMethod,
-        createTime: o.createTime,
-        total: 0
-      })
-    }
-    const g = map.get(key)
-    g.items.push(o)
-    g.total += (o.amount != null ? o.amount : (o.price || 0) * (o.qty || 1))
-    if (o.status === '3') g.canceled = true
-    else if (o.payStatus === '1') g.paid = true
-    else g.unpaid = true
-  }
-  return [...map.values()].sort((a, b) => (b.createTime || '').localeCompare(a.createTime || ''))
-})
+// 订单头 + 明细直接来自 /pet/order/mine，不再前端拼单号
+const groups = computed(() => rows.value.map((o) => ({
+  orderNo: o.orderNo,
+  items: o.items || [],
+  canceled: o.status === '3',
+  unpaid: o.payStatus === '0' && o.status === '0',
+  paid: o.payStatus === '1',
+  shipped: o.status === '1',
+  isPet: o.orderType === '2' || (o.items || []).some((it) => it.itemType === '2'),
+  payMethod: o.payMethod,
+  createTime: String(o.createTime || '').replace('T', ' ').slice(5, 16),
+  total: Number(o.payAmount || 0),
+  refund: refundMap.value[o.orderNo] || null
+})))
 
 const shownGroups = computed(() => {
   if (filter.value === 'all') return groups.value
@@ -293,7 +289,7 @@ async function doPay() {
   }
   paying.value = true
   try {
-    await payPetCart(current.value.orderNo, payMethod.value)
+    await payOrder(current.value.orderNo, payMethod.value)
     paySuccess.value = true
     if (countdownTimer) clearInterval(countdownTimer)
     getList()
@@ -331,11 +327,9 @@ function cancelOrder(g) {
       type: 'warning'
     }
   ).then(async ({ value }) => {
-    cancelingId.value = g.groupKey
+    cancelingId.value = g.orderNo
     try {
-      for (const o of g.items.filter((x) => x.status !== '3')) {
-        await cancelPetCart(o.cartId, value || '')
-      }
+      await cancelOrderApi(g.orderNo, value || '')
       ElMessage.success('订单已取消')
       getList()
       window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
@@ -343,6 +337,38 @@ function cancelOrder(g) {
       ElMessage.error(e?.msg || e?.message || '取消失败')
     } finally {
       cancelingId.value = null
+    }
+  }).catch(() => {})
+}
+
+/** 已支付、未取消，且没有进行中/已完成的退款，才允许申请 */
+function canRefund(g) {
+  if (!g.paid || g.canceled) return false
+  if (g.refund && ['0', '1'].includes(g.refund.status)) return false
+  return true
+}
+
+function askRefund(g) {
+  ElMessageBox.prompt(
+    `订单 ${g.orderNo}，退款金额 ¥${g.total.toFixed(2)}。请填写退款原因：`,
+    '申请退款',
+    {
+      confirmButtonText: '提交申请',
+      cancelButtonText: '再想想',
+      inputPlaceholder: '如：接宠时间冲突 / 临时有事（选填）',
+      inputValue: '',
+      type: 'warning'
+    }
+  ).then(async ({ value }) => {
+    refundingNo.value = g.orderNo
+    try {
+      await applyRefund({ orderNo: g.orderNo, reason: value || '用户申请退款' })
+      ElMessage.success('退款申请已提交，等待门店审核')
+      getList()
+    } catch (e) {
+      ElMessage.error(e?.msg || e?.message || '申请失败')
+    } finally {
+      refundingNo.value = null
     }
   }).catch(() => {})
 }
@@ -356,9 +382,15 @@ function onImgErr(e) {
 function getList() {
   if (!isLogged.value) return
   loading.value = true
-  listPetCart({ pageNum: 1, pageSize: 200 })
-    .then((res) => {
-      rows.value = res.rows || []
+  Promise.all([listMyOrders(), listMyRefunds()])
+    .then(([res, rf]) => {
+      rows.value = res.data || []
+      const map = {}
+      // 同一订单可能有多条（被拒后可再申请），接口按 id 倒序，取第一条即最新
+      for (const r of (rf.data || [])) {
+        if (!map[r.orderNo]) map[r.orderNo] = r
+      }
+      refundMap.value = map
       loading.value = false
       // 从结算页跳转过来 ?pay=订单号：自动打开收银台
       const wantPay = route.query.pay
@@ -382,65 +414,69 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.order-page { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.order-page { max-width: var(--container-md); margin: 0 auto; padding: 24px; }
+.pet-flag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 11px; font-style: normal;
+  color: var(--brand-500); background: var(--brand-50); border: 1px solid var(--brand-200); border-radius: 4px;
+}
 .page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
-  h1 { font-size: 24px; color: #303133; margin: 0; }
-  .sub { color: #909399; font-size: 14px; }
+  h1 { font-size: 24px; color: var(--text-1); margin: 0; }
+  .sub { color: var(--text-3); font-size: 14px; }
   .head-filter { margin-left: auto; }
 }
 .empty { text-align: center; padding: 80px 0; background: #fff; border-radius: 14px;
   .empty-icon { font-size: 64px; opacity: .5; }
-  .empty-text { color: #909399; font-size: 16px; margin: 16px 0 24px; }
+  .empty-text { color: var(--text-3); font-size: 16px; margin: 16px 0 24px; }
 }
 .order-list { display: flex; flex-direction: column; gap: 14px; }
 .order-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.05); }
-.order-card.unpaid { border: 1px solid #ffe0c2; }
+.order-card.unpaid { border: 1px solid var(--brand-100); }
 .order-head { display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: #fafafa; border-bottom: 1px solid #f0f0f0;
+  padding: 12px 20px; background: var(--bg-page); border-bottom: 1px solid var(--border-2);
   .head-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .head-right { display: flex; align-items: center; gap: 12px; }
-  .order-no { font-size: 14px; font-weight: 600; color: #303133; }
-  .order-time { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #909399; }
+  .order-no { font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .order-time { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-3); }
 }
 .order-card.canceled {
   opacity: .72;
   .order-body { filter: grayscale(.35); }
 }
 .order-body { display: flex; align-items: center; gap: 16px; padding: 16px 20px;
-  & + .order-body { padding-top: 0; border-top: 1px dashed #f5f5f5; }
-  .thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: #f7f7f7; flex-shrink: 0; }
+  & + .order-body { padding-top: 0; border-top: 1px dashed var(--bg-sunken); }
+  .thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: var(--bg-page); flex-shrink: 0; }
   .goods-info { flex: 1; min-width: 0;
-    .name { font-size: 15px; color: #303133; font-weight: 600; }
-    .spec { font-size: 13px; color: #909399; margin-top: 4px; }
+    .name { font-size: 15px; color: var(--text-1); font-weight: 600; }
+    .spec { font-size: 13px; color: var(--text-3); margin-top: 4px; }
   }
-  .col-price { width: 100px; color: #606266; font-size: 14px; text-align: center; }
-  .col-qty { width: 80px; color: #606266; font-size: 14px; text-align: center; }
-  .col-sub { width: 120px; color: #ff8c42; font-weight: 700; font-size: 16px; text-align: right; }
+  .col-price { width: 100px; color: var(--text-2); font-size: 14px; text-align: center; }
+  .col-qty { width: 80px; color: var(--text-2); font-size: 14px; text-align: center; }
+  .col-sub { width: 120px; color: var(--brand-500); font-weight: 700; font-size: 16px; text-align: right; }
 }
 .order-total { display: flex; justify-content: flex-end; align-items: baseline; gap: 8px;
-  padding: 10px 20px 16px; color: #606266; font-size: 13px;
-  b { color: #ff8c42; font-size: 18px; }
+  padding: 10px 20px 16px; color: var(--text-2); font-size: 13px;
+  b { color: var(--brand-500); font-size: 18px; }
 }
 
 /* 收银台 */
 .cashier-head { display: flex; align-items: baseline; gap: 10px;
-  .cashier-no { font-size: 12px; color: #909399; }
+  .cashier-no { font-size: 12px; color: var(--text-3); }
 }
 .cashier-body {
   .cashier-amount { text-align: center; padding: 6px 0 18px;
-    .label { display: block; font-size: 13px; color: #909399; }
-    .num { font-size: 34px; font-weight: 700; color: #ff8c42; }
+    .label { display: block; font-size: 13px; color: var(--text-3); }
+    .num { font-size: 34px; font-weight: 700; color: var(--brand-500); }
   }
   .pay-methods { display: flex; flex-direction: column; gap: 10px; }
   .pay-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-    border: 1.5px solid #f0f0f0; border-radius: 12px; cursor: pointer; transition: all .15s;
-    &:hover { border-color: #ffd6b0; }
-    &.active { border-color: #ff8c42; background: #fffaf5; }
+    border: 1.5px solid var(--border-2); border-radius: 12px; cursor: pointer; transition: all .15s;
+    &:hover { border-color: var(--brand-200); }
+    &.active { border-color: var(--brand-500); background: var(--brand-50); }
     .pm-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center;
       justify-content: center; font-size: 18px; color: #fff; flex-shrink: 0; }
-    .pm-info { flex: 1; b { display: block; font-size: 14px; color: #303133; }
-      em { font-size: 12px; color: #909399; font-style: normal; } }
-    .pm-check { color: #ff8c42; font-weight: 700; width: 18px; text-align: center; }
+    .pm-info { flex: 1; b { display: block; font-size: 14px; color: var(--text-1); }
+      em { font-size: 12px; color: var(--text-3); font-style: normal; } }
+    .pm-check { color: var(--brand-500); font-weight: 700; width: 18px; text-align: center; }
   }
   .balance-tip { display: flex; align-items: center; gap: 8px; margin-top: 12px;
     padding: 9px 12px; background: #fffaf5; border: 1px solid #ffe1c7; border-radius: 8px;
@@ -448,17 +484,17 @@ onBeforeUnmount(() => {
     .bt-text.warn { color: #e6541f; font-weight: 600; }
   }
   .cashier-tip { display: flex; align-items: center; gap: 6px; margin-top: 14px;
-    padding: 9px 12px; background: #f5f7fa; border-radius: 8px; font-size: 12.5px; color: #909399; }
+    padding: 9px 12px; background: var(--bg-page); border-radius: 8px; font-size: 12.5px; color: var(--text-3); }
   .cashier-actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
 }
 .cashier-success { text-align: center; padding: 10px 0 6px;
   .s-icon { font-size: 56px; }
-  h3 { margin: 12px 0 4px; color: #303133; }
-  .s-amount { font-size: 26px; font-weight: 700; color: #ff8c42; margin: 0; }
-  .s-tip { font-size: 13px; color: #909399; margin: 8px 0 18px; }
+  h3 { margin: 12px 0 4px; color: var(--text-1); }
+  .s-amount { font-size: 26px; font-weight: 700; color: var(--brand-500); margin: 0; }
+  .s-tip { font-size: 13px; color: var(--text-3); margin: 8px 0 18px; }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .order-body { flex-wrap: wrap; gap: 8px;
     .goods-info { width: 100%; }
     .col-price, .col-qty { width: auto; flex: 1; text-align: left; }

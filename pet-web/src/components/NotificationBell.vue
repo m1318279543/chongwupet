@@ -187,14 +187,14 @@ defineExpose({ refresh: loadUnread })
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: #606266;
+  color: var(--text-2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   transition: background 0.18s;
-  &:hover { background: #f5f5f5; }
+  &:hover { background: var(--bg-sunken); }
 }
 .bell-btn.ringing { animation: bell-shake 0.9s ease; }
 @keyframes bell-shake {
@@ -212,7 +212,7 @@ defineExpose({ refresh: loadUnread })
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: #f56c6c;
+  background: var(--danger-500);
   color: #fff;
   font-size: 10px;
   line-height: 16px;
@@ -229,7 +229,7 @@ defineExpose({ refresh: loadUnread })
   background: #fff;
   border-radius: 14px;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
-  border: 1px solid #f2f2f2;
+  border: 1px solid var(--bg-sunken);
   z-index: 3000;
   overflow: hidden;
 }
@@ -238,8 +238,8 @@ defineExpose({ refresh: loadUnread })
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid #f5f5f5;
-  strong { font-size: 14px; color: #303133; }
+  border-bottom: 1px solid var(--bg-sunken);
+  strong { font-size: 14px; color: var(--text-1); }
   .np-actions { display: flex; align-items: center; gap: 4px; }
 }
 .np-list {
@@ -251,10 +251,10 @@ defineExpose({ refresh: loadUnread })
   gap: 10px;
   padding: 12px 14px;
   cursor: pointer;
-  border-bottom: 1px solid #fafafa;
+  border-bottom: 1px solid var(--bg-page);
   transition: background 0.15s;
-  &:hover { background: #fffaf6; }
-  &.unread { background: #fff9f4; }
+  &:hover { background: var(--brand-50); }
+  &.unread { background: var(--brand-50); }
   .np-icon { font-size: 18px; line-height: 1.2; flex-shrink: 0; }
   .np-body { flex: 1; min-width: 0; }
   .np-title {
@@ -263,39 +263,39 @@ defineExpose({ refresh: loadUnread })
     gap: 6px;
     font-size: 13.5px;
     font-weight: 600;
-    color: #303133;
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: #f56c6c; }
+    color: var(--text-1);
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--danger-500); }
   }
   .np-content {
     margin-top: 3px;
     font-size: 12.5px;
-    color: #606266;
+    color: var(--text-2);
     line-height: 1.55;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .np-time { margin-top: 4px; font-size: 11.5px; color: #c0c4cc; }
+  .np-time { margin-top: 4px; font-size: 11.5px; color: var(--text-4); }
 }
 .np-empty {
   text-align: center;
   padding: 28px 0;
-  color: #c0c4cc;
+  color: var(--text-4);
   span { font-size: 30px; }
   p { margin: 6px 0 0; font-size: 13px; }
 }
 .np-foot {
   padding: 8px 14px;
   text-align: center;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid var(--bg-sunken);
 }
 .np-enter-active,
 .np-leave-active { transition: opacity 0.16s ease, transform 0.16s ease; transform-origin: top right; }
 .np-enter-from,
 .np-leave-to { opacity: 0; transform: translateY(-6px) scale(0.97); }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .np-panel { position: fixed; top: 62px; right: 10px; left: auto; width: calc(100vw - 20px); }
 }
 </style>

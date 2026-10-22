@@ -113,6 +113,6 @@ onMounted(getList)
 <style scoped lang="scss">
 .consult-admin { padding: 4px; }
 .search-card { margin-bottom: 14px; }
-.table-card .card-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: #606266; }
+.table-card .card-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--text-2); }
 .pager { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

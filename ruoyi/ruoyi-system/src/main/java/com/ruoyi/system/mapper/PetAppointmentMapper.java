@@ -1,6 +1,8 @@
 package com.ruoyi.system.mapper;
 
+import java.util.Date;
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.PetAppointment;
 
 /**
@@ -21,4 +23,7 @@ public interface PetAppointmentMapper
     public int deletePetAppointmentByAppointmentId(Long appointmentId);
 
     public int deletePetAppointmentByAppointmentIds(Long[] appointmentIds);
+
+    /** 统计某门店某时段的已约数量（排除已取消） */
+    public int countBookedSlot(@Param("storeId") Long storeId, @Param("slotStart") Date slotStart);
 }

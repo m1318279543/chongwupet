@@ -6,11 +6,11 @@
     </section>
 
     <nav class="cat-tabs">
+      <!-- 选中态统一走品牌行动色，分类色只留作小圆点，避免 7 种颜色抢主色 -->
       <button v-for="c in FOOD_CATEGORIES" :key="c.id"
         class="cat-tab" :class="{ active: active === c.id }"
-        :style="active === c.id ? { background: c.color, borderColor: c.color } : {}"
         @click="active = c.id">
-        <span class="emoji">{{ c.emoji }}</span>{{ c.name }}
+        <i class="dot" :style="{ background: c.color }"></i>{{ c.name }}
       </button>
     </nav>
 
@@ -25,6 +25,9 @@
           <div class="meta">
             <span class="spec">{{ p.spec }}</span>
             <el-tag size="small" type="success" effect="plain">{{ p.stage }}</el-tag>
+            <el-tag v-if="p.stock !== undefined" size="small" :type="p.stock > 10 ? 'info' : (p.stock > 0 ? 'warning' : 'danger')" effect="plain">
+              {{ p.stock > 0 ? '库存 ' + p.stock : '暂时缺货' }}
+            </el-tag>
           </div>
           <div class="desc">{{ p.desc }}</div>
           <div class="price-row">
@@ -68,9 +71,12 @@
             <li><span class="k">储存方式</span><span class="v">{{ detail.storage }}</span></li>
           </ul>
           <div class="detail-actions">
-            <el-button type="warning" size="large" round @click="addToCart(detail)">
-              🛒 加入购物车
+            <el-button type="warning" size="large" round :disabled="detail && detail.stock === 0" @click="addToCart(detail)">
+              {{ detail && detail.stock === 0 ? '暂时缺货' : '🛒 加入购物车' }}
             </el-button>
+            <span class="stock-hint" v-if="detail">
+              {{ detail.stock > 0 ? '现货 ' + detail.stock + ' 件' : '补货中，可先咨询客服' }}
+            </span>
           </div>
         </div>
       </div>
@@ -87,6 +93,7 @@
 import { ref, computed, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
+import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
@@ -96,7 +103,45 @@ const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
 
 const active = ref('cat')
-const filtered = computed(() => FOOD_LIST.filter(p => p.cat === active.value))
+
+// 商品目录来自后端（价格与库存都由后台维护），接口不可用时退回静态数据兜底
+const goodsList = ref([])
+const fidByCode = {}
+FOOD_LIST.forEach((f) => { fidByCode[f.id] = f.fid })
+
+function adaptGoods(g) {
+  const fallback = FOOD_LIST.find((f) => f.id === g.goodsCode) || {}
+  return {
+    id: g.goodsCode,
+    goodsId: g.goodsId,
+    skuId: g.skus && g.skus.length ? g.skus[0].skuId : null,
+    fid: fallback.fid || fidByCode[g.goodsCode],
+    cat: g.cat,
+    image: g.image,
+    name: g.goodsName,
+    spec: g.spec,
+    price: Number(g.price),
+    stock: g.stock == null ? 0 : Number(g.stock),
+    stage: g.stage,
+    desc: g.description,
+    tags: g.tagList || [],
+    nutrition: g.nutrition,
+    feeding: g.feeding,
+    storage: g.storage
+  }
+}
+
+async function loadGoods() {
+  try {
+    const res = await listGoods({ status: '0', pageNum: 1, pageSize: 200 })
+    const rows = res.rows || []
+    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST
+  } catch (e) {
+    goodsList.value = FOOD_LIST
+  }
+}
+
+const filtered = computed(() => goodsList.value.filter(p => p.cat === active.value))
 
 // 详情弹窗
 // 评分角标：fid -> {avg,count}
@@ -113,7 +158,10 @@ async function loadRatings() {
     ratingMap.value = m
   } catch (e) { /* 静默 */ }
 }
-onMounted(loadRatings)
+onMounted(() => {
+  loadRatings()
+  loadGoods()
+})
 
 const detailVisible = ref(false)
 const detail = ref(null)
@@ -125,29 +173,36 @@ function openDetail(p) {
 
 // 加入购物车：写入 store（持久化）
 function addToCart(p) {
+  if (p.stock === 0) {
+    ElMessage.warning('该商品暂时缺货')
+    return
+  }
   cartStore.addItem(p)
   ElMessage.success(`已将「${p.name}」加入购物车`)
 }
 </script>
 
 <style scoped lang="scss">
-.food-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.stock-hint { margin-left: 12px; font-size: 12px; color: var(--text-3); }
+
+.food-page { max-width: var(--container-lg); margin: 0 auto; padding: 24px; }
 .hero {
   text-align: center; padding: 36px 16px;
-  background: linear-gradient(135deg, #fff4ea, #ffe9d6);
+  background: linear-gradient(135deg, var(--brand-50), var(--brand-100));
   border-radius: 16px; margin-bottom: 24px;
-  h1 { font-size: 28px; color: #ff8c42; margin: 0 0 8px; }
-  p { color: #909399; margin: 0; font-size: 15px; }
+  h1 { font-size: 28px; color: var(--brand-500); margin: 0 0 8px; }
+  p { color: var(--text-3); margin: 0; font-size: 15px; }
 }
 .cat-tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 28px; }
 .cat-tab {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 18px; border: 1px solid #eee; background: #fff;
-  border-radius: 999px; cursor: pointer; font-size: 15px; color: #606266;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 18px; border: 1px solid var(--border-1); background: #fff;
+  border-radius: 999px; cursor: pointer; font-size: 15px; color: var(--text-2);
   transition: all .2s;
-  .emoji { font-size: 18px; }
-  &:hover { border-color: #ff8c42; color: #ff8c42; }
-  &.active { color: #fff; font-weight: 600; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  &:hover { border-color: var(--brand-300); color: var(--brand-700); }
+  &.active { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600;
+    .dot { background: rgba(255, 255, 255, .75) !important; } }
 }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; }
 .card {
@@ -156,32 +211,32 @@ function addToCart(p) {
   transition: transform .2s, box-shadow .2s;
   &:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0, 0, 0, .1); }
   .thumb {
-    position: relative; height: 200px; background: #f7f7f7;
+    position: relative; height: 200px; background: var(--bg-page);
     display: flex; align-items: center; justify-content: center; overflow: hidden;
     img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
     &:hover img { transform: scale(1.06); }
     .view-mask {
       position: absolute; right: 10px; bottom: 10px;
-      background: rgba(255, 140, 66, .92); color: #fff;
+      background: rgb(var(--brand-500-rgb) / .92); color: #fff;
       font-size: 12px; padding: 4px 10px; border-radius: 12px;
       opacity: 0; transform: translateY(6px); transition: all .2s;
     }
     &:hover .view-mask { opacity: 1; transform: translateY(0); }
   }
   .body { padding: 16px; }
-  .name { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 8px; }
+  .name { font-size: 16px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; }
   .meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .spec { font-size: 13px; color: #909399; }
-  .desc { font-size: 13px; color: #606266; line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
-  .price { color: #ff8c42; font-size: 20px; font-weight: 700;
-    .unit { font-size: 12px; color: #c0c4cc; font-weight: 400; margin-left: 2px; }
+  .spec { font-size: 13px; color: var(--text-3); }
+  .desc { font-size: 13px; color: var(--text-2); line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
+  .price { color: var(--brand-500); font-size: 20px; font-weight: 700;
+    .unit { font-size: 12px; color: var(--text-4); font-weight: 400; margin-left: 2px; }
   }
 }
 .tip {
   margin-top: 32px; padding: 20px 24px;
-  background: #fffaf3; border: 1px solid #ffe2c4; border-radius: 12px;
-  h3 { margin: 0 0 8px; color: #ff8c42; font-size: 16px; }
-  p { margin: 0; color: #606266; font-size: 14px; line-height: 1.7; }
+  background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 12px;
+  h3 { margin: 0 0 8px; color: var(--brand-500); font-size: 16px; }
+  p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.7; }
 }
 
 /* 详情弹窗 */
@@ -192,23 +247,23 @@ function addToCart(p) {
     :deep(.pet-social) { margin-top: 0; border-radius: 12px; padding: 22px 22px; }
   }
   .detail { display: flex; gap: 0; min-height: 360px;
-    .detail-left { width: 320px; flex-shrink: 0; background: #f7f7f7;
+    .detail-left { width: 320px; flex-shrink: 0; background: var(--bg-page);
       img { width: 100%; height: 100%; max-height: 420px; object-fit: cover; display: block; }
     }
     .detail-right { flex: 1; padding: 24px 28px; }
-    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #ff8c42;
-      background: #fff3e8; padding: 3px 12px; border-radius: 12px; margin-bottom: 12px;
+    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--brand-500);
+      background: var(--brand-50); padding: 3px 12px; border-radius: 12px; margin-bottom: 12px;
       .emoji { font-size: 16px; }
     }
-    .detail-name { font-size: 22px; color: #303133; margin: 0 0 10px; }
-    .detail-price { color: #ff8c42; font-size: 26px; font-weight: 700; margin-bottom: 12px;
-      .unit { font-size: 13px; color: #c0c4cc; font-weight: 400; margin-left: 3px; }
+    .detail-name { font-size: 22px; color: var(--text-1); margin: 0 0 10px; }
+    .detail-price { color: var(--brand-500); font-size: 26px; font-weight: 700; margin-bottom: 12px;
+      .unit { font-size: 13px; color: var(--text-4); font-weight: 400; margin-left: 3px; }
     }
     .detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
     .detail-list { list-style: none; margin: 0 0 20px; padding: 0;
       li { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 14px;
-        .k { color: #909399; width: 76px; flex-shrink: 0; }
-        .v { color: #303133; line-height: 1.6; flex: 1; }
+        .k { color: var(--text-3); width: 76px; flex-shrink: 0; }
+        .v { color: var(--text-1); line-height: 1.6; flex: 1; }
       }
     }
     .detail-actions { display: flex; gap: 14px; flex-wrap: wrap;
@@ -216,7 +271,7 @@ function addToCart(p) {
     }
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .food-detail-dialog .detail { flex-direction: column;
     .detail-left { width: 100%; img { max-height: min(240px, 30vh); } }
   }
@@ -241,7 +296,7 @@ function addToCart(p) {
     }
     .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
     .price-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.rating-tag { font-size: 12px; color: #d2691e; background: #fff7f1; border-radius: 10px;
+.rating-tag { font-size: 12px; color: var(--brand-700); background: var(--brand-50); border-radius: 10px;
   padding: 2px 8px; white-space: nowrap; }
 .price { font-size: 15px;
       .unit { font-size: 11px; }

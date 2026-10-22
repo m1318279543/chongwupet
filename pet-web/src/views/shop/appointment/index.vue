@@ -35,23 +35,47 @@
               </div>
             </div>
             <div class="apt-meta">
-              <span class="meta-item"><el-icon><Calendar /></el-icon> {{ item.appointmentDate }}</span>
+              <span class="meta-item"><el-icon><Calendar /></el-icon> {{ fmtTime(item.appointmentDate) }}</span>
               <span class="meta-item"><el-icon><Phone /></el-icon> {{ item.contactPhone }}</span>
             </div>
             <div class="apt-remark" v-if="item.remark">留言：{{ item.remark }}</div>
+
+            <!-- 服务工单：预约被门店接单后才算真正排上，进度看这里 -->
+            <div class="svc" v-if="svcOf(item)">
+              <span class="svc-no">工单 {{ svcOf(item).serviceNo }}</span>
+              <el-tag size="small" :type="svcType(svcOf(item).status)">{{ svcText(svcOf(item).status) }}</el-tag>
+              <span class="svc-staff" v-if="svcOf(item).staffName">执行：{{ svcOf(item).staffName }}</span>
+              <el-button v-if="svcOf(item).status === '3' && !svcOf(item).score" link type="primary" size="small" @click="openEval(svcOf(item))">评价服务</el-button>
+              <span class="svc-score" v-if="svcOf(item).score">已评 {{ svcOf(item).score }} 分</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 服务评价 -->
+    <el-dialog v-model="evalOpen" title="评价本次服务" width="420px" append-to-body>
+      <div class="eval-box">
+        <p class="eval-title">{{ evalRow.itemName }}</p>
+        <el-rate v-model="evalForm.score" :texts="['很不满意','不满意','一般','满意','非常满意']" show-text />
+        <el-input v-model="evalForm.comment" type="textarea" :rows="3" maxlength="200" show-word-limit
+          placeholder="说说这次服务怎么样（选填）" style="margin-top:12px" />
+      </div>
+      <template #footer>
+        <el-button @click="evalOpen = false">取消</el-button>
+        <el-button type="primary" :loading="evalSubmitting" @click="submitEval">提交评价</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from 'vue'
+import { ref, reactive, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Phone } from '@element-plus/icons-vue'
-import { listPetAppointment, cancelPetAppointment } from '@/api/pet/petAppointment'
+import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
 import { listPetInfo } from '@/api/pet/petInfo'
+import { listMyServiceOrders, evaluateServiceOrder } from '@/api/pet/petService'
 import { useUserStore } from '@/store/modules/user'
 
 const userStore = useUserStore()
@@ -59,6 +83,50 @@ const openAuth = inject('openAuth', () => {})
 const loading = ref(false)
 const list = ref([])
 const cancelingId = ref(null)
+const serviceMap = ref({})
+const evalOpen = ref(false)
+const evalRow = ref({})
+const evalSubmitting = ref(false)
+const evalForm = reactive({ score: 5, comment: '' })
+
+function svcOf(item) { return serviceMap.value[item.appointmentId] }
+function svcText(s) { return { 0: '待接单', 1: '已接单', 2: '服务中', 3: '已完成', 4: '已取消', 5: '爽约' }[s] || '' }
+function svcType(s) { return { 0: 'warning', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger' }[s] || 'info' }
+
+function openEval(row) {
+  evalRow.value = row
+  evalForm.score = 5
+  evalForm.comment = ''
+  evalOpen.value = true
+}
+
+function submitEval() {
+  if (!evalForm.score) {
+    ElMessage.warning('请先选择评分')
+    return
+  }
+  evalSubmitting.value = true
+  evaluateServiceOrder(evalRow.value.serviceId, { score: evalForm.score, comment: evalForm.comment })
+    .then((res) => {
+      ElMessage.success(res.msg || '感谢你的评价')
+      evalOpen.value = false
+      return loadService()
+    })
+    .catch((e) => ElMessage.error(e?.msg || '评价失败'))
+    .finally(() => { evalSubmitting.value = false })
+}
+
+async function loadService() {
+  if (!userStore.token) return
+  try {
+    const res = await listMyServiceOrders()
+    const map = {}
+    ;(res.data || []).forEach((o) => { if (o.appointmentId) map[o.appointmentId] = o })
+    serviceMap.value = map
+  } catch (e) {
+    serviceMap.value = {}
+  }
+}
 
 const emojiPool = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🐟', '🦎']
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
@@ -66,6 +134,11 @@ function petEmoji(c) { return emojiPool[(c || 0) % emojiPool.length] }
 function petGradient(id) {
   const colors = [['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0']]
   return `linear-gradient(135deg, ${colors[(id||0)%colors.length][0]}, ${colors[(id||0)%colors.length][1]})`
+}
+function fmtTime(v) {
+  if (!v) return '—'
+  const str = String(v).replace('T', ' ')
+  return str.slice(5, 16)
 }
 function statusText(s) { return ['待处理', '已确认', '已完成', '已取消'][s] || '未知' }
 function statusType(s) { return ['warning', 'primary', 'success', 'info'][s] || 'info' }
@@ -104,13 +177,13 @@ async function loadData() {
   loading.value = true
   try {
     const [aptRes, petRes] = await Promise.all([
-      listPetAppointment({ userId: userStore.userId, pageNum: 1, pageSize: 1000 }),
+      listMyAppointments(),
       listPetInfo({ pageNum: 1, pageSize: 1000 }).catch(() => ({ rows: [] }))
     ])
     const pets = petRes.rows || []
     const petMap = {}
     pets.forEach(p => petMap[p.petId] = p)
-    list.value = (aptRes.rows || []).map(a => ({
+    list.value = (aptRes.data || []).map(a => ({
       ...a,
       petName: petMap[a.petId]?.petName,
       categoryId: petMap[a.petId]?.categoryId
@@ -122,17 +195,22 @@ async function loadData() {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadService()
+})
 </script>
 
 <style scoped lang="scss">
-.my-apt { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
-.guest-alert { background: #fff7ef; border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; font-size: 14px; color: #a06a3c; display: flex; align-items: center; gap: 4px; }
+.eval-box { .eval-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-1); } }
+
+.my-apt { max-width: var(--container-md); margin: 0 auto; padding: 32px 24px; }
+.guest-alert { background: var(--brand-50); border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; font-size: 14px; color: var(--brand-800); display: flex; align-items: center; gap: 4px; }
 .page-head { margin-bottom: 24px;
-  h1 { font-size: 26px; color: #303133; margin: 0 0 4px; }
-  p { color: #909399; margin: 0; }
+  h1 { font-size: 26px; color: var(--text-1); margin: 0 0 4px; }
+  p { color: var(--text-3); margin: 0; }
 }
-.empty { text-align: center; padding: 80px 0; color: #c0c4cc;
+.empty { text-align: center; padding: 80px 0; color: var(--text-4);
   .icon { font-size: 56px; display: block; margin-bottom: 12px; }
 }
 .timeline { display: flex; flex-direction: column; gap: 16px; }
@@ -144,12 +222,17 @@ onMounted(loadData)
   }
   .apt-body { flex: 1; }
   .apt-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
-    .pet-name { font-size: 18px; font-weight: 600; color: #303133; }
+    .pet-name { font-size: 18px; font-weight: 600; color: var(--text-1); }
     .apt-ops { display: flex; align-items: center; gap: 12px; }
   }
-  .apt-meta { display: flex; gap: 20px; color: #606266; font-size: 14px;
+  .apt-meta { display: flex; gap: 20px; color: var(--text-2); font-size: 14px;
     .meta-item { display: flex; align-items: center; gap: 4px; }
   }
-  .apt-remark { margin-top: 8px; color: #909399; font-size: 13px; background: #f5f7fa; padding: 8px 12px; border-radius: 6px; }
+  .svc { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-1); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    .svc-no { font-size: 12px; color: var(--text-3); }
+    .svc-staff { font-size: 12px; color: var(--text-2); }
+    .svc-score { font-size: 12px; color: var(--warning-500); }
+  }
+  .apt-remark { margin-top: 8px; color: var(--text-3); font-size: 13px; background: var(--bg-page); padding: 8px 12px; border-radius: 6px; }
 }
 </style>

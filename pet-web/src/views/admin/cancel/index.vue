@@ -135,18 +135,18 @@ getList();
 </script>
 
 <style scoped lang="scss">
-.sub-id { font-size: 12px; color: #909399; margin-top: 2px; }
-.name-text { color: #303133; font-weight: 600; }
-.detail-text { color: #606266; }
-.reason-text { color: #e6a23c; }
-.detail-box { font-size: 14px; color: #303133;
-  .d-row { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px dashed #f0f0f0;
-    .d-lbl { width: 72px; color: #909399; flex-shrink: 0; }
+.sub-id { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.name-text { color: var(--text-1); font-weight: 600; }
+.detail-text { color: var(--text-2); }
+.reason-text { color: var(--warning-500); }
+.detail-box { font-size: 14px; color: var(--text-1);
+  .d-row { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border-2);
+    .d-lbl { width: 72px; color: var(--text-3); flex-shrink: 0; }
   }
   .d-block { margin-top: 14px;
-    .d-title { font-size: 14px; font-weight: 600; color: #303133; margin-bottom: 6px; }
-    .d-content { background: #f7f8fa; border-radius: 8px; padding: 12px 14px; line-height: 1.8; white-space: pre-wrap; word-break: break-word;
-      &.r { background: #fff8f1; border: 1px solid #ffe2c7; }
+    .d-title { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+    .d-content { background: var(--bg-page); border-radius: 8px; padding: 12px 14px; line-height: 1.8; white-space: pre-wrap; word-break: break-word;
+      &.r { background: var(--brand-50); border: 1px solid var(--brand-100); }
     }
   }
 }

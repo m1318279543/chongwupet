@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetPurchaseMapper">
+
+    <resultMap type="PetPurchase" id="PetPurchaseResult">
+        <result property="purchaseId"  column="purchase_id"  />
+        <result property="purchaseNo"  column="purchase_no"  />
+        <result property="storeId"     column="store_id"     />
+        <result property="storeName"   column="store_name"   />
+        <result property="supplier"    column="supplier"     />
+        <result property="status"      column="status"       />
+        <result property="itemCount"   column="item_count"   />
+        <result property="totalQty"    column="total_qty"    />
+        <result property="totalAmount" column="total_amount" />
+        <result property="expectTime"  column="expect_time"  />
+        <result property="inboundTime" column="inbound_time" />
+        <result property="inboundBy"   column="inbound_by"   />
+        <result property="remark"      column="remark"       />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+    </resultMap>
+
+    <resultMap type="PetPurchaseItem" id="PetPurchaseItemResult">
+        <result property="itemId"      column="item_id"      />
+        <result property="purchaseId"  column="purchase_id"  />
+        <result property="purchaseNo"  column="purchase_no"  />
+        <result property="goodsId"     column="goods_id"     />
+        <result property="skuId"       column="sku_id"       />
+        <result property="goodsName"   column="goods_name"   />
+        <result property="goodsImage"  column="goods_image"  />
+        <result property="spec"        column="spec"         />
+        <result property="costPrice"   column="cost_price"   />
+        <result property="qty"         column="qty"          />
+        <result property="amount"      column="amount"       />
+        <result property="stockBefore" column="stock_before" />
+        <result property="createTime"  column="create_time"  />
+    </resultMap>
+
+    <sql id="selectPetPurchaseVo">
+        select p.purchase_id, p.purchase_no, p.store_id, p.supplier, p.status, p.item_count, p.total_qty,
+               p.total_amount, p.expect_time, p.inbound_time, p.inbound_by, p.remark,
+               p.create_by, p.create_time, p.update_by, p.update_time,
+               s.store_name
+        from pet_purchase p
+        left join pet_store s on s.store_id = p.store_id
+    </sql>
+
+    <select id="selectPetPurchaseList" parameterType="PetPurchase" resultMap="PetPurchaseResult">
+        <include refid="selectPetPurchaseVo"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (p.purchase_no like concat('%', #{keyword}, '%')
+                     or p.supplier like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="storeId != null">AND p.store_id = #{storeId}</if>
+            <if test="status != null and status != ''">AND p.status = #{status}</if>
+            <if test="queryDate != null and queryDate != ''">
+                AND date(p.create_time) = #{queryDate}
+            </if>
+        </where>
+        order by p.purchase_id desc
+    </select>
+
+    <select id="selectPetPurchaseByNo" resultMap="PetPurchaseResult">
+        <include refid="selectPetPurchaseVo"/>
+        where p.purchase_no = #{purchaseNo}
+    </select>
+
+    <select id="selectItemsByPurchaseNo" resultMap="PetPurchaseItemResult">
+        select item_id, purchase_id, purchase_no, goods_id, sku_id, goods_name, goods_image, spec,
+               cost_price, qty, amount, stock_before, create_time
+        from pet_purchase_item where purchase_no = #{purchaseNo} order by item_id asc
+    </select>
+
+    <select id="selectItemsByPurchaseIds" resultMap="PetPurchaseItemResult">
+        select item_id, purchase_id, purchase_no, goods_id, sku_id, goods_name, goods_image, spec,
+               cost_price, qty, amount, stock_before, create_time
+        from pet_purchase_item where purchase_id in
+        <foreach item="id" collection="purchaseIds" open="(" separator="," close=")">#{id}</foreach>
+        order by item_id asc
+    </select>
+
+    <insert id="insertPetPurchase" parameterType="PetPurchase" useGeneratedKeys="true" keyProperty="purchaseId">
+        insert into pet_purchase
+        (purchase_no, store_id, supplier, status, item_count, total_qty, total_amount,
+         expect_time, remark, create_by, create_time)
+        values
+        (#{purchaseNo}, #{storeId}, #{supplier}, #{status}, #{itemCount}, #{totalQty}, #{totalAmount},
+         #{expectTime}, #{remark}, #{createBy}, sysdate())
+    </insert>
+
+    <insert id="insertPetPurchaseItem" parameterType="PetPurchaseItem" useGeneratedKeys="true" keyProperty="itemId">
+        insert into pet_purchase_item
+        (purchase_id, purchase_no, goods_id, sku_id, goods_name, goods_image, spec, cost_price, qty, amount, create_time)
+        values
+        (#{purchaseId}, #{purchaseNo}, #{goodsId}, #{skuId}, #{goodsName}, #{goodsImage}, #{spec},
+         #{costPrice}, #{qty}, #{amount}, sysdate())
+    </insert>
+
+    <update id="updatePetPurchase" parameterType="PetPurchase">
+        update pet_purchase
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="status != null">status = #{status},</if>
+            <if test="supplier != null">supplier = #{supplier},</if>
+            <if test="inboundTime != null">inbound_time = #{inboundTime},</if>
+            <if test="inboundBy != null">inbound_by = #{inboundBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where purchase_no = #{purchaseNo}
+    </update>
+
+    <update id="updateItemStockBefore" parameterType="PetPurchaseItem">
+        update pet_purchase_item set stock_before = #{stockBefore} where item_id = #{itemId}
+    </update>
+
+    <select id="selectTodayStats" resultType="java.util.LinkedHashMap">
+        select
+            ifnull(sum(case when status = '0' then 1 else 0 end), 0) as pending,
+            ifnull(sum(case when status = '1' and date(inbound_time) = #{date} then total_amount else 0 end), 0) as inboundAmount,
+            ifnull(sum(case when status = '1' then 1 else 0 end), 0) as inboundCount,
+            ifnull((select count(*) from pet_goods g where g.del_flag = '0' and g.status = '0' and g.stock &lt;= 10), 0) as lowStock
+        from pet_purchase
+        <where>
+            <if test="storeId != null">store_id = #{storeId}</if>
+        </where>
+    </select>
+
+</mapper>

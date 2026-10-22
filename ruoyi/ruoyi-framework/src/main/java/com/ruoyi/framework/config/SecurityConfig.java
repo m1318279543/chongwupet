@@ -115,6 +115,12 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.GET, "/pet/issue/**").permitAll()
                     // 宠物医生智能问答：公开
                     .requestMatchers(HttpMethod.GET, "/pet/issue/doctor/**").permitAll()
+                    // 预约时段查询：游客可看（提交预约仍需登录）
+                    .requestMatchers(HttpMethod.GET, "/pet/appointment/slots").permitAll()
+                    // 商品与宠物粮：游客可浏览列表与详情（下单仍需登录）
+                    .requestMatchers(HttpMethod.GET, "/pet/goods/list", "/pet/goods/shop/**").permitAll()
+                    // 门店选项：地址/电话/营业时间属公开信息，首页门店区与预约页都需要
+                    .requestMatchers(HttpMethod.GET, "/pet/store/options").permitAll()
                     // AI 宠物智能匹配问卷：游客可提交问卷（登录后用协同过滤增强）
                     .requestMatchers(HttpMethod.POST, "/pet/match/recommend").permitAll()
                     // 全站 AI 助手：游客可用（服务端有 IP 限流）

@@ -24,6 +24,11 @@ import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.PetAppointment;
 import com.ruoyi.system.service.IPetAppointmentService;
+import com.ruoyi.system.domain.PetCustomer;
+import com.ruoyi.system.domain.PetServiceOrder;
+import com.ruoyi.system.service.IPetCustomerService;
+import com.ruoyi.system.service.IPetScopeService;
+import com.ruoyi.system.service.IPetServiceOrderService;
 import com.ruoyi.system.service.IPetNotificationService;
 
 /**
@@ -44,6 +49,15 @@ public class PetAppointmentController extends BaseController
     @Autowired
     private IPetNotificationService petNotificationService;
 
+    @Autowired
+    private IPetCustomerService petCustomerService;
+
+    @Autowired
+    private IPetScopeService petScopeService;
+
+    @Autowired
+    private IPetServiceOrderService petServiceOrderService;
+
     /** 预约状态 -> 中文 */
     private static String statusText(String status)
     {
@@ -59,13 +73,33 @@ public class PetAppointmentController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(PetAppointment petAppointment)
     {
-        if (!SecurityUtils.isAdmin())
+        Long scope = petScopeService.currentStoreId();
+        if (scope != null)
+        {
+            // 店长/店员：按门店看全店数据；未绑定门店则查不到任何数据
+            petAppointment.setStoreId(scope);
+            petAppointment.setUserId(null);
+        }
+        else if (!SecurityUtils.isAdmin())
         {
             petAppointment.setUserId(SecurityUtils.getUserId());
         }
         startPage();
         List<PetAppointment> list = petAppointmentService.selectPetAppointmentList(petAppointment);
         return getDataTable(list);
+    }
+
+    /**
+     * 我的预约：只按当前登录账号过滤，不受门店数据范围影响。
+     * 前台"我的预约"必须用这个接口——员工账号同时也可能到店消费，
+     * 用后台列表接口会把全店预约都查出来。
+     */
+    @GetMapping("/mine")
+    public AjaxResult mine()
+    {
+        PetAppointment query = new PetAppointment();
+        query.setUserId(SecurityUtils.getUserId());
+        return success(petAppointmentService.selectPetAppointmentList(query));
     }
 
     @PreAuthorize("@ss.hasPermi('pet:appointment:export')")
@@ -97,6 +131,15 @@ public class PetAppointmentController extends BaseController
     }
 
     /**
+     * 门店可选时段（游客可查，用于详情页预约弹窗）
+     */
+    @GetMapping("/slots")
+    public AjaxResult slots(@RequestParam("storeId") Long storeId, @RequestParam("date") String date)
+    {
+        return success(petAppointmentService.selectSlots(storeId, date));
+    }
+
+    /**
      * 新增预约：登录即可，普通用户自动归属当前账号
      */
     @Log(title = "预约管理", businessType = BusinessType.INSERT)
@@ -111,7 +154,31 @@ public class PetAppointmentController extends BaseController
         {
             petAppointment.setStatus("0");
         }
-        return toAjax(petAppointmentService.insertPetAppointment(petAppointment));
+        // 主数据：预约落库时绑定客户与门店，便于后台按门店排期
+        PetCustomer customer = petCustomerService.selectPetCustomerByUserId(petAppointment.getUserId());
+        if (customer != null)
+        {
+            if (petAppointment.getCustomerId() == null)
+            {
+                petAppointment.setCustomerId(customer.getCustomerId());
+            }
+            if (petAppointment.getStoreId() == null)
+            {
+                petAppointment.setStoreId(customer.getStoreId());
+            }
+        }
+        if (petAppointment.getStoreId() == null)
+        {
+            petAppointment.setStoreId(1L);
+        }
+        int rows = petAppointmentService.insertPetAppointment(petAppointment);
+        if (rows > 0 && petAppointment.getAppointmentId() != null)
+        {
+            // 预约只是"客户想来"，落库后立刻生成工单，店里才有活可派
+            PetAppointment created = petAppointmentService.selectPetAppointmentByAppointmentId(petAppointment.getAppointmentId());
+            petServiceOrderService.createFromAppointment(created == null ? petAppointment : created);
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -166,6 +233,18 @@ public class PetAppointmentController extends BaseController
         }
         boolean byAdmin = SecurityUtils.isAdmin() && !SecurityUtils.getUserId().equals(origin.getUserId());
         petAppointmentService.cancelPetAppointment(appointmentId, reason);
+        // 联动取消由该预约生成的工单，避免工单还能被接单
+        PetServiceOrder query = new PetServiceOrder();
+        query.setAppointmentId(appointmentId);
+        java.util.List<PetServiceOrder> related = petServiceOrderService.selectPetServiceOrderList(query);
+        for (PetServiceOrder order : related)
+        {
+            if (!"3".equals(order.getStatus()) && !"4".equals(order.getStatus()))
+            {
+                petServiceOrderService.cancel(order.getServiceId(), SecurityUtils.getUsername(),
+                        StringUtils.isBlank(reason) ? "客户取消预约" : reason);
+            }
+        }
         petNotificationService.push(origin.getUserId(), origin.getUserName(), "appointment",
                 byAdmin ? "预约已被管理员取消" : "预约已取消",
                 "你预约看宠「" + (origin.getPetName() == null ? "" : origin.getPetName()) + "」的记录已取消"
