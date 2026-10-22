@@ -38,7 +38,10 @@
           <el-button size="large" round :type="isFav ? 'danger' : 'default'" @click="toggleFav">
             {{ isFav ? '❤️ 已收藏' : '🤍 收藏' }}
           </el-button>
-          <el-button size="large" type="primary" round @click="showAppoint = true">📅 立即预约</el-button>
+          <el-button size="large" type="primary" round :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
+            {{ pet.status === '0' ? '🛒 立即购买' : '已被订走' }}
+          </el-button>
+          <el-button size="large" type="primary" plain round @click="openAppoint">📅 立即预约</el-button>
           <el-button size="large" round class="ai-ask" @click="askAi">🤖 问 AI</el-button>
         </div>
       </div>
@@ -154,8 +157,24 @@
         <el-form-item label="宠物">
           <el-input :value="pet.petName" disabled />
         </el-form-item>
-        <el-form-item label="预约日期" prop="appointmentDate">
-          <el-date-picker v-model="appointForm.appointmentDate" type="datetime" placeholder="选择预约时间" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+        <el-form-item label="到店门店" prop="storeId">
+          <el-select v-model="appointForm.storeId" placeholder="选择门店" style="width:100%" @change="loadSlots">
+            <el-option v-for="s in stores" :key="s.storeId" :label="s.storeName" :value="s.storeId" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="到店日期" prop="date">
+          <el-date-picker v-model="appointForm.date" type="date" value-format="YYYY-MM-DD" :disabled-date="disabledDate" placeholder="选择日期" style="width:100%" @change="loadSlots" />
+        </el-form-item>
+        <el-form-item label="到店时段" prop="slot">
+          <div class="slot-grid" v-loading="slotLoading">
+            <button v-for="s in slots" :key="s.slot" type="button" class="slot"
+              :class="{ active: appointForm.slot === s.slot, full: s.available === 0 }"
+              :disabled="s.available === 0" @click="appointForm.slot = s.slot">
+              <b>{{ s.slot }}</b>
+              <span>{{ s.available > 0 ? '剩 ' + s.available : '已满' }}</span>
+            </button>
+            <p class="slot-empty" v-if="!slotLoading && slots.length === 0">请先选择门店与日期</p>
+          </div>
         </el-form-item>
         <el-form-item label="联系电话" prop="contactPhone">
           <el-input v-model="appointForm.contactPhone" placeholder="请输入11位手机号" maxlength="11" show-word-limit inputmode="numeric" />
@@ -175,10 +194,12 @@
 <script setup>
 import { ref, reactive, onMounted, inject, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPetInfo } from '@/api/pet/petInfo'
+import { createPetOrder } from '@/api/pet/petOrder'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
-import { addPetAppointment } from '@/api/pet/petAppointment'
+import { addPetAppointment, getAppointmentSlots } from '@/api/pet/petAppointment'
+import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
 import { getPetPreference } from '@/api/pet/petPreference'
 import { listIssueFront } from '@/api/pet/petHealthIssue'
@@ -198,10 +219,16 @@ const loading = ref(true)
 const isFav = ref(false)
 const showAppoint = ref(false)
 const submitting = ref(false)
+const buying = ref(false)
 const appointRef = ref()
-const appointForm = reactive({ appointmentDate: '', contactPhone: '', remark: '' })
+const appointForm = reactive({ storeId: null, date: '', slot: '', contactPhone: '', remark: '' })
+const stores = ref([])
+const slots = ref([])
+const slotLoading = ref(false)
 const appointRules = {
-  appointmentDate: [{ required: true, message: '请选择预约日期', trigger: 'change' }],
+  storeId: [{ required: true, message: '请选择门店', trigger: 'change' }],
+  date: [{ required: true, message: '请选择到店日期', trigger: 'change' }],
+  slot: [{ required: true, message: '请选择到店时段', trigger: 'change' }],
   contactPhone: [
     { required: true, message: '请输入联系电话', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号（1开头，共11位数字）', trigger: 'blur' }
@@ -308,6 +335,71 @@ async function toggleFav() {
   }
 }
 
+function disabledDate(d) {
+  return d.getTime() < Date.now() - 24 * 3600 * 1000
+}
+
+async function loadSlots() {
+  appointForm.slot = ''
+  slots.value = []
+  if (!appointForm.storeId || !appointForm.date) return
+  slotLoading.value = true
+  try {
+    const res = await getAppointmentSlots(appointForm.storeId, appointForm.date)
+    slots.value = res.data || []
+  } catch (e) {
+    slots.value = []
+  } finally {
+    slotLoading.value = false
+  }
+}
+
+/** 立即购买：下单即锁定宠物，支付走订单收银台 */
+async function buyNow() {
+  if (!userStore.token) {
+    ElMessage.info('请先登录后再购买')
+    openAuth('login')
+    return
+  }
+  if (pet.value.status !== '0') {
+    ElMessage.warning('这只宠物已经被订走了')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确认购买「${pet.value.petName}」？金额 ¥${pet.value.price || 0}。下单后这只宠物会为你锁定，未支付可在「我的订单」中取消释放。`,
+      '确认购买',
+      { confirmButtonText: '去支付', cancelButtonText: '再看看', type: 'warning' }
+    )
+  } catch (e) {
+    return
+  }
+  buying.value = true
+  try {
+    const res = await createPetOrder(pet.value.petId)
+    ElMessage.success('下单成功，请完成支付')
+    // 带 pay 参数跳转，订单页会自动弹出收银台
+    router.push({ path: '/shop/order', query: { pay: res.data && res.data.orderNo } })
+  } catch (e) {
+    ElMessage.error(e?.message || '下单失败，可能刚被别人订走')
+    loadPet()
+  } finally {
+    buying.value = false
+  }
+}
+
+function openAppoint() {
+  showAppoint.value = true
+  if (!appointForm.storeId && stores.value.length) {
+    appointForm.storeId = stores.value[0].storeId
+  }
+  if (!appointForm.date) {
+    const d = new Date()
+    appointForm.date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+  }
+  loadSlots()
+}
+
 function submitAppoint() {
   if (!userStore.token) {
     ElMessage.info('请先登录后再预约')
@@ -321,14 +413,15 @@ function submitAppoint() {
       await addPetAppointment({
         petId: route.params.id,
         userId: userStore.userId,
-        appointmentDate: appointForm.appointmentDate,
+        storeId: appointForm.storeId,
+        appointmentDate: appointForm.date + ' ' + appointForm.slot + ':00',
         contactPhone: appointForm.contactPhone,
         status: '0',
         remark: appointForm.remark
       })
       ElMessage.success('预约提交成功，商家会尽快联系您！')
       showAppoint.value = false
-      appointForm.appointmentDate = ''
+      appointForm.slot = ''
       appointForm.contactPhone = ''
       appointForm.remark = ''
     } catch (e) {
@@ -339,32 +432,45 @@ function submitAppoint() {
   })
 }
 
-onMounted(loadPet)
+onMounted(() => {
+  loadPet()
+  storeOptions().then((res) => { stores.value = res.data || [] }).catch(() => {})
+})
 </script>
 
 <style scoped lang="scss">
-.detail { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+.slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: 1px solid var(--border-1); background: #fff; border-radius: 8px; cursor: pointer; transition: .15s;
+  b { font-size: 13px; color: var(--text-1); font-weight: 500; }
+  span { font-size: 11px; color: var(--text-3); }
+  &:hover:not(:disabled) { border-color: var(--brand-500); }
+  &.active { border-color: var(--brand-500); background: var(--brand-50); b { color: var(--brand-700); } }
+  &.full { background: var(--bg-page); cursor: not-allowed; b { color: var(--text-4); } span { color: var(--text-4); } }
+}
+.slot-empty { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-3); }
+
+.detail { max-width: var(--container-md); margin: 0 auto; padding: 32px 24px; }
 .detail-inner { display: flex; gap: 40px; background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,.06); }
 .left { flex: 0 0 380px;
   .big-avatar { height: 320px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 160px; overflow: hidden;
     .big-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
   }
-  .guest-tip { margin-top: 12px; background: #fff7ef; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #a06a3c; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .guest-tip { margin-top: 12px; background: var(--brand-50); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 }
 .right { flex: 1;
-  h1 { font-size: 30px; color: #303133; margin: 0 0 16px; }
+  h1 { font-size: 30px; color: var(--text-1); margin: 0 0 16px; }
   .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .price { background: #fff7ef; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
-    .label { color: #909399; font-size: 13px; margin-right: 12px; }
-    .amount { color: #f56c6c; font-size: 28px; font-weight: 700; }
+  .price { background: var(--price-soft); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+    .label { color: var(--text-3); font-size: 13px; margin-right: 12px; }
+    .amount { color: var(--price); font-size: 28px; font-weight: 700; }
   }
   .desc { margin-bottom: 24px;
-    h3 { font-size: 16px; color: #303133; margin: 0 0 8px; }
-    p { color: #606266; line-height: 1.8; }
+    h3 { font-size: 16px; color: var(--text-1); margin: 0 0 8px; }
+    p { color: var(--text-2); line-height: 1.8; }
   }
   .actions { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap;
-    .ai-ask { background: linear-gradient(135deg, #fff7f1, #fff); border-color: #ffb27a; color: #e2600f; font-weight: 600;
-      &:hover { background: #fff1e6; border-color: #ff8c42; color: #d2550a; }
+    .ai-ask { background: linear-gradient(135deg, var(--brand-50), #fff); border-color: var(--brand-300); color: var(--brand-700); font-weight: 600;
+      &:hover { background: var(--brand-50); border-color: var(--brand-500); color: var(--brand-700); }
     }
   }
 }
@@ -372,20 +478,20 @@ onMounted(loadPet)
 /* 健康与服务档案 */
 .health-panel { background: #fff; border-radius: 16px; padding: 26px 30px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
-    h2 { margin: 0; font-size: 20px; color: #303133; }
-    .archive { color: #909399; font-size: 13px; }
+    h2 { margin: 0; font-size: 20px; color: var(--text-1); }
+    .archive { color: var(--text-3); font-size: 13px; }
   }
   .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px;
-    .h-card { border: 1px solid #f0f0f0; border-radius: 12px; padding: 18px 20px; background: #fcfcfd;
-      h3 { margin: 0 0 12px; font-size: 16px; color: #303133; display: flex; align-items: center; gap: 8px;
+    .h-card { border: 1px solid var(--border-2); border-radius: 12px; padding: 18px 20px; background: var(--bg-page);
+      h3 { margin: 0 0 12px; font-size: 16px; color: var(--text-1); display: flex; align-items: center; gap: 8px;
         .ico { font-size: 18px; }
       }
       ul { margin: 0; padding: 0; list-style: none;
-        li { display: flex; gap: 12px; padding: 6px 0; font-size: 13px; line-height: 1.7; border-bottom: 1px dashed #f5f5f5;
+        li { display: flex; gap: 12px; padding: 6px 0; font-size: 13px; line-height: 1.7; border-bottom: 1px dashed var(--bg-sunken);
           &:last-child { border-bottom: none; }
-          .k { flex: 0 0 76px; color: #909399; }
-          .v { flex: 1; color: #606266; word-break: break-all;
-            &.ok { color: #67c23a; font-weight: 600; }
+          .k { flex: 0 0 76px; color: var(--text-3); }
+          .v { flex: 1; color: var(--text-2); word-break: break-all;
+            &.ok { color: var(--success-500); font-weight: 600; }
           }
         }
       }
@@ -393,23 +499,23 @@ onMounted(loadPet)
   }
 }
 
-.not-found { text-align: center; padding: 80px 0; color: #c0c4cc;
+.not-found { text-align: center; padding: 80px 0; color: var(--text-4);
   .icon { font-size: 64px; display: block; margin-bottom: 16px; }
 }
 
 /* 宠物喜好 */
 .pref-panel { background: #fff; border-radius: 16px; padding: 26px 30px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
-    h2 { margin: 0; font-size: 20px; color: #303133; }
-    .archive { color: #909399; font-size: 13px; }
+    h2 { margin: 0; font-size: 20px; color: var(--text-1); }
+    .archive { color: var(--text-3); font-size: 13px; }
   }
   .pref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px;
-    .pref-item { display: flex; gap: 12px; align-items: flex-start; background: #fff8f3; border: 1px solid #ffe6d2; border-radius: 12px; padding: 14px 16px;
+    .pref-item { display: flex; gap: 12px; align-items: flex-start; background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 12px; padding: 14px 16px;
       .ico { font-size: 22px; flex-shrink: 0; }
-      b { display: block; font-size: 13px; color: #ff8c42; margin-bottom: 2px; }
-      p { margin: 0; font-size: 13px; color: #606266; line-height: 1.6; }
-      &.warn { background: #fff5f5; border-color: #ffd9d9;
-        b { color: #f56c6c; }
+      b { display: block; font-size: 13px; color: var(--brand-500); margin-bottom: 2px; }
+      p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+      &.warn { background: var(--danger-50); border-color: var(--danger-100);
+        b { color: var(--danger-500); }
       }
     }
   }
@@ -418,17 +524,17 @@ onMounted(loadPet)
 /* 常见健康问题 */
 .issue-panel { background: #fff; border-radius: 16px; padding: 26px 30px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
   .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
-    h2 { margin: 0; font-size: 20px; color: #303133; }
+    h2 { margin: 0; font-size: 20px; color: var(--text-1); }
   }
   .issue-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px;
-    .issue-card { border: 1px solid #eef0f3; border-radius: 12px; padding: 16px 18px; background: #fcfcfd;
+    .issue-card { border: 1px solid #eef0f3; border-radius: 12px; padding: 16px 18px; background: var(--bg-page);
       .issue-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
-        .issue-name { font-size: 15px; font-weight: 600; color: #303133; flex: 1; min-width: 140px; }
+        .issue-name { font-size: 15px; font-weight: 600; color: var(--text-1); flex: 1; min-width: 140px; }
       }
-      .issue-row { font-size: 13px; line-height: 1.7; padding: 4px 0; color: #606266; border-bottom: 1px dashed #f3f3f3;
+      .issue-row { font-size: 13px; line-height: 1.7; padding: 4px 0; color: var(--text-2); border-bottom: 1px dashed var(--bg-sunken);
         &:last-child { border-bottom: none; }
-        b { display: inline-block; width: 44px; color: #909399; flex-shrink: 0; font-weight: 600; }
-        span { color: #606266; }
+        b { display: inline-block; width: 44px; color: var(--text-3); flex-shrink: 0; font-weight: 600; }
+        span { color: var(--text-2); }
       }
     }
   }

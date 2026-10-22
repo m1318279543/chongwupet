@@ -1,23 +1,41 @@
 // 全局样式入口
+// 顺序：tokens（变量）→ element（EP 主题）→ 本文件（基础与通用类）
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #app { height: 100%; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Microsoft YaHei', sans-serif; font-size: 14px; color: #303133; }
+body { font-family: var(--font-sans); font-size: 14px; color: var(--text-1); background: var(--bg-page); }
 a { text-decoration: none; color: inherit; }
 
+// 键盘可达：所有可聚焦元素有可见焦点态（鼠标点击不显示，避免干扰）
+:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+// 尊重系统"减少动态效果"设置
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 // ===== 后台管理通用布局（与 RuoYi 保持一致）=====
-.app-container { padding: 20px; background: #fff; border-radius: 8px; }
+.app-container { padding: 20px; background: var(--bg-card); border-radius: var(--radius-sm); }
 .mb8 { margin-bottom: 8px; }
 .table-toolbar { display: flex; align-items: center; justify-content: space-between; }
 .dialog-footer { text-align: right; }
 .small-padding .cell { padding: 0 4px; }
-.tree-border { border: 1px solid #e5e6e7; border-radius: 4px; }
+.tree-border { border: 1px solid var(--border-1); border-radius: 4px; }
 
 // ===== 手机端图片统一规范 =====
-// 目标：任何页面都不出现"一张图占一屏"，所有内容图片等比缩小到视口内合适范围。
-// 1) 兜底规则：内容图最高不超过 34vh（约三分之一屏），超过自动等比收缩；
-// 2) 排除图标/头像/缩略图/后台表格小图，避免影响小尺寸元素。
+// 目标：任何页面都不出现"一张图占一屏"。
+// 1) 只作用于商城壳（以前是全局 img，会污染后台表格里的缩略图）；
+// 2) 排除图标/头像/缩略图，避免影响小尺寸元素。
 @media (max-width: 768px) {
-  img:not(.app-icon):not([class*="icon"]):not([class*="thumb"]):not([class*="avatar-sm"]):not([class*="logo"]) {
+  .shop-layout img:not(.app-icon):not([class*="icon"]):not([class*="thumb"]):not([class*="avatar"]):not([class*="logo"]) {
     max-height: 34vh;
   }
   // 弹窗内的图片再收一档，避免弹窗只剩一张图
@@ -25,7 +43,8 @@ a { text-decoration: none; color: inherit; }
     max-height: 30vh;
   }
 
-  // 2) 弹窗宽度自适应：覆盖各页写死的 760px/500px/440px，手机端一律 94vw
+  // 弹窗宽度自适应：覆盖各页写死的 760px/500px/440px。
+  // 这里必须用 !important —— el-dialog 的 width 是内联样式。
   .el-dialog {
     width: 94vw !important;
     max-width: 94vw;
@@ -36,25 +55,14 @@ a { text-decoration: none; color: inherit; }
     max-width: 88vw;
   }
 
-  // 3) 宠物粮详情弹窗（挂载到 body，scoped 样式管不到）：改为上下结构 + 等比图
+  // 宠物粮详情弹窗（挂载到 body，scoped 样式管不到）：改为上下结构 + 等比图
   .food-detail-dialog {
-    .detail {
-      flex-direction: column;
-      min-height: 0;
-    }
+    .detail { flex-direction: column; min-height: 0; }
     .detail-left {
       width: 100% !important;
       height: auto;
-      img {
-        width: 100%;
-        height: auto;
-        max-height: 28vh;
-        object-fit: contain;
-      }
+      img { width: 100%; height: auto; max-height: 28vh; object-fit: contain; }
     }
-    .detail-right {
-      padding: 18px 16px;
-    }
+    .detail-right { padding: 18px 16px; }
   }
 }
-

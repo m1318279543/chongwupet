@@ -177,12 +177,12 @@ onMounted(loadProfile)
 
 <style scoped>
 .profile-page {
-  max-width: 980px;
+  max-width: var(--container-md);
   margin: 0 auto;
   padding: 28px 16px 60px;
 }
 .pf-hero {
-  background: linear-gradient(135deg, #ff8c42, #ffb27a);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
   border-radius: 18px;
   padding: 30px 34px;
   color: #fff;
@@ -204,7 +204,7 @@ onMounted(loadProfile)
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-right: 1px dashed #f0f0f0;
+  border-right: 1px dashed var(--border-2);
   padding-right: 36px;
 }
 .avatar-box {
@@ -213,12 +213,12 @@ onMounted(loadProfile)
   height: 128px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, #ff8c42, #ffb27a);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 8px 22px rgba(255, 140, 66, 0.28);
+  box-shadow: 0 8px 22px rgb(var(--brand-500-rgb) / 0.28);
 }
 .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar-text { color: #fff; font-size: 46px; font-weight: 700; }
@@ -244,25 +244,25 @@ onMounted(loadProfile)
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #ff8c42;
+  background: var(--brand-500);
   color: #fff;
   display: none;
   align-items: center;
   justify-content: center;
   border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.45);
+  box-shadow: 0 2px 8px rgb(var(--brand-500-rgb) / 0.45);
   font-size: 16px;
   pointer-events: none;
 }
-.pf-name { margin-top: 16px; font-size: 18px; font-weight: 700; color: #303133; text-align: center; word-break: break-all; }
-.pf-account { font-size: 13px; color: #a8abb2; margin-top: 4px; }
+.pf-name { margin-top: 16px; font-size: 18px; font-weight: 700; color: var(--text-1); text-align: center; word-break: break-all; }
+.pf-account { font-size: 13px; color: var(--text-4); margin-top: 4px; }
 .pf-tip { font-size: 12px; color: #b0b3b8; text-align: center; line-height: 1.6; margin: 14px 0 0; }
 .pf-main { flex: 1; min-width: 0; }
-.pf-title { margin: 0 0 22px; font-size: 18px; color: #303133; }
+.pf-title { margin: 0 0 22px; font-size: 18px; color: var(--text-1); }
 .pf-form { max-width: 460px; }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .pf-card { flex-direction: column; gap: 24px; padding: 24px 18px; }
-  .pf-aside { width: 100%; border-right: none; border-bottom: 1px dashed #f0f0f0; padding: 0 0 20px; }
+  .pf-aside { width: 100%; border-right: none; border-bottom: 1px dashed var(--border-2); padding: 0 0 20px; }
   .pf-form { max-width: 100%; }
   /* 手机端没有 hover，用常驻相机角标提示可点击更换 */
   .avatar-mask { display: none; }

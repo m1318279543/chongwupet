@@ -155,9 +155,9 @@ defineExpose({ open, visible, mode })
 .auth-tabs { margin-bottom: 8px; }
 .code-row { display: flex; gap: 10px; width: 100%; }
 .code-img { width: 120px; height: 40px; border-radius: 4px; cursor: pointer; border: 1px solid #dcdfe6; }
-.submit-btn { width: 100%; background: #ff8c42; border-color: #ff8c42; }
-.submit-btn:hover { background: #f0742e; border-color: #f0742e; }
-.quick-tip { text-align: center; font-size: 13px; color: #909399;
+.submit-btn { width: 100%; background: var(--brand-500); border-color: var(--brand-500); }
+.submit-btn:hover { background: var(--brand-600); border-color: var(--brand-600); }
+.quick-tip { text-align: center; font-size: 13px; color: var(--text-3);
   .el-link { vertical-align: baseline; }
 }
 </style>

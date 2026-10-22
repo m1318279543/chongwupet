@@ -175,6 +175,7 @@ import {
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getDashboardAll, getDashboardRealtime } from '@/api/pet/dashboard'
+import { useDashboardCharts } from './useDashboardCharts'
 import { aiInsight } from '@/api/pet/petAi'
 
 echarts.use([
@@ -227,17 +228,26 @@ const topPetsRef = ref(null)
 const topGoodsRef = ref(null)
 const hourlyRef = ref(null)
 
-let trendChart = null
-let aptStatusChart = null
-let orderStatusChart = null
-let categoryChart = null
-let topPetsChart = null
-let topGoodsChart = null
-let hourlyChart = null
 
 let realtimeTimer = null
 let fullTimer = null
 let resizeTimer = null
+
+// 图表层（实例 + option + 渲染/缩放/销毁）抽到 useDashboardCharts，
+// 页面只保留数据与交互。refs 传模板 ref，dashboard/money 由这里提供。
+const charts = useDashboardCharts({
+  dashboard,
+  money,
+  refs: {
+    trend: trendRef,
+    aptStatus: aptStatusRef,
+    orderStatus: orderStatusRef,
+    category: categoryRef,
+    topPets: topPetsRef,
+    topGoods: topGoodsRef,
+    hourly: hourlyRef
+  }
+})
 
 // ------------------------------------------------------------------ 计算属性
 const overview = computed(() => dashboard.value?.overview || null)
@@ -257,7 +267,7 @@ const kpis = computed(() => {
       value: '¥' + money(o.revenue),
       growth: o.growth?.revenue ?? null,
       sub: `今日 ¥${money(t.todayRevenue || 0)} · 客单价 ¥${money(o.avgOrderAmount || 0)}`,
-      color: '#ff8c42',
+      color: 'var(--brand-500)',
     },
     {
       key: 'orders',
@@ -369,7 +379,7 @@ async function loadAll(showLoading = false) {
     dashboard.value = res.data
     updatedAt.value = res.data?.generatedAt || ''
     await nextTick()
-    renderAll()
+    charts.renderAll()
   } catch (e) {
     // 请求层已统一提示
   } finally {
@@ -405,353 +415,15 @@ function resetRealtimeTimer() {
   fullTimer = setInterval(() => loadAll(false), 5 * 60 * 1000)
 }
 
-// ------------------------------------------------------------------ 图表渲染
-function renderAll() {
-  renderTrend()
-  renderAptStatus()
-  renderOrderStatus()
-  renderCategory()
-  renderTopPets()
-  renderTopGoods()
-  renderHourly()
-}
-
-function ensureCharts() {
-  if (!trendChart && trendRef.value) trendChart = echarts.init(trendRef.value)
-  if (!aptStatusChart && aptStatusRef.value) aptStatusChart = echarts.init(aptStatusRef.value)
-  if (!orderStatusChart && orderStatusRef.value) orderStatusChart = echarts.init(orderStatusRef.value)
-  if (!categoryChart && categoryRef.value) categoryChart = echarts.init(categoryRef.value)
-  if (!topPetsChart && topPetsRef.value) topPetsChart = echarts.init(topPetsRef.value)
-  if (!topGoodsChart && topGoodsRef.value) topGoodsChart = echarts.init(topGoodsRef.value)
-  if (!hourlyChart && hourlyRef.value) hourlyChart = echarts.init(hourlyRef.value)
-}
-
-const AXIS_LABEL = { color: '#909399', fontSize: 11 }
-const SPLIT_LINE = { lineStyle: { color: '#f0f2f5', type: 'dashed' } }
-
-function renderTrend() {
-  if (!trend.value) return
-  ensureCharts()
-  if (!trendChart) return
-  const t = trend.value
-  const showZoom = t.dates.length > 31
-  trendChart.setOption(
-    {
-      color: ['#ff8c42', '#5b8def', '#52c41a', '#c9a227'],
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'cross', label: { backgroundColor: '#606266' } },
-        backgroundColor: 'rgba(255,255,255,.96)',
-        borderColor: '#ebeef5',
-        textStyle: { color: '#303133', fontSize: 12 },
-        formatter: (params) => {
-          const idx = params[0].dataIndex
-          let html = `<div style="font-weight:600;margin-bottom:5px">${t.dates[idx]}</div>`
-          params.forEach((p) => {
-            const isMoney = p.seriesName === '营业额'
-            const val = isMoney ? '¥' + money(p.value) : `${p.value}`
-            html += `<div style="display:flex;justify-content:space-between;gap:20px;line-height:20px"><span>${p.marker}${p.seriesName}</span><b>${val}</b></div>`
-          })
-          return html
-        },
-      },
-      legend: {
-        top: 0,
-        right: 0,
-        icon: 'roundRect',
-        itemWidth: 10,
-        itemHeight: 6,
-        textStyle: { color: '#606266', fontSize: 12 },
-      },
-      grid: { left: 6, right: 10, top: 42, bottom: showZoom ? 40 : 6, containLabel: true },
-      xAxis: {
-        type: 'category',
-        data: t.dates,
-        boundaryGap: false,
-        axisLine: { lineStyle: { color: '#e4e7ed' } },
-        axisTick: { show: false },
-        axisLabel: { ...AXIS_LABEL, formatter: (v) => v.slice(5) },
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: '单量',
-          nameTextStyle: { color: '#b1b3b8', fontSize: 11 },
-          splitLine: SPLIT_LINE,
-          axisLabel: AXIS_LABEL,
-        },
-        {
-          type: 'value',
-          name: '营业额',
-          nameTextStyle: { color: '#b1b3b8', fontSize: 11 },
-          splitLine: { show: false },
-          axisLabel: { ...AXIS_LABEL, formatter: (v) => (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) },
-        },
-      ],
-      series: [
-        {
-          name: '订单量',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 4,
-          showSymbol: t.dates.length <= 31,
-          lineStyle: { width: 2.5 },
-          areaStyle: { opacity: 0.1 },
-          data: t.orders,
-        },
-        {
-          name: '预约量',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 4,
-          showSymbol: t.dates.length <= 31,
-          lineStyle: { width: 2.5 },
-          areaStyle: { opacity: 0.08 },
-          data: t.appointments,
-        },
-        {
-          name: '咨询量',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 4,
-          showSymbol: t.dates.length <= 31,
-          lineStyle: { width: 2 },
-          data: t.consults,
-        },
-        {
-          name: '营业额',
-          type: 'bar',
-          yAxisIndex: 1,
-          barWidth: t.dates.length > 45 ? 4 : 8,
-          itemStyle: { color: 'rgba(201,162,39,.28)', borderRadius: [3, 3, 0, 0] },
-          data: t.revenue,
-        },
-      ],
-      dataZoom: showZoom
-        ? [
-            { type: 'inside' },
-            { type: 'slider', height: 16, bottom: 2, borderColor: 'transparent', fillerColor: 'rgba(255,140,66,.12)', handleSize: 14 },
-          ]
-        : [{ type: 'inside' }],
-    },
-    true
-  )
-}
-
-function pieOption(items, colors) {
-  const total = items.reduce((sum, i) => sum + Number(i.value || 0), 0)
-  return {
-    color: colors,
-    title: {
-      text: fmtInt(total),
-      subtext: '总计',
-      left: 'center',
-      top: '32%',
-      textAlign: 'center',
-      textStyle: { color: '#303133', fontSize: 22, fontWeight: 700 },
-      subtextStyle: { color: '#a8abb2', fontSize: 11 },
-    },
-    tooltip: { trigger: 'item', formatter: '{b}：{c}（{d}%）' },
-    legend: {
-      bottom: 0,
-      icon: 'circle',
-      itemWidth: 8,
-      itemHeight: 8,
-      itemGap: 14,
-      textStyle: { color: '#606266', fontSize: 11 },
-      formatter: (name) => {
-        const item = items.find((i) => i.name === name)
-        return `${name} ${item ? item.value : ''}`
-      },
-    },
-    series: [
-      {
-        type: 'pie',
-        radius: ['52%', '72%'],
-        center: ['50%', '42%'],
-        avoidLabelOverlap: true,
-        itemStyle: { borderColor: '#fff', borderWidth: 2 },
-        label: { show: false },
-        labelLine: { show: false },
-        emphasis: { scale: true, scaleSize: 6 },
-        data: items,
-      },
-    ],
-  }
-}
-
-function renderAptStatus() {
-  const items = dashboard.value?.distribution?.appointmentStatus || []
-  ensureCharts()
-  if (!aptStatusChart) return
-  aptStatusChart.setOption(pieOption(items, ['#e6a23c', '#5b8def', '#52c41a', '#c8c9cc']), true)
-}
-
-function renderOrderStatus() {
-  const items = dashboard.value?.distribution?.orderStatus || []
-  ensureCharts()
-  if (!orderStatusChart) return
-  orderStatusChart.setOption(pieOption(items, ['#ff8c42', '#c8c9cc']), true)
-}
-
-function renderCategory() {
-  const items = dashboard.value?.distribution?.category || []
-  ensureCharts()
-  if (!categoryChart) return
-  categoryChart.setOption(
-    {
-      grid: { left: 6, right: 10, top: 16, bottom: 4, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}：{c} 只' },
-      xAxis: {
-        type: 'category',
-        data: items.map((i) => i.name),
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: '#e4e7ed' } },
-        axisLabel: { ...AXIS_LABEL, interval: 0, fontSize: 10 },
-      },
-      yAxis: { type: 'value', splitLine: SPLIT_LINE, axisLabel: AXIS_LABEL },
-      series: [
-        {
-          type: 'bar',
-          data: items.map((i) => i.value),
-          barWidth: '46%',
-          itemStyle: { color: '#ffb27a', borderRadius: [5, 5, 0, 0] },
-          emphasis: { itemStyle: { color: '#ff8c42' } },
-          label: { show: true, position: 'top', color: '#909399', fontSize: 10 },
-        },
-      ],
-    },
-    true
-  )
-}
-
-function renderTopPets() {
-  const items = (dashboard.value?.ranking?.pets || []).slice().reverse()
-  ensureCharts()
-  if (!topPetsChart) return
-  topPetsChart.setOption(
-    {
-      grid: { left: 6, right: 30, top: 10, bottom: 4, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}：{c} 次预约' },
-      xAxis: { type: 'value', splitLine: SPLIT_LINE, axisLabel: AXIS_LABEL },
-      yAxis: {
-        type: 'category',
-        data: items.map((i) => i.name),
-        axisTick: { show: false },
-        axisLine: { show: false },
-        axisLabel: { color: '#606266', fontSize: 11, width: 96, overflow: 'truncate' },
-      },
-      series: [
-        {
-          type: 'bar',
-          data: items.map((i) => i.value),
-          barWidth: 12,
-          itemStyle: { color: '#7ea6f5', borderRadius: [0, 6, 6, 0] },
-          emphasis: { itemStyle: { color: '#5b8def' } },
-          label: { show: true, position: 'right', color: '#909399', fontSize: 10 },
-        },
-      ],
-    },
-    true
-  )
-}
-
-function renderTopGoods() {
-  const items = (dashboard.value?.ranking?.goods || []).slice().reverse()
-  ensureCharts()
-  if (!topGoodsChart) return
-  topGoodsChart.setOption(
-    {
-      grid: { left: 6, right: 46, top: 10, bottom: 4, containLabel: true },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        formatter: (params) => {
-          const i = items[params[0].dataIndex]
-          return `${i.name}<br/>成交额：¥${money(i.amount)}<br/>订单数：${i.orders} 单`
-        },
-      },
-      xAxis: { type: 'value', splitLine: SPLIT_LINE, axisLabel: { ...AXIS_LABEL, formatter: (v) => '¥' + v } },
-      yAxis: {
-        type: 'category',
-        data: items.map((i) => i.name),
-        axisTick: { show: false },
-        axisLine: { show: false },
-        axisLabel: { color: '#606266', fontSize: 11, width: 96, overflow: 'truncate' },
-      },
-      series: [
-        {
-          type: 'bar',
-          data: items.map((i) => i.amount),
-          barWidth: 12,
-          itemStyle: { color: '#ffc48a', borderRadius: [0, 6, 6, 0] },
-          emphasis: { itemStyle: { color: '#ff8c42' } },
-          label: {
-            show: true,
-            position: 'right',
-            color: '#909399',
-            fontSize: 10,
-            formatter: (p) => '¥' + Number(p.value).toFixed(0),
-          },
-        },
-      ],
-    },
-    true
-  )
-}
-
-function renderHourly() {
-  const h = dashboard.value?.hourly || { hours: [], orders: [], appointments: [] }
-  ensureCharts()
-  if (!hourlyChart) return
-  hourlyChart.setOption(
-    {
-      color: ['#ff8c42', '#5b8def'],
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      legend: { top: 0, right: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 6, textStyle: { color: '#606266', fontSize: 12 } },
-      grid: { left: 6, right: 10, top: 34, bottom: 4, containLabel: true },
-      xAxis: {
-        type: 'category',
-        data: h.hours.map((v) => `${String(v).padStart(2, '0')}:00`),
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: '#e4e7ed' } },
-        axisLabel: { ...AXIS_LABEL, interval: 1 },
-      },
-      yAxis: { type: 'value', splitLine: SPLIT_LINE, axisLabel: AXIS_LABEL },
-      series: [
-        {
-          name: '订单',
-          type: 'bar',
-          data: h.orders,
-          barWidth: 8,
-          itemStyle: { borderRadius: [3, 3, 0, 0] },
-        },
-        {
-          name: '预约',
-          type: 'bar',
-          data: h.appointments,
-          barWidth: 8,
-          itemStyle: { borderRadius: [3, 3, 0, 0] },
-        },
-      ],
-    },
-    true
-  )
-}
 
 // ------------------------------------------------------------------ 生命周期
 function handleResize() {
   clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
-    ;[trendChart, aptStatusChart, orderStatusChart, categoryChart, topPetsChart, topGoodsChart, hourlyChart].forEach((c) => c && c.resize())
-  }, 120)
+  resizeTimer = setTimeout(() => charts.resizeAll(), 120)
 }
 
 onMounted(async () => {
-  ensureCharts()
+  charts.ensure()
   await Promise.all([loadAll(true), loadRealtime()])
   resetRealtimeTimer()
   window.addEventListener('resize', handleResize)
@@ -762,15 +434,14 @@ onUnmounted(() => {
   clearInterval(fullTimer)
   clearTimeout(resizeTimer)
   window.removeEventListener('resize', handleResize)
-  ;[trendChart, aptStatusChart, orderStatusChart, categoryChart, topPetsChart, topGoodsChart, hourlyChart].forEach((c) => c && c.dispose())
-  trendChart = aptStatusChart = orderStatusChart = categoryChart = topPetsChart = topGoodsChart = hourlyChart = null
+  charts.disposeAll()
 })
 </script>
 
 <style scoped lang="scss">
+// 底色交给 .main，这里只管内容间距（以前叠了第二层灰底 + 第二层 20px）
 .dash {
-  padding: 20px 24px 30px;
-  background: #f4f6f9;
+  padding: 20px 20px 30px;
   min-height: calc(100vh - 60px);
   box-sizing: border-box;
 }
@@ -794,7 +465,7 @@ onUnmounted(() => {
   p {
     margin: 6px 0 0;
     font-size: 12px;
-    color: #909399;
+    color: var(--text-3);
   }
 }
 
@@ -810,7 +481,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
   padding: 4px 10px;
   border-radius: 20px;
   background: #eef0f3;
@@ -819,11 +490,11 @@ onUnmounted(() => {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #c0c4cc;
+    background: var(--text-4);
   }
 
   &.on {
-    color: #3d9c40;
+    color: var(--success-500);
     background: #eaf7ea;
 
     i {
@@ -846,16 +517,16 @@ onUnmounted(() => {
   gap: 10px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
   margin-bottom: 16px;
 
   b {
-    color: #303133;
+    color: var(--text-1);
     font-weight: 600;
   }
 
   b.warn {
-    color: #e6a23c;
+    color: var(--warning-500);
   }
 }
 
@@ -867,20 +538,20 @@ onUnmounted(() => {
 .today-chip {
   margin-left: auto;
   background: #fff;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--border-1);
   border-radius: 14px;
   padding: 3px 12px;
-  color: #606266;
+  color: var(--text-2);
 }
 
 /* AI 经营洞察 */
 .ai-insight {
-  background: linear-gradient(135deg, #fff7f1 0%, #ffffff 60%);
-  border: 1px solid #ffe0cc;
+  background: linear-gradient(135deg, var(--brand-50) 0%, #ffffff 60%);
+  border: 1px solid var(--brand-100);
   border-radius: 16px;
   padding: 18px 20px;
   margin-bottom: 16px;
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.07);
+  box-shadow: 0 6px 20px rgb(var(--brand-600-rgb) / 0.07);
 }
 .ai-insight-head {
   display: flex;
@@ -892,19 +563,19 @@ onUnmounted(() => {
 .ai-insight .ai-title h3 {
   margin: 6px 0 3px;
   font-size: 17px;
-  color: #303133;
+  color: var(--text-1);
 }
 .ai-insight .ai-title p {
   margin: 0;
   font-size: 12.5px;
-  color: #909399;
+  color: var(--text-3);
 }
 .ai-badge {
   display: inline-block;
   font-size: 12px;
   font-weight: 600;
-  color: #ff6b35;
-  background: #fff1e6;
+  color: var(--brand-600);
+  background: var(--brand-50);
   border-radius: 10px;
   padding: 2px 9px;
 }
@@ -913,10 +584,10 @@ onUnmounted(() => {
   padding: 14px 16px;
   background: #fff;
   border-radius: 12px;
-  border-left: 3px solid #ff8c42;
+  border-left: 3px solid var(--brand-500);
 }
 .ai-body.rule {
-  border-left-color: #e6a23c;
+  border-left-color: var(--warning-500);
 }
 .ai-text {
   margin: 0;
@@ -978,7 +649,7 @@ onUnmounted(() => {
 
 .kpi-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
 }
 
 .badge {
@@ -990,16 +661,16 @@ onUnmounted(() => {
 
   &.up {
     color: #d4380d;
-    background: #fff2e8;
+    background: var(--brand-50);
   }
 
   &.down {
-    color: #389e0d;
+    color: var(--success-500);
     background: #f0f9eb;
   }
 
   &.flat {
-    color: #909399;
+    color: var(--text-3);
     background: #f4f4f5;
   }
 }
@@ -1015,7 +686,7 @@ onUnmounted(() => {
 
 .kpi-sub {
   font-size: 11px;
-  color: #a8abb2;
+  color: var(--text-4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1062,12 +733,12 @@ onUnmounted(() => {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: #303133;
+    color: var(--text-1);
   }
 
   span {
     font-size: 11px;
-    color: #a8abb2;
+    color: var(--text-4);
   }
 }
 
@@ -1091,14 +762,14 @@ onUnmounted(() => {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
-  color: #c0c4cc;
-  border: 1px solid #e4e7ed;
+  color: var(--text-4);
+  border: 1px solid var(--border-1);
   border-radius: 4px;
   padding: 0 5px;
   line-height: 15px;
 
   &.on {
-    color: #f56c6c;
+    color: var(--danger-500);
     border-color: #fbc4c4;
     background: #fef0f0;
   }
@@ -1147,7 +818,7 @@ onUnmounted(() => {
 
 .feed-title {
   font-size: 12.5px;
-  color: #303133;
+  color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1155,7 +826,7 @@ onUnmounted(() => {
 
 .feed-time {
   font-size: 11px;
-  color: #a8abb2;
+  color: var(--text-4);
   margin-top: 3px;
   display: flex;
   align-items: center;
@@ -1167,10 +838,10 @@ onUnmounted(() => {
   padding: 0 5px;
   border-radius: 3px;
   background: #f4f4f5;
-  color: #909399;
+  color: var(--text-3);
 
   &.ok {
-    color: #389e0d;
+    color: var(--success-500);
     background: #f0f9eb;
   }
 
@@ -1183,7 +854,7 @@ onUnmounted(() => {
 .feed-amount {
   font-size: 12px;
   font-weight: 600;
-  color: #ff8c42;
+  color: var(--brand-500);
   white-space: nowrap;
   padding-top: 2px;
 }
@@ -1193,7 +864,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c0c4cc;
+  color: var(--text-4);
   font-size: 12px;
   min-height: 180px;
 }
@@ -1211,7 +882,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1000px) {
   .grid-main,
   .grid-2,
   .grid-3 {

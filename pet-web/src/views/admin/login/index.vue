@@ -8,7 +8,7 @@
         <div class="logo">🐾</div>
         <div class="brand-text">
           <h1>宠物之家 · 管理后台</h1>
-          <p>仅限管理员账号登录，前台用户请从商城首页进入</p>
+          <p>仅限管理员与店长账号登录，前台用户请从商城首页进入</p>
         </div>
       </div>
 
@@ -35,7 +35,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="验证码" prop="code">
+        <el-form-item v-if="captcha.enabled" label="验证码" prop="code">
           <div class="code-row">
             <el-input
               v-model="form.code"
@@ -82,6 +82,7 @@ const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
 const codeUrl = ref('')
+const captcha = reactive({ enabled: true })
 
 const form = reactive({
   username: '',
@@ -90,10 +91,20 @@ const form = reactive({
   uuid: ''
 })
 
+// 用固定规则对象：computed 每次返回新引用会让 el-form 误触发一次校验
 const rules = {
   username: [{ required: true, message: '请输入管理员账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入登录密码', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+  code: [{
+    validator: (rule, value, callback) => {
+      if (captcha.enabled && !value) {
+        callback(new Error('请输入验证码'))
+      } else {
+        callback()
+      }
+    },
+    trigger: 'blur'
+  }]
 }
 
 const currentUser = computed(() => userStore.nickName || userStore.userName || '')
@@ -101,6 +112,13 @@ const currentUser = computed(() => userStore.nickName || userStore.userName || '
 function getCode() {
   codeUrl.value = ''
   getCodeImg().then((res) => {
+    // 后端 sys.account.captchaEnabled=false 时，登录页不再显示验证码
+    captcha.enabled = res.captchaEnabled !== false
+    if (!captcha.enabled) {
+      form.uuid = ''
+      form.code = ''
+      return
+    }
     codeUrl.value = 'data:image/gif;base64,' + res.img
     form.uuid = res.uuid
     form.code = ''
@@ -117,16 +135,17 @@ function handleLogin() {
     userStore.login({
       username: form.username,
       password: form.password,
-      code: form.code,
-      uuid: form.uuid
+      code: captcha.enabled ? form.code : '',
+      uuid: captcha.enabled ? form.uuid : ''
     }).then(() => userStore.getInfo()).then(() => {
-      const isAdmin = Array.isArray(userStore.roles) && userStore.roles.includes('admin')
-      if (isAdmin) {
+      const roles = Array.isArray(userStore.roles) ? userStore.roles : []
+      const canEnter = roles.includes('admin') || roles.includes('store_manager')
+      if (canEnter) {
         ElMessage.success('登录成功，正在进入控制台')
-        router.replace('/admin/dashboard')
+        router.replace(roles.includes('admin') ? '/admin/dashboard' : '/admin/store')
       } else {
-        // 非管理员：拒绝进入后台，并退出该账号，避免前台带着半登录态
-        ElMessage.error('该账号不是管理员，无法进入后台')
+        // 非后台角色：拒绝进入，并退出该账号，避免前台带着半登录态
+        ElMessage.error('该账号不是管理员或店长，无法进入后台')
         userStore.logOut().finally(() => getCode())
       }
     }).catch((err) => {
@@ -165,7 +184,7 @@ onMounted(getCode)
   opacity: 0.55;
   pointer-events: none;
 }
-.orb-a { width: 420px; height: 420px; background: #ffd9c2; top: -120px; right: -80px; }
+.orb-a { width: 420px; height: 420px; background: var(--brand-200); top: -120px; right: -80px; }
 .orb-b { width: 380px; height: 380px; background: #cfe2ff; bottom: -140px; left: -100px; }
 
 .login-card {
@@ -185,7 +204,7 @@ onMounted(getCode)
   width: 48px; height: 48px; flex: none;
   display: flex; align-items: center; justify-content: center;
   font-size: 24px; border-radius: 14px;
-  background: linear-gradient(135deg, #ffe3cf, #ffd0e0);
+  background: linear-gradient(135deg, var(--brand-100), #ffd0e0);
 }
 .brand-text h1 { margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #1f2d3d; letter-spacing: 0.3px; }
 .brand-text p { margin: 0; font-size: 12px; color: #8a94a6; line-height: 1.5; }
@@ -197,7 +216,7 @@ onMounted(getCode)
 .code-img {
   width: 108px; height: 40px; flex: none;
   border-radius: 8px; cursor: pointer; object-fit: cover;
-  border: 1px solid #e3e8f0; background: #f7f9fc;
+  border: 1px solid #e3e8f0; background: var(--bg-page);
 }
 .code-loading { display: flex; align-items: center; justify-content: center; font-size: 12px; color: #9aa4b5; }
 
@@ -208,7 +227,7 @@ onMounted(getCode)
   margin-top: 18px; padding-top: 14px; border-top: 1px dashed #edf1f7;
   font-size: 12px; color: #9aa4b5;
 }
-.foot .link { color: #e8722f; cursor: pointer; }
+.foot .link { color: var(--brand-700); cursor: pointer; }
 .foot .link:hover { text-decoration: underline; }
 .foot .current { max-width: 52%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

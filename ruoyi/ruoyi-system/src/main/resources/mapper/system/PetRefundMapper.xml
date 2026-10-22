@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetRefundMapper">
+
+    <resultMap type="PetRefund" id="PetRefundResult">
+        <result property="refundId"     column="refund_id"     />
+        <result property="refundNo"     column="refund_no"     />
+        <result property="orderNo"      column="order_no"      />
+        <result property="orderId"      column="order_id"      />
+        <result property="storeId"      column="store_id"      />
+        <result property="storeName"    column="store_name"    />
+        <result property="userId"       column="user_id"       />
+        <result property="userName"     column="user_name"     />
+        <result property="amount"       column="amount"        />
+        <result property="reason"       column="reason"        />
+        <result property="status"       column="status"        />
+        <result property="refundMethod" column="refund_method" />
+        <result property="auditBy"      column="audit_by"      />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="auditRemark"  column="audit_remark"  />
+        <result property="finishTime"   column="finish_time"   />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"     column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+    </resultMap>
+
+    <sql id="selectPetRefundVo">
+        select r.refund_id, r.refund_no, r.order_no, r.order_id, r.store_id, r.user_id, r.user_name,
+               r.amount, r.reason, r.status, r.refund_method, r.audit_by, r.audit_time, r.audit_remark,
+               r.finish_time, r.create_by, r.create_time, r.update_by, r.update_time,
+               s.store_name
+        from pet_refund r
+        left join pet_store s on s.store_id = r.store_id
+    </sql>
+
+    <select id="selectPetRefundList" parameterType="PetRefund" resultMap="PetRefundResult">
+        <include refid="selectPetRefundVo"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (r.refund_no like concat('%', #{keyword}, '%')
+                     or r.order_no like concat('%', #{keyword}, '%')
+                     or r.user_name like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="storeId != null">AND r.store_id = #{storeId}</if>
+            <if test="userId != null">AND r.user_id = #{userId}</if>
+            <if test="status != null and status != ''">AND r.status = #{status}</if>
+            <if test="orderNo != null and orderNo != ''">AND r.order_no = #{orderNo}</if>
+            <if test="queryDate != null and queryDate != ''">
+                AND date(r.create_time) = #{queryDate}
+            </if>
+        </where>
+        order by r.refund_id desc
+    </select>
+
+    <select id="selectPetRefundById" parameterType="Long" resultMap="PetRefundResult">
+        <include refid="selectPetRefundVo"/>
+        where r.refund_id = #{refundId}
+    </select>
+
+    <select id="countPendingByOrderNo" resultType="int">
+        select count(*) from pet_refund where order_no = #{orderNo} and status = '0'
+    </select>
+
+    <insert id="insertPetRefund" parameterType="PetRefund" useGeneratedKeys="true" keyProperty="refundId">
+        insert into pet_refund
+        (refund_no, order_no, order_id, store_id, user_id, user_name, amount, reason, status,
+         refund_method, create_by, create_time)
+        values
+        (#{refundNo}, #{orderNo}, #{orderId}, #{storeId}, #{userId}, #{userName}, #{amount}, #{reason}, #{status},
+         #{refundMethod}, #{createBy}, sysdate())
+    </insert>
+
+    <update id="updatePetRefund" parameterType="PetRefund">
+        update pet_refund
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="status != null">status = #{status},</if>
+            <if test="auditBy != null">audit_by = #{auditBy},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+            <if test="finishTime != null">finish_time = #{finishTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where refund_id = #{refundId}
+    </update>
+
+    <select id="selectTodayStats" resultType="java.util.LinkedHashMap">
+        select
+            ifnull(sum(case when status = '0' then 1 else 0 end), 0) as pending,
+            ifnull(sum(case when status = '1' and date(finish_time) = #{date} then amount else 0 end), 0) as refunded,
+            ifnull(sum(case when status = '1' then 1 else 0 end), 0) as done,
+            ifnull(sum(case when status = '2' then 1 else 0 end), 0) as rejected
+        from pet_refund
+        <where>
+            <if test="storeId != null">store_id = #{storeId}</if>
+        </where>
+    </select>
+
+</mapper>

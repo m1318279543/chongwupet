@@ -5,6 +5,8 @@
     <resultMap type="PetAppointment" id="PetAppointmentResult">
         <result property="appointmentId"     column="appointment_id"     />
         <result property="userId"  column="user_id"   />
+        <result property="storeId"  column="store_id"   />
+        <result property="customerId"  column="customer_id"   />
         <result property="petId"  column="pet_id"   />
         <result property="appointmentDate"  column="appointment_date"   />
         <result property="contactPhone"  column="contact_phone"   />
@@ -19,7 +21,7 @@
     </resultMap>
 
     <sql id="selectPetAppointmentVo">
-        select a.appointment_id, a.user_id, a.pet_id, a.appointment_date, a.contact_phone, a.status, a.create_by, a.create_time, a.update_by, a.update_time, a.remark,
+        select a.appointment_id, a.user_id, a.pet_id, a.store_id, a.customer_id, a.appointment_date, a.contact_phone, a.status, a.create_by, a.create_time, a.update_by, a.update_time, a.remark,
                u.user_name as user_name, p.pet_name as pet_name, p.image as image, p.category_id as category_id
         from pet_appointment a
         left join sys_user u on u.user_id = a.user_id
@@ -34,6 +36,12 @@
             </if>
             <if test="petId != null">
                 AND a.pet_id = #{petId}
+            </if>
+            <if test="storeId != null">
+                AND a.store_id = #{storeId}
+            </if>
+            <if test="customerId != null">
+                AND a.customer_id = #{customerId}
             </if>
             <if test="appointmentDate != null">
                 AND a.appointment_date = #{appointmentDate}
@@ -55,12 +63,12 @@
 
     <insert id="insertPetAppointment" parameterType="PetAppointment" useGeneratedKeys="true" keyProperty="appointmentId">
         insert into pet_appointment(
-            <if test="userId != null">user_id,</if>            <if test="petId != null">pet_id,</if>            <if test="appointmentDate != null">appointment_date,</if>            <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>            <if test="status != null and status != ''">status,</if>
+            <if test="userId != null">user_id,</if>            <if test="petId != null">pet_id,</if>            <if test="storeId != null">store_id,</if>            <if test="customerId != null">customer_id,</if>            <if test="appointmentDate != null">appointment_date,</if>            <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>            <if test="status != null and status != ''">status,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
             <if test="remark != null and remark != ''">remark,</if>
             create_time
         )values(
-            <if test="userId != null">#{userId},</if>            <if test="petId != null">#{petId},</if>            <if test="appointmentDate != null">#{appointmentDate},</if>            <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>            <if test="status != null and status != ''">#{status},</if>
+            <if test="userId != null">#{userId},</if>            <if test="petId != null">#{petId},</if>            <if test="storeId != null">#{storeId},</if>            <if test="customerId != null">#{customerId},</if>            <if test="appointmentDate != null">#{appointmentDate},</if>            <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>            <if test="status != null and status != ''">#{status},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
             sysdate()
@@ -91,5 +99,12 @@
             #{appointmentId}
         </foreach>
     </delete>
+
+    <select id="countBookedSlot" resultType="int">
+        select count(*) from pet_appointment
+        where store_id = #{storeId}
+          and appointment_date = #{slotStart}
+          and status in ('0', '1')
+    </select>
 
 </mapper>

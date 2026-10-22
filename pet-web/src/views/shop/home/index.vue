@@ -1,276 +1,275 @@
 <template>
-  <div class="boqii-home">
-    <!-- ① 服务栏 -->
-    <div class="service-bar">
-      <div class="service-inner">
-        <span class="welcome">🐾 欢迎来到宠物之家，让每一个生命都被温柔以待</span>
-        <div class="service-right">
-          <template v-if="!isLogged()">
-            <a @click="openAuth('login')">登录</a>
-            <span class="sep">|</span>
-            <a @click="openAuth('register')">注册</a>
-          </template>
-          <template v-else>
-            <span class="user">👤 {{ userStore.name || '用户' }}</span>
-            <span class="sep">|</span>
-            <a @click="router.push('/shop/favorite')">我的收藏</a>
-            <span class="sep">|</span>
-            <a @click="router.push('/shop/appointment')">我的预约</a>
-            <span class="sep">|</span>
-            <a @click="logout">退出</a>
-          </template>
-        </div>
-      </div>
-    </div>
+  <div class="home">
 
-    <!-- ② 主导航：logo + 搜索 + 购物车 -->
-    <div class="main-header">
-      <div class="header-inner">
-        <div class="logo" @click="router.push('/shop/home')">
-          <span class="logo-emoji">🏠</span>
-          <span class="logo-text">宠物之家<em>BOQII</em></span>
-        </div>
-        <div class="search-box">
-          <el-input v-model="keyword" placeholder="搜索宠物名称或品种…" size="large" clearable @keyup.enter="handleSearch">
-            <template #append>
-              <el-button :icon="Search" @click="handleSearch">搜索</el-button>
-            </template>
-          </el-input>
-        </div>
-        <div class="header-actions">
-          <div class="action-item" @click="router.push('/shop/favorite')">
-            <span class="action-icon">❤️</span>
-            <span class="action-text">收藏</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ③ 分类导航条：可按统称类 / 科系 切换 -->
-    <div class="category-bar">
-      <div class="category-inner">
-        <div class="cat-all">
-          <span>☰</span> 全部分类
-        </div>
-        <div class="cat-mode">
-          <span class="mode-btn" :class="{active: navMode==='group'}" @click="navMode='group'">统称分类</span>
-          <span class="mode-btn" :class="{active: navMode==='family'}" @click="navMode='family'">按科系</span>
-        </div>
-        <div class="cat-tabs">
-          <span class="cat-tab" :class="{active: !activeFilter}" @click="clearFilter()">全部</span>
-          <template v-if="navMode==='group'">
-            <span class="cat-tab" v-for="g in groups" :key="g.name" :class="{active: activeType==='group' && activeValue===g.name}" @click="applyFilter('group', g.name)">
-              {{ g.name }} <em>({{ g.list.length }})</em>
-            </span>
-          </template>
-          <template v-else>
-            <span class="cat-tab" v-for="f in families" :key="f.name" :class="{active: activeType==='family' && activeValue===f.name}" @click="applyFilter('family', f.name)">
-              {{ f.name }}
-            </span>
-          </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- ④ Hero Banner -->
+    <!-- ① 主视觉：浅底深字，左文案 + 右图集（不再整块亮橙压白字） -->
     <section class="hero">
-      <div class="hero-bg"></div>
       <div class="hero-inner">
-        <div class="hero-text">
-          <span class="hero-badge">🐾 信赖宠物之家 · 健康保障</span>
-          <h1>找到你的<em>心仪伙伴</em></h1>
-          <p>每一只宠物都经过健康筛查，等待一个温暖的家。<br/>浏览 · 收藏 · 预约，三步遇见你的小伙伴。</p>
-          <div class="hero-cta" @click="router.push('/shop/match')">
-            <span class="cta-icon">🤖</span>
-            <span class="cta-body">
-              <strong>不知道养什么？试试 AI 智能选宠</strong>
-              <em>10 道题，30 秒为你匹配最合拍的伙伴 →</em>
+        <div class="hero-copy">
+          <span class="hero-badge">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.6"/></svg>
+            <b>重庆</b> {{ stores.length || 3 }} 家门店
+            <i class="sep"></i>
+            到店看宠可预约
+          </span>
+
+          <h1>
+            在重庆，遇见<br>
+            <em>值得托付<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path d="M2 7C22 3 44 2.5 62 4.5c18 2 34 3 56 1.5"/></svg></em>的第一只伙伴
+          </h1>
+
+          <p class="hero-sub">
+            每一只在售宠物都完成<b>健康筛查</b>与<b>疫苗、驱虫记录</b>核验，
+            支持到店看宠、线上问诊、7 天健康观察。
+          </p>
+
+          <!-- 搜索：全站唯一入口 -->
+          <div class="hero-search">
+            <el-icon class="s-ico"><Search /></el-icon>
+            <input
+              v-model="keyword"
+              type="search"
+              placeholder="搜索品种，如「布偶」「柯基」"
+              aria-label="搜索宠物名称或品种"
+              @keyup.enter="handleSearch"
+            />
+            <button type="button" class="s-go" @click="handleSearch">搜索</button>
+          </div>
+
+          <div class="hero-cta">
+            <button type="button" class="btn btn-primary" @click="router.push('/shop/match')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
+              AI 智能选宠 · 30 秒
+            </button>
+            <button type="button" class="btn btn-ghost" @click="scrollToPets">先随便逛逛</button>
+          </div>
+
+          <div class="trust">
+            <div><strong class="num">{{ categories.length || 7 }}</strong><span>大品类覆盖</span></div>
+            <div><strong class="num">{{ stores.length || 3 }}</strong><span>重庆直营门店</span></div>
+            <div><strong class="num">100<i>%</i></strong><span>健康筛查记录</span></div>
+            <div><strong class="num">7<i> 天</i></strong><span>健康观察期</span></div>
+          </div>
+        </div>
+
+        <!-- 图集：从在售宠物里取猫 / 狗 / 小宠各一张 -->
+        <div class="hero-media" v-if="heroPets.length">
+          <figure class="m-main"><img :src="heroPets[0].image" :alt="heroPets[0].petName" /></figure>
+          <figure v-if="heroPets[1]"><img :src="heroPets[1].image" :alt="heroPets[1].petName" loading="lazy" /></figure>
+          <figure v-if="heroPets[2]"><img :src="heroPets[2].image" :alt="heroPets[2].petName" loading="lazy" /></figure>
+          <div class="media-badge">
+            <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+            <span>
+              <strong>健康筛查已通过</strong>
+              <span>疫苗、驱虫、体检记录随宠物交付</span>
             </span>
           </div>
-          <div class="hero-stats">
-            <div class="stat"><span class="num">{{ petCount }}</span><span class="lbl">在售宠物</span></div>
-            <div class="stat"><span class="num">{{ categoryCount }}</span><span class="lbl">宠物分类</span></div>
-            <div class="stat"><span class="num">100%</span><span class="lbl">健康保障</span></div>
-          </div>
         </div>
       </div>
     </section>
 
-    <!-- ⑤ 服务承诺 -->
-    <section class="features">
-      <div class="features-inner">
-        <div class="feature" v-for="f in features" :key="f.title">
-          <span class="feature-icon">{{ f.icon }}</span>
+    <!-- ② 品类快筛：替代原来的「全部分类 + 统称分类/按科系」双层导航 -->
+    <div class="filters">
+      <div class="filters-inner">
+        <div class="chips" role="group" aria-label="按品类筛选">
+          <button type="button" class="chip" :class="{ on: !activeFilter }" @click="clearFilter">全部 <em>{{ allPets.length }}</em></button>
+          <button
+            v-for="c in categories" :key="c.categoryId" type="button" class="chip"
+            :class="{ on: activeType === 'category' && activeValue === c.categoryId }"
+            @click="applyFilter('category', c.categoryId)"
+          >
+            {{ c.categoryName }} <em>{{ catCounts[c.categoryId] || 0 }}</em>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 宠物网格 -->
+    <section class="sec pets-sec" ref="petsSec">
+      <div class="sec-inner">
+        <div class="sec-head">
           <div>
-            <h3>{{ f.title }}</h3>
-            <p>{{ f.desc }}</p>
+            <h2>{{ gridTitle }}</h2>
+            <p>{{ gridSub }}</p>
           </div>
+          <button v-if="canExpand" type="button" class="more" @click="showAll = true">
+            全部 {{ allPets.length }} 只
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+
+        <!-- 组合筛选（仅在有筛选/搜索时出现） -->
+        <div class="filter-bar" v-if="displayPets.length > 0 && showResult">
+          <div class="fb-item">
+            <span class="fb-label">性别</span>
+            <el-radio-group v-model="fGender" size="small">
+              <el-radio-button value="">全部</el-radio-button>
+              <el-radio-button value="0">公</el-radio-button>
+              <el-radio-button value="1">母</el-radio-button>
+            </el-radio-group>
+          </div>
+          <div class="fb-item">
+            <span class="fb-label">价格</span>
+            <el-select v-model="fPrice" size="small" style="width: 130px">
+              <el-option label="全部价格" value="" />
+              <el-option label="¥0 - 500" value="0-500" />
+              <el-option label="¥500 - 2000" value="500-2000" />
+              <el-option label="¥2000 - 5000" value="2000-5000" />
+              <el-option label="¥5000 以上" value="5000-" />
+            </el-select>
+          </div>
+          <div class="fb-item">
+            <span class="fb-label">排序</span>
+            <el-radio-group v-model="fSort" size="small">
+              <el-radio-button value="">默认</el-radio-button>
+              <el-radio-button value="asc">价格低→高</el-radio-button>
+              <el-radio-button value="desc">价格高→低</el-radio-button>
+            </el-radio-group>
+          </div>
+          <el-checkbox v-model="fOnSale" size="small">仅看在售</el-checkbox>
+        </div>
+
+        <div class="grid" v-loading="loading">
+          <PetCard
+            v-for="pet in gridPets"
+            :key="pet.petId"
+            :pet="pet"
+            :faved="isFav(pet.petId)"
+            :rating="petRating(pet.petId)"
+            :gradient="petGradient(pet.petId)"
+            :emoji="petEmoji(pet.categoryId)"
+            @open="goDetail"
+            @fav="toggleFav"
+          />
+        </div>
+
+        <div v-if="!loading && !gridPets.length" class="empty">
+          <p>没有找到相关宠物</p>
+          <button type="button" class="btn btn-ghost btn-sm" @click="clearFilter">看看全部在售</button>
         </div>
       </div>
     </section>
 
-    <!-- ⑤½ 宠物粮专区推荐 -->
-    <section class="food-promo">
-      <div class="food-promo-inner">
-        <div class="food-head">
-          <div class="food-title">
-            <span class="food-emoji">🛒</span>
+    <!-- ④ 宠物粮专区 -->
+    <section class="sec">
+      <div class="sec-inner">
+        <div class="food-panel">
+          <div class="sec-head">
             <div>
               <h2>宠物粮专区</h2>
-              <p>覆盖猫狗兔仓鼠鸟鱼爬行全 7 类 · 科学配比 · 严选好粮</p>
+              <p>{{ FOOD_CATEGORIES.length }} 类宠物 · {{ FOOD_LIST.length }} 款主粮 · 营养指标与喂食建议公开可查</p>
             </div>
+            <router-link class="more" to="/shop/food">
+              全部 {{ FOOD_LIST.length }} 款
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </router-link>
           </div>
-          <a class="food-more" @click="router.push('/shop/food')">查看全部 14 款粮 →</a>
-        </div>
-        <div class="food-grid">
-          <div class="food-card" v-for="item in featuredFoods" :key="item.name" @click="router.push('/shop/food')">
-            <div class="food-img">
-              <img :src="item.image" :alt="item.name" loading="lazy" />
-            </div>
-            <div class="food-body">
-              <div class="food-cat"><span class="dot" :style="{ background: item.color }"></span>{{ item.catName }}</div>
-              <div class="food-name">{{ item.name }}</div>
-              <div class="food-spec">{{ item.spec }}</div>
-              <div class="food-bottom">
-                <span class="food-price">¥<em>{{ item.price }}</em></span>
-                <span class="food-btn">去看看</span>
+          <div class="food-grid">
+            <router-link class="food" v-for="item in featuredFoods" :key="item.id" to="/shop/food">
+              <div class="food-img">
+                <img v-if="isImage(item.image)" :src="item.image" :alt="item.name" loading="lazy" />
+                <span v-else class="food-emoji">🛒</span>
               </div>
-            </div>
+              <div class="food-body">
+                <span class="food-tag">{{ item.catName }}</span>
+                <div class="food-name">{{ item.name }}</div>
+                <div class="food-spec">{{ item.spec }}</div>
+                <div class="food-price num"><i>¥</i>{{ item.price }}</div>
+              </div>
+            </router-link>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ⑥ 楼层式宠物展示（波奇网核心格式）-->
-    <section class="floors" v-loading="loading">
-      <div class="floors-inner">
-        <!-- 搜索/筛选结果模式 -->
-        <template v-if="showResult">
-          <div class="floor">
-            <div class="floor-head">
-              <h2><span class="floor-emoji">🔍</span> {{ resultTitle }}</h2>
-              <span class="floor-count">共 {{ filteredPets.length }} 只</span>
-            </div>
-            <!-- 组合筛选条 -->
-            <div class="filter-bar" v-if="displayPets.length > 0">
-              <div class="fb-item">
-                <span class="fb-label">性别</span>
-                <el-radio-group v-model="fGender" size="small">
-                  <el-radio-button value="">全部</el-radio-button>
-                  <el-radio-button value="0">公</el-radio-button>
-                  <el-radio-button value="1">母</el-radio-button>
-                </el-radio-group>
-              </div>
-              <div class="fb-item">
-                <span class="fb-label">价格</span>
-                <el-select v-model="fPrice" size="small" style="width: 130px">
-                  <el-option label="全部价格" value="" />
-                  <el-option label="¥0 - 500" value="0-500" />
-                  <el-option label="¥500 - 2000" value="500-2000" />
-                  <el-option label="¥2000 - 5000" value="2000-5000" />
-                  <el-option label="¥5000 以上" value="5000-" />
-                </el-select>
-              </div>
-              <div class="fb-item">
-                <span class="fb-label">排序</span>
-                <el-radio-group v-model="fSort" size="small">
-                  <el-radio-button value="">默认</el-radio-button>
-                  <el-radio-button value="asc">价格低→高</el-radio-button>
-                  <el-radio-button value="desc">价格高→低</el-radio-button>
-                </el-radio-group>
-              </div>
-              <el-checkbox v-model="fOnSale" size="small">仅看在售</el-checkbox>
-              <el-button v-if="hasFilter" link type="primary" size="small" @click="clearExtraFilter">清除筛选</el-button>
-            </div>
-            <div class="grid" v-if="filteredPets.length">
-              <div class="pet-card" v-for="pet in filteredPets" :key="pet.petId" @click="goDetail(pet.petId)">
-                <div class="pet-image" :style="{ background: petGradient(pet.petId) }">
-                  <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy" />
-                  <span v-else class="pet-emoji">{{ petEmoji(pet.categoryId) }}</span>
-                  <span class="fav-mark" v-if="isFav(pet.petId)">❤️</span>
-                  <span class="status-tag" v-if="pet.status === '1'">已售</span>
-                </div>
-                <div class="pet-body">
-                  <div class="pet-title">{{ pet.petName }}</div>
-                  <div class="pet-desc">{{ pet.description || '暂无描述' }}</div>
-                  <div class="pet-meta">
-                    <el-tag size="small" type="info">{{ pet.breed || '未知品种' }}</el-tag>
-                    <el-tag size="small" v-if="pet.age">{{ pet.age }}</el-tag>
-                    <el-tag size="small" type="warning">{{ genderText(pet.gender) }}</el-tag>
-                  </div>
-                  <div class="pet-bottom">
-                    <span class="pet-price" v-if="pet.price > 0">¥<em>{{ pet.price }}</em></span>
-                    <span class="pet-price free" v-else>协商领养</span>
-                    <span class="rating-tag" v-if="petRating(pet.petId)">⭐ {{ petRating(pet.petId).avg }}（{{ petRating(pet.petId).count }}）</span>
-                    <span class="fav-btn" :class="{ active: isFav(pet.petId) }" @click.stop="toggleFav(pet.petId)">
-                      {{ isFav(pet.petId) ? '❤️' : '🤍' }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="empty">
-              <span class="empty-icon">😿</span>
-              <p>没有找到相关宠物</p>
-            </div>
+    <!-- ⑤ 服务保障 -->
+    <section class="sec">
+      <div class="sec-inner">
+        <div class="sec-head">
+          <div>
+            <h2>买之前，先把这些说清楚</h2>
+            <p>四项承诺写进订单，出问题按条款处理</p>
           </div>
-        </template>
-
-        <!-- 楼层模式：每个分类一个楼层 -->
-        <template v-else>
-          <div class="floor" v-for="cat in categories" :key="cat.categoryId">
-            <div class="floor-head">
-              <h2><span class="floor-emoji">{{ catEmoji(cat.categoryId) }}</span> {{ cat.categoryName }}专区</h2>
-              <a class="floor-more" @click="applyFilter('category', cat.categoryId)">查看更多 →</a>
-            </div>
-            <p class="floor-desc">{{ cat.remark || '' }}</p>
-            <div class="grid" v-if="floorPets(cat.categoryId).length">
-              <div class="pet-card" v-for="pet in floorPets(cat.categoryId)" :key="pet.petId" @click="goDetail(pet.petId)">
-                <div class="pet-image" :style="{ background: petGradient(pet.petId) }">
-                  <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy" />
-                  <span v-else class="pet-emoji">{{ petEmoji(pet.categoryId) }}</span>
-                  <span class="fav-mark" v-if="isFav(pet.petId)">❤️</span>
-                  <span class="status-tag" v-if="pet.status === '1'">已售</span>
-                </div>
-                <div class="pet-body">
-                  <div class="pet-title">{{ pet.petName }}</div>
-                  <div class="pet-desc">{{ pet.description || '暂无描述' }}</div>
-                  <div class="pet-meta">
-                    <el-tag size="small" type="info">{{ pet.breed || '未知品种' }}</el-tag>
-                    <el-tag size="small" v-if="pet.age">{{ pet.age }}</el-tag>
-                    <el-tag size="small" type="warning">{{ genderText(pet.gender) }}</el-tag>
-                  </div>
-                  <div class="pet-bottom">
-                    <span class="pet-price" v-if="pet.price > 0">¥<em>{{ pet.price }}</em></span>
-                    <span class="pet-price free" v-else>协商领养</span>
-                    <span class="rating-tag" v-if="petRating(pet.petId)">⭐ {{ petRating(pet.petId).avg }}（{{ petRating(pet.petId).count }}）</span>
-                    <span class="fav-btn" :class="{ active: isFav(pet.petId) }" @click.stop="toggleFav(pet.petId)">
-                      {{ isFav(pet.petId) ? '❤️' : '🤍' }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        </div>
+        <div class="svc-grid">
+          <div class="svc">
+            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <h3>健康筛查</h3>
+            <p>到店前完成基础体检、疫苗与驱虫记录核验，档案随宠物交付。</p>
+            <router-link class="svc-link" to="/shop/service#health">了解流程 →</router-link>
           </div>
-        </template>
-      </div>
-    </section>
-
-    <!-- ⑦ 品牌承诺 -->
-    <section class="promise">
-      <div class="promise-inner">
-        <h2>为什么选择宠物之家？</h2>
-        <div class="promise-grid">
-          <div class="promise-item" v-for="p in promises" :key="p.title">
-            <span class="p-icon">{{ p.icon }}</span>
-            <div>
-              <h4>{{ p.title }}</h4>
-              <p>{{ p.desc }}</p>
-            </div>
+          <div class="svc">
+            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+            <h3>真实信息</h3>
+            <p>品种、月龄、性别、来源如实登记，图片为实拍，不做美颜合成。</p>
+            <router-link class="svc-link" to="/shop/service#origin">查看标准 →</router-link>
+          </div>
+          <div class="svc">
+            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"/></svg></span>
+            <h3>专业养护</h3>
+            <p>交付附 30 天养护清单：喂养节奏、疫苗排期、常见问题处理。</p>
+            <router-link class="svc-link" to="/shop/service#care">养护指南 →</router-link>
+          </div>
+          <div class="svc">
+            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1114 5.3"/><path d="M4 17v-5h5"/><path d="M9 17h11"/></svg></span>
+            <h3>售后无忧</h3>
+            <p>7 天健康观察期内出现约定疾病，凭体检报告可协商退换。</p>
+            <router-link class="svc-link" to="/shop/service#after">售后条款 →</router-link>
           </div>
         </div>
       </div>
     </section>
+
+    <!-- ⑥ 门店：把「本地直营」这条信任信息摆到页面上（数据来自 /pet/store） -->
+    <section class="sec stores" v-if="stores.length">
+      <div class="sec-inner">
+        <div class="sec-head">
+          <div>
+            <h2>重庆 {{ stores.length }} 家门店，欢迎先来看一眼</h2>
+            <p>看宠建议提前预约，我们会安排独立的接待时间</p>
+          </div>
+          <router-link class="more" to="/shop/appointment">
+            预约到店
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </router-link>
+        </div>
+        <div class="store-grid">
+          <div class="store" v-for="s in stores" :key="s.storeId">
+            <div class="store-top">
+              <h4>{{ s.storeName }}</h4>
+              <span class="tag">{{ s.storeType === '1' ? '加盟' : '直营' }}</span>
+            </div>
+            <div class="store-row">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <span>{{ [s.city, s.address].filter(Boolean).join('') }}</span>
+            </div>
+            <div class="store-row tel" v-if="s.phone">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3l1.8 4.5-2.3 1.7a12 12 0 006.3 6.3l1.7-2.3L21 15v3a2 2 0 01-2.2 2A17 17 0 014 5.2 2 2 0 016 3z"/></svg>
+              <span>{{ s.phone }}</span>
+            </div>
+            <div class="store-row" v-if="s.businessHours">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>{{ s.businessHours }}</span>
+            </div>
+            <router-link class="btn store-btn" to="/shop/appointment">预约到店</router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 尾段：拿不定主意时的兜底入口 -->
+    <section class="cta-band">
+      <div class="cta-inner">
+        <div>
+          <h3>拿不定主意？让医生和顾问帮你选</h3>
+          <p>在线问诊免费，工作日 9:00–21:00 有人应答</p>
+        </div>
+        <div class="cta-actions">
+          <router-link class="btn btn-primary" to="/shop/doctor">在线问诊</router-link>
+          <router-link class="btn btn-ghost" to="/shop/consult">联系客服</router-link>
+        </div>
+      </div>
+    </section>
+
   </div>
 </template>
 
@@ -283,39 +282,34 @@ import { listPetInfo } from '@/api/pet/petInfo'
 import { listCategory } from '@/api/pet/category'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { commentStatGroup } from '@/api/pet/petComment'
+import { storeOptions } from '@/api/pet/petStore'
 import { FOOD_CATEGORIES, FOOD_LIST } from '@/views/shop/food/foodData'
 import { useUserStore } from '@/store/modules/user'
+import PetCard from './PetCard.vue'
+import { EMOJI_POOL, PET_GRADIENTS } from './homeData'
 
 const router = useRouter()
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
 
 const keyword = ref('')
-const selectedCategory = ref('')
-const navMode = ref('group')        // 'group'=统称分类 | 'family'=按科系
-const activeType = ref('')          // '' | 'category' | 'group' | 'family'
-const activeValue = ref('')         // categoryId / groupName / family
+const activeType = ref('')          // '' | 'category'
+const activeValue = ref('')         // categoryId
 const categories = ref([])
 const petList = ref([])
-const allPets = ref([])  // 楼层模式用：所有宠物
-const total = ref(0)
-const petCount = ref(0)
-const categoryCount = ref(0)
+const allPets = ref([])
 const loading = ref(false)
 const myFavorites = ref([])
+const stores = ref([])
+const showAll = ref(false)
+const PAGE_SIZE = 12
+const petsSec = ref(null)
 
 // 组合筛选状态
 const fGender = ref('')
 const fPrice = ref('')
 const fSort = ref('')
 const fOnSale = ref(false)
-const hasFilter = computed(() => fGender.value !== '' || fPrice.value !== '' || fSort.value !== '' || fOnSale.value)
-function clearExtraFilter() {
-  fGender.value = ''
-  fPrice.value = ''
-  fSort.value = ''
-  fOnSale.value = false
-}
 
 // 评分角标：petId -> {avg,count}
 const ratingMap = ref({})
@@ -331,102 +325,69 @@ async function loadRatings() {
     ratingMap.value = m
   } catch (e) { /* 静默 */ }
 }
-const features = [
-  { icon: '🩺', title: '健康筛查', desc: '每只宠物入站前完成体检' },
-  { icon: '📸', title: '真实信息', desc: '实物拍摄，所见即所得' },
-  { icon: '📋', title: '专业养护', desc: '科学喂养，记录完整' },
-  { icon: '🤝', title: '售后无忧', desc: '领养后持续指导陪伴' }
-]
-const promises = [
-  { icon: '✅', title: '来源透明', desc: '每只宠物可追溯来源，拒绝来路不明' },
-  { icon: '💉', title: '疫苗齐全', desc: '基础疫苗接种完成，健康有保障' },
-  { icon: '🏠', title: '温馨过渡', desc: '到家的过渡期，我们全程协助' },
-  { icon: '❤️', title: '终身咨询', desc: '领养只是开始，养护问题随时咨询' }
-]
 
-const emojiPool = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🐟', '🦎']
-const catEmojiMap = {'猫咪':'🐱','狗狗':'🐶','兔子':'🐰','仓鼠':'🐹','鸟类':'🐦','水族':'🐠','猫':'🐱','狗':'🐶','兔':'🐰','仓':'🐹','鸟':'🐦','鱼':'🐠'}
-function petEmoji(c) { return emojiPool[(c || 0) % emojiPool.length] }
-function catEmoji(id) {
-  const c = categories.value.find(c => c.categoryId === id)
-  return c ? (catEmojiMap[c.categoryName] || '🐾') : '🐾'
-}
+function petEmoji(c) { return EMOJI_POOL[(c || 0) % EMOJI_POOL.length] }
 function petGradient(id) {
-  const colors = [
-    ['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0'],
-    ['#f3e5f5', '#e1bee7'], ['#fff8e1', '#ffecb3'], ['#e0f7fa', '#b2ebf2'], ['#fce4ec', '#f8bbd0']
-  ]
-  const c = colors[(id || 0) % colors.length]
+  const c = PET_GRADIENTS[(id || 0) % PET_GRADIENTS.length]
   return `linear-gradient(135deg, ${c[0]}, ${c[1]})`
 }
-function genderText(g) { return g === '0' ? '公' : g === '1' ? '母' : '未知' }
+// image 字段可能是图片 URL（/images/... 或 http...），也可能是 emoji 兜底
+function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
+function isLogged() { return !!userStore.token }
+function isFav(petId) { return myFavorites.value.includes(petId) }
 
-// 首页宠物粮推荐：每类取 1 款主推，带分类中文名与主题色
+// 首页宠物粮推荐：每类取 1 款主推
 const catNameMap = FOOD_CATEGORIES.reduce((m, c) => { m[c.id] = c.name; return m }, {})
-const catColorMap = FOOD_CATEGORIES.reduce((m, c) => { m[c.id] = c.color; return m }, {})
 const featuredFoods = computed(() => {
   const seen = new Set()
   const result = []
   for (const f of FOOD_LIST) {
     if (!seen.has(f.cat)) {
       seen.add(f.cat)
-      result.push({ ...f, catName: catNameMap[f.cat], color: catColorMap[f.cat] })
+      result.push({ ...f, catName: catNameMap[f.cat] })
     }
   }
-  return result
-})
-// image 字段可能是图片 URL（/images/... 或 http...），也可能是 emoji 兜底
-function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
-function isLogged() { return !!userStore.token }
-function isFav(petId) { return myFavorites.value.includes(petId) }
-
-const selectedCategoryName = computed(() => {
-  const c = categories.value.find(c => c.categoryId === selectedCategory.value)
-  return c ? c.categoryName : ''
-})
-const selectedCategoryEmoji = computed(() => {
-  return selectedCategory.value ? catEmoji(selectedCategory.value) : '🔍'
+  return result.slice(0, 4)
 })
 
-// 统称类分组（如 猫狗/小宠/水族/爬行）
-const groups = computed(() => {
+// 分类计数：品类 chip 上的数量用真实数据，不写死
+const catCounts = computed(() => {
   const m = {}
-  for (const c of categories.value) {
-    const g = c.groupName || '其他'
-    if (!m[g]) m[g] = { name: g, list: [] }
-    m[g].list.push(c)
-  }
-  return Object.values(m)
+  for (const p of allPets.value) m[p.categoryId] = (m[p.categoryId] || 0) + 1
+  return m
 })
-// 科系分组（如 猫科/犬科/兔科…）
-const families = computed(() => {
-  const m = {}
-  for (const c of categories.value) {
-    const f = c.family || '未知'
-    if (!m[f]) m[f] = { name: f, list: [] }
-    m[f].list.push(c)
+
+// Hero 图集：猫 / 狗 / 小宠各取一张有图的
+const heroPets = computed(() => {
+  const withImg = allPets.value.filter((p) => isImage(p.image))
+  const pick = []
+  for (const id of [1, 2, 3]) {
+    const p = withImg.find((x) => x.categoryId === id)
+    if (p) pick.push(p)
   }
-  return Object.values(m)
+  return (pick.length >= 3 ? pick : withImg).slice(0, 3)
 })
+
 const activeFilter = computed(() => activeType.value !== '')
 const displayPets = computed(() => {
   if (!activeFilter.value) return allPets.value
   if (activeType.value === 'category') return allPets.value.filter(p => p.categoryId === activeValue.value)
-  if (activeType.value === 'group') {
-    const g = groups.value.find(x => x.name === activeValue.value)
-    const ids = (g ? g.list : []).map(c => c.categoryId)
-    return allPets.value.filter(p => ids.includes(p.categoryId))
-  }
-  if (activeType.value === 'family') {
-    const f = families.value.find(x => x.name === activeValue.value)
-    const ids = (f ? f.list : []).map(c => c.categoryId)
-    return allPets.value.filter(p => ids.includes(p.categoryId))
-  }
   return allPets.value
 })
 const showResult = computed(() => !!keyword.value || activeFilter.value)
 const resultPets = computed(() => keyword.value ? petList.value : displayPets.value)
-const resultTitle = computed(() => keyword.value ? '搜索结果' : (activeValue.value || '全部'))
+const gridTitle = computed(() => {
+  if (keyword.value) return '搜索结果'
+  if (activeType.value === 'category') {
+    const c = categories.value.find(x => x.categoryId === activeValue.value)
+    return c ? `${c.categoryName}专区` : '筛选结果'
+  }
+  return '本周值得一看'
+})
+const gridSub = computed(() => {
+  if (showResult.value) return `共 ${filteredPets.value.length} 只符合条件`
+  return '按健康记录完整度与到店可看时间排序'
+})
 
 // 组合筛选后的结果（性别/价格/在售/排序，纯前端过滤）
 const filteredPets = computed(() => {
@@ -444,16 +405,25 @@ const filteredPets = computed(() => {
   return list
 })
 
-// 楼层模式：取每个分类的前6只
-function floorPets(catId) {
-  return allPets.value.filter(p => p.categoryId === catId).slice(0, 6)
-}
+// 首页精选顺序：猫 / 狗 / 兔 优先，其余按后台录入顺序
+// 后台新增数据通常按分类批量导入，不排的话首屏可能整屏都是水族或爬行
+const CAT_PRIORITY = { 1: 0, 2: 1, 3: 2 }
+const featuredPets = computed(() => allPets.value.slice().sort((a, b) => {
+  const pa = CAT_PRIORITY[a.categoryId] ?? 9
+  const pb = CAT_PRIORITY[b.categoryId] ?? 9
+  return pa - pb
+}))
+
+const gridPets = computed(() => {
+  if (showResult.value) return filteredPets.value
+  return showAll.value ? featuredPets.value : featuredPets.value.slice(0, PAGE_SIZE)
+})
+const canExpand = computed(() => !showResult.value && !showAll.value && allPets.value.length > PAGE_SIZE)
 
 async function loadCategories() {
   try {
     const res = await listCategory({ pageNum: 1, pageSize: 100 })
     categories.value = res.rows || []
-    categoryCount.value = categories.value.length
   } catch (e) { console.warn('分类加载失败', e) }
 }
 
@@ -462,7 +432,6 @@ async function loadAllPets() {
   try {
     const res = await listPetInfo({ pageNum: 1, pageSize: 1000 })
     allPets.value = res.rows || []
-    petCount.value = res.total || 0
   } catch (e) {
     console.error('加载宠物失败', e)
   } finally {
@@ -474,16 +443,22 @@ async function loadPets() {
   loading.value = true
   try {
     const query = { pageNum: 1, pageSize: 100 }
-    if (selectedCategory.value) query.categoryId = selectedCategory.value
     if (keyword.value) query.petName = keyword.value
     const res = await listPetInfo(query)
     petList.value = res.rows || []
-    total.value = res.total || 0
   } catch (e) {
     console.error('加载宠物失败', e)
   } finally {
     loading.value = false
   }
+}
+
+// 门店是公开信息；接口不可用时整块不渲染，不摆空壳
+async function loadStores() {
+  try {
+    const res = await storeOptions()
+    stores.value = (res.data || []).filter(s => s.status !== '1')
+  } catch (e) { /* 静默：游客态或后端未开通该接口 */ }
 }
 
 async function loadMyFavorites() {
@@ -512,7 +487,7 @@ async function toggleFav(petId) {
     try {
       await addPetFavorite({ petId, userId: userStore.userId })
       myFavorites.value.push(petId)
-      ElMessage.success('收藏成功 ❤️')
+      ElMessage.success('收藏成功')
     } catch (e) { ElMessage.error(e?.message || '收藏失败') }
   }
 }
@@ -521,39 +496,30 @@ function applyFilter(type, value) {
   activeType.value = type
   activeValue.value = value
   keyword.value = ''
-  selectedCategory.value = ''
-  document.querySelector('.floors')?.scrollIntoView({ behavior: 'smooth' })
+  showAll.value = false
+  scrollToPets()
 }
 
 function clearFilter() {
   activeType.value = ''
   activeValue.value = ''
   keyword.value = ''
-  selectedCategory.value = ''
-  document.querySelector('.floors')?.scrollIntoView({ behavior: 'smooth' })
 }
 
-function selectCategory(catId) {
-  applyFilter('category', catId)
+function scrollToPets() {
+  petsSec.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function handleSearch() {
-  if (keyword.value) {
-    activeType.value = ''
-    activeValue.value = ''
-    selectedCategory.value = ''
-    loadPets()
-    document.querySelector('.floors')?.scrollIntoView({ behavior: 'smooth' })
-  }
+  if (!keyword.value) return
+  activeType.value = ''
+  activeValue.value = ''
+  loadPets()
+  scrollToPets()
 }
 
 function goDetail(petId) {
   router.push(`/shop/pet/${petId}`)
-}
-
-function logout() {
-  userStore.clearSession()
-  ElMessage.success('已退出登录')
 }
 
 onMounted(() => {
@@ -561,196 +527,337 @@ onMounted(() => {
   loadAllPets()
   loadMyFavorites()
   loadRatings()
+  loadStores()
 })
 </script>
 
 <style scoped lang="scss">
-/* ① 服务栏 */
-.service-bar { background: #f5f5f5; border-bottom: 1px solid #eee; font-size: 12px; color: #666; }
-.service-inner { max-width: 1200px; margin: 0 auto; padding: 6px 24px; display: flex; justify-content: space-between; align-items: center; }
-.welcome { color: #888; }
-.service-right { display: flex; align-items: center; gap: 6px;
-  a { color: #ff6b35; cursor: pointer; &:hover { text-decoration: underline; } }
-  .sep { color: #ccc; }
-  .user { color: #333; font-weight: 500; }
+/* ===== ① Hero ===== */
+.hero {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(760px 380px at 82% 4%, var(--brand-100) 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, var(--brand-50) 0%, var(--bg-page) 100%);
+  border-bottom: 1px solid var(--border-1);
 }
-@media (max-width: 640px) {
-  .service-inner { padding: 6px 14px; }
-  .welcome { display: none; } /* 手机端欢迎语太长，只留快捷入口，保证单行 */
-  .service-right { gap: 8px; }
+.hero-inner {
+  max-width: var(--container-lg); margin: 0 auto; padding: 64px 24px 72px;
+  display: grid; grid-template-columns: 1.02fr .98fr; gap: 64px; align-items: center;
 }
-
-/* ② 主导航 */
-.main-header { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-.header-inner { max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; gap: 32px; }
-.logo { display: flex; align-items: center; gap: 8px; cursor: pointer; flex-shrink: 0;
-  .logo-emoji { font-size: 32px; }
-  .logo-text { font-size: 24px; font-weight: 800; color: #ff6b35; em { font-style: normal; font-size: 12px; color: #999; margin-left: 4px; vertical-align: super; } }
-}
-.search-box { flex: 1; max-width: 560px; }
-.header-actions { display: flex; gap: 20px; }
-.action-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; color: #666; transition: color .2s;
-  &:hover { color: #ff6b35; }
-  .action-icon { font-size: 22px; }
-  .action-text { font-size: 12px; margin-top: 2px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 10px; background: var(--bg-card);
+  border: 1px solid var(--border-1); border-radius: var(--radius-pill);
+  font-size: 12.5px; font-weight: 500; color: var(--text-2); box-shadow: var(--shadow-card);
+  svg { width: 13px; height: 13px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; flex-shrink: 0; }
+  b { color: var(--text-1); font-weight: 600; }
+  .sep { width: 1px; height: 11px; background: var(--border-1); }
 }
 
-/* ③ 分类导航条 */
-.category-bar { background: #fff; border-top: 2px solid #ff6b35; }
-.category-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 20px; }
-.cat-all { background: #ff6b35; color: #fff; padding: 10px 20px; font-size: 15px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
-.cat-mode { display: flex; gap: 4px; flex-shrink: 0; margin-right: 4px;
-  .mode-btn { font-size: 13px; color: #666; cursor: pointer; padding: 5px 12px; border-radius: 14px; border: 1px solid #eee; background: #fafafa; transition: all .2s;
-    &:hover { color: #ff6b35; border-color: #ffd4a8; }
-    &.active { background: #ff6b35; color: #fff; border-color: #ff6b35; }
-  }
-}
-.cat-tabs { display: flex; gap: 24px; overflow-x: auto; padding: 10px 0; }
-.cat-tab { white-space: nowrap; font-size: 14px; color: #333; cursor: pointer; padding: 6px 4px; border-bottom: 2px solid transparent; transition: all .2s;
-  &:hover, &.active { color: #ff6b35; border-bottom-color: #ff6b35; }
-}
-
-/* ④ Hero */
-.hero { position: relative; min-height: 420px; display: flex; align-items: center; overflow: hidden; }
-.hero-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #ff8c42 0%, #ffb347 40%, #ffd699 100%); }
-.hero-bg::after { content: '🐾'; position: absolute; font-size: 200px; opacity: .08; right: 5%; top: 10%; }
-.hero-inner { position: relative; z-index: 2; max-width: 1200px; margin: 0 auto; padding: 56px 24px; width: 100%; }
-.hero-text { max-width: 560px; color: #fff;
-  .hero-badge { display: inline-block; background: rgba(255,255,255,.25); padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 16px; }
-  h1 { font-size: 42px; margin: 0 0 16px; line-height: 1.2; em { font-style: normal; color: #fff7e6; border-bottom: 4px solid rgba(255,255,255,.5); } }
-  p { font-size: 15px; opacity: .95; margin: 0 0 20px; line-height: 1.7; }
-  .hero-cta { display: inline-flex; align-items: center; gap: 12px; background: rgba(255,255,255,.16);
-    border: 1px solid rgba(255,255,255,.45); border-radius: 14px; padding: 12px 18px; cursor: pointer;
-    transition: all .2s; margin-bottom: 8px;
-    &:hover { background: rgba(255,255,255,.28); transform: translateY(-2px); }
-    .cta-icon { font-size: 26px; }
-    .cta-body { display: flex; flex-direction: column; gap: 2px; text-align: left;
-      strong { font-size: 14px; } em { font-style: normal; font-size: 12px; opacity: .88; } }
-  }
-  .hero-stats { display: flex; gap: 40px; margin-top: 32px;
-    .stat { .num { font-size: 26px; font-weight: 700; display: block; } .lbl { font-size: 13px; opacity: .9; } }
-  }
-}
-
-/* ⑤ 特色卡 */
-.features { background: #fff; padding: 36px 0; border-bottom: 1px solid #f5f5f5; }
-.features-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
-.feature { display: flex; gap: 12px; align-items: center;
-  .feature-icon { font-size: 36px; flex-shrink: 0; }
-  h3 { font-size: 16px; color: #303133; margin: 0 0 4px; }
-  p { font-size: 12px; color: #909399; margin: 0; }
-}
-
-/* ⑤½ 宠物粮推荐 */
-.food-promo { background: linear-gradient(135deg, #fff7ef 0%, #fffdfa 100%); padding: 36px 0; border-bottom: 1px solid #f5f5f5; }
-.food-promo-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-.food-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
-  .food-title { display: flex; align-items: center; gap: 14px;
-    .food-emoji { font-size: 40px; flex-shrink: 0; }
-    h2 { font-size: 24px; color: #303133; margin: 0 0 4px; }
-    p { font-size: 13px; color: #909399; margin: 0; }
-  }
-  .food-more { color: #ff6b35; font-size: 14px; cursor: pointer; font-weight: 600; &:hover { text-decoration: underline; } }
-}
-.food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 16px; }
-.food-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all .2s;
-  &:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(255,107,53,.15); border-color: #ffd4a8; }
-  .food-img { height: 130px; background: #fafafa; display: flex; align-items: center; justify-content: center; overflow: hidden;
-    img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
-    &:hover img { transform: scale(1.06); }
-  }
-  .food-body { padding: 10px 12px 12px; }
-  .food-cat { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #909399; margin-bottom: 4px;
-    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-  }
-  .food-name { font-size: 14px; font-weight: 600; color: #303133; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .food-spec { font-size: 12px; color: #b0b3b8; margin-bottom: 8px; }
-  .food-bottom { display: flex; align-items: center; justify-content: space-between; }
-  .food-price { color: #ff6b35; font-size: 12px; em { font-style: normal; font-size: 17px; font-weight: 700; } }
-  .food-btn { font-size: 12px; color: #fff; background: #ff6b35; padding: 3px 10px; border-radius: 12px; }
-}
-
-/* ⑥ 楼层 */
-.floors { background: #f7f7f7; padding: 32px 0; min-height: 400px; }
-.floors-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-.filter-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 12px 16px; background: #fff; border-radius: 12px; margin-bottom: 16px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.04);
-  .fb-item { display: flex; align-items: center; gap: 8px; }
-  .fb-label { font-size: 13px; color: #909399; flex-shrink: 0; }
-}
-.rating-tag { font-size: 12px; color: #d2691e; background: #fff7f1; border-radius: 10px;
-  padding: 2px 8px; white-space: nowrap; }
-.floor { background: #fff; border-radius: 8px; overflow: hidden; margin-bottom: 24px; padding: 24px; }
-.floor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
-  h2 { font-size: 22px; color: #303133; margin: 0; .floor-emoji { font-size: 26px; margin-right: 8px; } }
-  .floor-count { font-size: 13px; color: #909399; }
-  .floor-more { color: #ff6b35; font-size: 14px; cursor: pointer; &:hover { text-decoration: underline; } }
-}
-.floor-desc { font-size: 13px; color: #909399; margin: 0 0 20px; }
-
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 16px; }
-.empty { text-align: center; padding: 60px 0; color: #c0c4cc;
-  .empty-icon { font-size: 48px; display: block; margin-bottom: 8px; }
-}
-
-/* 商品卡片（波奇网风格）*/
-.pet-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; cursor: pointer; transition: all .2s;
-  &:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.1); border-color: #ffd4a8; }
-  .pet-image { height: 180px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
-    .pet-emoji { font-size: 72px; transition: transform .3s; }
-    &:hover .pet-emoji { transform: scale(1.15); }
-    .pet-photo { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; background: #fafafa; }
-    &:hover .pet-photo { transform: scale(1.06); }
-    .fav-mark { position: absolute; top: 8px; right: 10px; font-size: 18px; }
-    .status-tag { position: absolute; top: 8px; left: 10px; background: rgba(0,0,0,.5); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 3px; }
-  }
-  .pet-body { padding: 12px 14px; }
-  .pet-title { font-size: 15px; font-weight: 600; color: #303133; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pet-desc { font-size: 12px; color: #909399; line-height: 1.5; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 36px; }
-  .pet-meta { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
-  .pet-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid #f5f5f5; }
-  .pet-price { color: #ff6b35; font-size: 13px; em { font-style: normal; font-size: 20px; font-weight: 700; } &.free { color: #67c23a; font-size: 14px; font-weight: 600; } }
-  .fav-btn { font-size: 20px; cursor: pointer; transition: transform .15s; &:hover { transform: scale(1.25); } }
-}
-
-/* ⑦ 品牌承诺 */
-.promise { background: linear-gradient(135deg, #fff7ef 0%, #fff 100%); padding: 48px 0; }
-.promise-inner { max-width: 1000px; margin: 0 auto; padding: 0 24px;
-  h2 { text-align: center; font-size: 24px; color: #303133; margin: 0 0 32px; }
-}
-.promise-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-.promise-item { display: flex; gap: 14px; align-items: flex-start;
-  .p-icon { font-size: 28px; flex-shrink: 0; }
-  h4 { font-size: 15px; color: #303133; margin: 0 0 4px; }
-  p { color: #909399; font-size: 13px; margin: 0; line-height: 1.5; }
-}
-
-@media (max-width: 768px) {
-  .features-inner, .promise-grid { grid-template-columns: 1fr 1fr; }
-  .hero-inner { padding: 32px 16px; }
-  .hero-text h1 { font-size: 26px; margin-bottom: 10px; }
-  .hero-text p { font-size: 13px; line-height: 1.65; margin-bottom: 16px; }
-  .hero-stats { gap: 22px; margin-top: 20px;
-    .stat .num { font-size: 20px; }
-    .stat .lbl { font-size: 12px; }
-  }
-  .header-inner { flex-wrap: wrap; }
-  .search-box { order: 3; flex: 1 1 100%; max-width: none; }
-}
-
-/* 手机端：宠物楼层卡由单列大图改为两列等比小图，一屏可见多只 */
-@media (max-width: 640px) {
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .pet-card { border-radius: 10px;
-    .pet-image { height: auto; aspect-ratio: 1 / 1;
-      .pet-emoji { font-size: 48px; }
+h1 {
+  margin: 20px 0 0; font-size: clamp(30px, 3.3vw, 44px); line-height: 1.16;
+  font-weight: 700; letter-spacing: -.012em; color: var(--text-1);
+  em {
+    font-style: normal; color: var(--brand-700); position: relative; white-space: nowrap;
+    svg {
+      position: absolute; left: 0; right: 0; bottom: -6px; width: 100%; height: 9px;
+      stroke: var(--brand-300); fill: none; stroke-width: 2.4; stroke-linecap: round;
     }
-    .pet-body { padding: 10px 12px; }
-    .pet-title { font-size: 13px; }
-    .pet-desc { display: none; }
-    .pet-price em { font-size: 16px; }
-    .fav-btn { font-size: 17px; }
   }
+}
+.hero-sub {
+  margin: 20px 0 0; max-width: 30em; font-size: 15.5px; line-height: 1.8; color: var(--text-2);
+  b { color: var(--text-1); font-weight: 600; }
+}
+
+.hero-search {
+  display: flex; align-items: center; gap: 8px; margin-top: 32px;
+  height: 56px; padding: 0 8px 0 18px; background: var(--bg-card);
+  border: 1px solid var(--border-1); border-radius: 14px;
+  box-shadow: var(--shadow-sm); max-width: 520px;
+  transition: border-color .16s, box-shadow .16s;
+  &:focus-within { border-color: var(--brand-300); box-shadow: 0 0 0 3px var(--brand-50), var(--shadow-sm); }
+  .s-ico { font-size: 18px; color: var(--text-3); flex-shrink: 0; }
+  input {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+    font-size: 15px; font-family: inherit; color: var(--text-1);
+    &::placeholder { color: var(--text-4); }
+    &::-webkit-search-cancel-button { display: none; }
+  }
+  .s-go {
+    height: 40px; padding: 0 22px; border-radius: 10px; border: 0;
+    background: var(--brand-600); color: #fff; font-size: 14.5px; font-weight: 600;
+    font-family: inherit; cursor: pointer; flex-shrink: 0; transition: background .16s;
+    &:hover { background: var(--brand-700); }
+  }
+}
+
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; padding: 0 22px; border-radius: var(--radius-md);
+  font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+  border: 1px solid transparent; transition: transform .16s, background .16s, border-color .16s, color .16s;
+  svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+}
+.btn-primary {
+  background: var(--brand-600); color: #fff; box-shadow: var(--shadow-cta);
+  &:hover { background: var(--brand-700); transform: translateY(-1px); }
+}
+.btn-ghost {
+  background: var(--bg-card); color: var(--text-1); border-color: var(--border-1);
+  box-shadow: var(--shadow-card);
+  &:hover { border-color: var(--brand-300); color: var(--brand-700); background: var(--brand-50); }
+}
+.btn-sm { height: 38px; padding: 0 16px; font-size: 13.5px; border-radius: 10px; }
+
+.trust {
+  display: flex; gap: 32px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-1);
+  div strong {
+    display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em;
+    line-height: 1.3; color: var(--text-1);
+    i { font-style: normal; font-size: 12px; font-weight: 600; }
+  }
+  div span { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+}
+
+.hero-media {
+  display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: 1fr 1fr;
+  gap: 14px; height: 470px; position: relative;
+  figure {
+    overflow: hidden; border-radius: var(--radius-lg); background: var(--bg-sunken);
+    box-shadow: var(--shadow-sm); margin: 0;
+    img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.3,1); }
+    &:hover img { transform: scale(1.04); }
+  }
+  .m-main { grid-row: span 2; border-radius: var(--radius-xl); background: var(--brand-50);
+    img { object-position: center 30%; } }
+}
+.media-badge {
+  position: absolute; left: -18px; bottom: 26px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px 11px 12px; background: var(--bg-card);
+  border: 1px solid var(--border-1); border-radius: 14px; box-shadow: var(--shadow-float);
+  .ok { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-50);
+    display: grid; place-items: center; flex-shrink: 0;
+    svg { width: 15px; height: 15px; stroke: var(--brand-600); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; } }
+  strong { display: block; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text-1); }
+  & > span > span { display: block; font-size: 11.5px; color: var(--text-3); line-height: 1.35; }
+}
+
+/* ===== ② 品类快筛 ===== */
+.filters { background: var(--bg-card); border-bottom: 1px solid var(--border-1); }
+.filters-inner {
+  max-width: var(--container-lg); margin: 0 auto; padding: 0 24px;
+  display: flex; align-items: center; height: 70px;
+}
+.chips {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px;
+  width: 100%;
+  &::-webkit-scrollbar { display: none; }
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px;
+  border: 1px solid var(--border-1); border-radius: var(--radius-pill);
+  background: var(--bg-card); color: var(--text-2); font-size: 13.5px; font-weight: 500;
+  font-family: inherit; white-space: nowrap; cursor: pointer; transition: all .16s;
+  em { font-style: normal; font-size: 11.5px; opacity: .62; font-variant-numeric: tabular-nums; }
+  &:hover { border-color: var(--brand-200); color: var(--brand-700); background: var(--brand-50); }
+  &.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600;
+    em { opacity: .82; } }
+}
+
+/* ===== 区块通用 ===== */
+.sec { padding: 96px 0; }
+.sec-inner { max-width: var(--container-lg); margin: 0 auto; padding: 0 24px; }
+.sec-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 32px;
+  h2 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--text-1); }
+  p { margin-top: 6px; font-size: 13.5px; color: var(--text-3); }
+}
+.more {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  font-size: 14px; font-weight: 600; color: var(--brand-700);
+  background: none; border: 0; font-family: inherit; cursor: pointer; padding: 8px 0; white-space: nowrap;
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .16s; }
+  &:hover svg { transform: translateX(3px); }
+}
+
+/* 筛选条 */
+.filter-bar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 16px; margin-bottom: 20px;
+  background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md);
+  .fb-item { display: flex; align-items: center; gap: 8px; }
+  .fb-label { font-size: 13px; color: var(--text-3); flex-shrink: 0; }
+}
+
+/* 网格：4 / 3 / 2 列 */
+.grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;
+  min-height: 200px;
+}
+.empty {
+  text-align: center; padding: 64px 0; color: var(--text-3);
+  p { margin-bottom: 16px; font-size: 14px; }
+}
+
+/* ===== ④ 宠物粮 ===== */
+.food-panel {
+  background: var(--bg-sunken); border: 1px solid var(--border-1);
+  border-radius: var(--radius-xl); padding: 32px;
+}
+.food-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.food {
+  display: block; background: var(--bg-card); border-radius: var(--radius-md);
+  overflow: hidden; border: 1px solid transparent;
+  transition: transform .2s, box-shadow .2s;
+  &:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+}
+.food-img {
+  aspect-ratio: 1 / 1; overflow: hidden; background: #fff;
+  display: grid; place-items: center;
+  img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
+  .food-emoji { font-size: 36px; }
+  .food:hover & img { transform: scale(1.05); }
+}
+.food-body { padding: 12px 14px 14px; }
+.food-tag {
+  display: inline-block; padding: 2px 7px; border-radius: var(--radius-xs);
+  background: var(--brand-50); color: var(--brand-700); font-size: 11.5px; font-weight: 600;
+}
+.food-name {
+  margin-top: 7px; font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--text-1);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; min-height: 40px;
+}
+.food-spec { margin-top: 2px; font-size: 12px; color: var(--text-3); }
+.food-price {
+  margin-top: 8px; font-size: 16px; font-weight: 700; color: var(--price); letter-spacing: -.01em;
+  i { font-style: normal; font-size: 11.5px; font-weight: 600; }
+}
+
+/* ===== ⑤ 服务保障 ===== */
+.svc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.svc {
+  padding-right: 16px;
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text-1); }
+  p { font-size: 13px; line-height: 1.7; color: var(--text-3); }
+}
+.svc-ico {
+  width: 44px; height: 44px; border-radius: var(--radius-md);
+  background: var(--brand-50); border: 1px solid var(--brand-100);
+  display: grid; place-items: center; margin-bottom: 16px;
+  svg { width: 22px; height: 22px; stroke: var(--brand-700); fill: none;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+}
+.svc-link {
+  display: inline-block; margin-top: 10px; font-size: 12.5px; font-weight: 600;
+  color: var(--brand-700);
+  &:hover { text-decoration: underline; }
+}
+
+/* ===== ⑥ 门店 ===== */
+.stores { background: var(--bg-card); border-top: 1px solid var(--border-1); border-bottom: 1px solid var(--border-1); }
+.store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.store {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 24px; border: 1px solid var(--border-1); border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  transition: border-color .2s, box-shadow .2s;
+  &:hover { border-color: var(--brand-200); box-shadow: var(--shadow-sm); }
+}
+.store-top {
+  display: flex; align-items: center; gap: 8px;
+  h4 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--text-1); }
+  .tag { padding: 2px 7px; border-radius: var(--radius-xs); background: var(--brand-50);
+    color: var(--brand-700); font-size: 11px; font-weight: 600; }
+}
+.store-row {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text-2); line-height: 1.6;
+  svg { width: 14px; height: 14px; stroke: var(--text-3); fill: none; stroke-width: 1.7; margin-top: 3px; flex-shrink: 0; }
+  &.tel { color: var(--text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+}
+.store-btn {
+  margin-top: auto; width: 100%; height: 40px; font-size: 13.5px; border-radius: 10px;
+  background: var(--bg-card); color: var(--brand-700); border: 1px solid var(--brand-200);
+  &:hover { background: var(--brand-50); border-color: var(--brand-300); }
+}
+
+/* ===== 尾段行动区 ===== */
+.cta-band { padding: 0 0 96px; }
+.cta-inner {
+  max-width: var(--container-lg); margin: 0 auto; padding: 32px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: var(--radius-xl);
+  h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
+  p { margin-top: 6px; font-size: 13.5px; color: var(--text-2); }
+  .cta-actions { display: flex; gap: 12px; flex-shrink: 0; }
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 1240px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hero-media { height: 420px; }
+}
+@media (max-width: 1000px) {
+  .hero-inner { grid-template-columns: 1fr; gap: 32px; padding: 48px 24px 56px; }
+  .hero-media { height: auto; aspect-ratio: 1.55; }
+  .media-badge { left: 12px; bottom: 12px; }
+  .sec { padding: 64px 0; }
+  .food-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .store-grid { grid-template-columns: 1fr; }
+  .cta-inner { flex-direction: column; align-items: flex-start; padding: 24px; }
+  .cta-band { padding: 0 0 64px; }
+}
+@media (max-width: 768px) {
+  .hero-inner { padding: 32px 16px 40px; }
+  .sec-inner, .filters-inner { padding: 0 16px; }
+  h1 { font-size: 27px; }
+  .hero-sub { font-size: 14.5px; }
+  .hero-search { height: 52px; border-radius: var(--radius-md); margin-top: 24px;
+    .s-go { padding: 0 16px; font-size: 14px; } }
+  .hero-cta { margin-top: 20px; }
+  .hero-cta .btn { flex: 1; min-width: 0; padding: 0 12px; font-size: 14px; height: 46px; }
+  /* 信任数据压成一行，给首屏腾出「本周值得一看」的位置 */
+  .trust { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px; margin-top: 28px; padding-top: 20px; }
+  .trust div strong { font-size: 16px; }
+  .trust div span { font-size: 11px; line-height: 1.4; }
+
+  /* 图集改为主图横幅 + 两张并排 */
+  .hero-media {
+    height: auto; aspect-ratio: auto; gap: 10px;
+    grid-template-columns: 1fr 1fr; grid-template-rows: auto auto;
+    .m-main { grid-row: auto; grid-column: 1 / -1; aspect-ratio: 16 / 9; border-radius: var(--radius-lg); }
+    figure:not(.m-main) { aspect-ratio: 1 / 1; border-radius: var(--radius-md); }
+  }
+  .media-badge { display: none; }
+
+  .filters-inner { height: 60px; }
+  .chip { height: 33px; padding: 0 12px; font-size: 13px; }
+  .sec { padding: 48px 0; }
+  .sec-head { h2 { font-size: 21px; } p { margin-top: 4px; font-size: 12.5px; } }
+  .more { font-size: 13px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .food-panel { padding: 16px; border-radius: var(--radius-lg); }
+  .food-grid { gap: 10px; }
+  .food-name { font-size: 13px; min-height: 38px; }
+  .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .svc { padding-right: 0;
+    .svc-ico { width: 38px; height: 38px; border-radius: 10px; margin-bottom: 10px;
+      svg { width: 19px; height: 19px; } }
+    h3 { font-size: 14px; }
+    p { font-size: 12px; line-height: 1.6; }
+  }
+  .store { padding: 16px; border-radius: var(--radius-md); }
+  .cta-inner h3 { font-size: 17px; }
+  .cta-actions { width: 100%;
+    .btn { flex: 1; padding: 0 12px; font-size: 14px; } }
+}
+@media (max-width: 480px) {
+  .hero-cta { flex-direction: column; }
+  .hero-cta .btn { width: 100%; }
 }
 </style>

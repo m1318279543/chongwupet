@@ -113,5 +113,5 @@ getList();
 .pet-cell { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .pet-img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
 .pet-emoji { font-size: 24px; }
-.reply-tag { color: #409eff; }
+.reply-tag { color: var(--brand-500); }
 </style>

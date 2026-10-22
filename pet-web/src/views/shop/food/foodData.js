@@ -4,7 +4,7 @@
 //      tags 卖点 / nutrition 营养指标 / feeding 喂食建议 / storage 储存方式
 
 export const FOOD_CATEGORIES = [
-  { id: 'cat', name: '猫咪', emoji: '🐱', color: '#ff8c42' },
+  { id: 'cat', name: '猫咪', emoji: '🐱', color: '#1f7a63' },
   { id: 'dog', name: '狗狗', emoji: '🐶', color: '#5b8def' },
   { id: 'rabbit', name: '兔子', emoji: '🐰', color: '#a8d5a2' },
   { id: 'hamster', name: '仓鼠', emoji: '🐹', color: '#e6b980' },

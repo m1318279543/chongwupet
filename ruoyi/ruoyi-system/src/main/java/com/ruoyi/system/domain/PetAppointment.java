@@ -29,6 +29,13 @@ public class PetAppointment extends BaseEntity
     @Excel(name = "宠物ID")
     private Long petId;
 
+    /** 门店ID */
+    @Excel(name = "门店ID")
+    private Long storeId;
+
+    /** 客户ID */
+    private Long customerId;
+
     /** 用户名（关联 sys_user 查询展示用，非本表字段） */
     @Excel(name = "用户名")
     private String userName;
@@ -106,6 +113,26 @@ public class PetAppointment extends BaseEntity
     public void setPetId(Long petId)
     {
         this.petId = petId;
+    }
+
+    public Long getStoreId()
+    {
+        return storeId;
+    }
+
+    public void setStoreId(Long storeId)
+    {
+        this.storeId = storeId;
+    }
+
+    public Long getCustomerId()
+    {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId)
+    {
+        this.customerId = customerId;
     }
 
     public String getUserName()

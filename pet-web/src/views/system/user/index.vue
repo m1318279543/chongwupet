@@ -498,7 +498,7 @@ getList(); getRoles(); getPosts()
 <style scoped>
 .row-av {
   width: 34px; height: 34px; margin: 0 auto; border-radius: 50%; overflow: hidden;
-  background: linear-gradient(135deg, #ff8c42, #ffb27a); color: #fff;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-300)); color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 600;
 }
@@ -507,9 +507,9 @@ getList(); getRoles(); getPosts()
 .av-edit { display: flex; align-items: center; gap: 16px; }
 .av-box {
   position: relative; width: 76px; height: 76px; border-radius: 50%; overflow: hidden;
-  background: linear-gradient(135deg, #ff8c42, #ffb27a); color: #fff;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-300)); color: #fff;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
-  border: 2px dashed #f0c4a0;
+  border: 2px dashed var(--brand-300);
 }
 .av-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .av-text { font-size: 28px; font-weight: 700; }
@@ -519,16 +519,16 @@ getList(); getRoles(); getPosts()
   font-size: 12px; opacity: 0; transition: opacity .2s;
 }
 .av-box:hover .av-mask, .av-box.busy .av-mask { opacity: 1; }
-.av-tip p { margin: 0; font-size: 12px; color: #909399; line-height: 1.7; }
+.av-tip p { margin: 0; font-size: 12px; color: var(--text-3); line-height: 1.7; }
 .av-tip .av-tip-sub { color: #b0b3b8; }
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .av-mask { opacity: 1; background: rgba(0,0,0,.35); }
 }
 
 .imp-desc {
   margin-top: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
   line-height: 1.6;
 }
 .imp-tools {

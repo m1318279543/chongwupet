@@ -1,0 +1,44 @@
+// ============================================================
+// Element Plus 主题覆盖 —— 全站唯一主色入口
+//
+// v2：主色改用「行动色」--brand-600（#14614e）。
+// 旧版是亮橙 #ff8c42，白字仅 2.3:1，不满足 AA，只能把主按钮
+// 改成「橙底深棕字」将就；新版绿底白字 7.4:1，补丁已删除。
+// ============================================================
+:root {
+  --el-color-primary: var(--brand-600);
+  // 以下浅色档位 = EP 的 mix(#fff, primary, N0%)，与 #14614e 一一对应
+  --el-color-primary-light-3: #5a9083;
+  --el-color-primary-light-5: #8aafa6;
+  --el-color-primary-light-7: #b8cfc9;
+  --el-color-primary-light-8: #d6dfdb;
+  --el-color-primary-light-9: #e7efed;
+  --el-color-primary-dark-2: #104e3e;
+
+  --el-border-radius-base: var(--radius-sm);
+  --el-font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Microsoft YaHei', sans-serif);
+}
+
+// 实心主按钮：悬停/按下向深走，保持高对比（EP 默认向浅走，会掉到 3.4:1）
+.el-button--primary {
+  --el-button-hover-bg-color: var(--brand-700);
+  --el-button-hover-border-color: var(--brand-700);
+  --el-button-active-bg-color: var(--brand-800);
+  --el-button-active-border-color: var(--brand-800);
+  font-weight: 500;
+}
+
+// 浅色 / 文字 / 链接型主按钮：主色文字在浅底上对比不足，统一用深一档
+.el-button--primary.is-plain,
+.el-button--primary.is-text,
+.el-button--primary.is-link {
+  --el-button-text-color: var(--brand-700);
+  --el-button-hover-text-color: var(--brand-700);
+}
+
+// 主色文字用于白底时（链接、强调）统一走深一档，保证可读
+.el-link.el-link--primary {
+  --el-link-text-color: var(--brand-700);
+  --el-link-hover-text-color: var(--brand-700);
+}

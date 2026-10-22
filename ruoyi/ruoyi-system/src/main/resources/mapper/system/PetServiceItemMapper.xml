@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetServiceItemMapper">
+
+    <resultMap type="PetServiceItem" id="PetServiceItemResult">
+        <result property="itemId"    column="item_id"    />
+        <result property="itemName"  column="item_name"  />
+        <result property="itemType"  column="item_type"  />
+        <result property="price"     column="price"      />
+        <result property="duration"  column="duration"   />
+        <result property="storeId"   column="store_id"   />
+        <result property="storeName" column="store_name" />
+        <result property="sort"      column="sort"       />
+        <result property="status"    column="status"     />
+        <result property="delFlag"   column="del_flag"   />
+        <result property="remark"    column="remark"     />
+        <result property="createBy"  column="create_by"  />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy"  column="update_by"  />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectPetServiceItemVo">
+        select i.item_id, i.item_name, i.item_type, i.price, i.duration, i.store_id, i.sort,
+               i.status, i.del_flag, i.remark, i.create_by, i.create_time, i.update_by, i.update_time,
+               s.store_name
+        from pet_service_item i
+        left join pet_store s on s.store_id = i.store_id
+    </sql>
+
+    <select id="selectPetServiceItemList" parameterType="PetServiceItem" resultMap="PetServiceItemResult">
+        <include refid="selectPetServiceItemVo"/>
+        <where>
+            i.del_flag = '0'
+            <if test="itemName != null and itemName != ''">
+                AND i.item_name like concat('%', #{itemName}, '%')
+            </if>
+            <if test="itemType != null and itemType != ''">
+                AND i.item_type = #{itemType}
+            </if>
+            <if test="status != null and status != ''">
+                AND i.status = #{status}
+            </if>
+            <if test="storeId != null">
+                AND (i.store_id = #{storeId} or i.store_id is null)
+            </if>
+        </where>
+        order by i.sort asc, i.item_id asc
+    </select>
+
+    <select id="selectPetServiceItemById" parameterType="Long" resultMap="PetServiceItemResult">
+        <include refid="selectPetServiceItemVo"/>
+        where i.item_id = #{itemId}
+    </select>
+
+    <select id="selectDefaultReceptionItem" resultMap="PetServiceItemResult">
+        <include refid="selectPetServiceItemVo"/>
+        where i.del_flag = '0' and i.item_type = '6'
+          and (i.store_id = #{storeId} or i.store_id is null)
+        order by i.store_id desc, i.item_id asc
+        limit 1
+    </select>
+
+    <insert id="insertPetServiceItem" parameterType="PetServiceItem" useGeneratedKeys="true" keyProperty="itemId">
+        insert into pet_service_item
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="itemName != null and itemName != ''">item_name,</if>
+            <if test="itemType != null">item_type,</if>
+            <if test="price != null">price,</if>
+            <if test="duration != null">duration,</if>
+            <if test="storeId != null">store_id,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="itemName != null and itemName != ''">#{itemName},</if>
+            <if test="itemType != null">#{itemType},</if>
+            <if test="price != null">#{price},</if>
+            <if test="duration != null">#{duration},</if>
+            <if test="storeId != null">#{storeId},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updatePetServiceItem" parameterType="PetServiceItem">
+        update pet_service_item
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="itemName != null and itemName != ''">item_name = #{itemName},</if>
+            <if test="itemType != null">item_type = #{itemType},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="duration != null">duration = #{duration},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where item_id = #{itemId}
+    </update>
+
+    <update id="deletePetServiceItemByIds" parameterType="Long">
+        update pet_service_item set del_flag = '2' where item_id in
+        <foreach item="itemId" collection="array" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+    </update>
+
+</mapper>

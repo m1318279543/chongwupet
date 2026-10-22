@@ -1,10 +1,16 @@
 package com.ruoyi.system.service.impl;
 
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.PetAppointment;
 import com.ruoyi.system.domain.PetCancelRecord;
 import com.ruoyi.system.mapper.PetAppointmentMapper;
@@ -37,9 +43,54 @@ public class PetAppointmentServiceImpl implements IPetAppointmentService
         return petAppointmentMapper.selectPetAppointmentByAppointmentId(appointmentId);
     }
 
+    /** 门店每天开放的可约时段 */
+    private static final String[] SLOTS = { "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00" };
+
+    /** 每个时段的接待上限（演示值，后续可挪到门店配置） */
+    private static final int SLOT_CAPACITY = 3;
+
+    @Override
+    public List<Map<String, Object>> selectSlots(Long storeId, String date)
+    {
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (storeId == null || StringUtils.isBlank(date))
+        {
+            return list;
+        }
+        for (String slot : SLOTS)
+        {
+            Date start;
+            try
+            {
+                start = Timestamp.valueOf(date + " " + slot + ":00");
+            }
+            catch (Exception e)
+            {
+                continue;
+            }
+            int booked = petAppointmentMapper.countBookedSlot(storeId, start);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("slot", slot);
+            item.put("booked", booked);
+            item.put("capacity", SLOT_CAPACITY);
+            item.put("available", Math.max(0, SLOT_CAPACITY - booked));
+            list.add(item);
+        }
+        return list;
+    }
+
     @Override
     public int insertPetAppointment(PetAppointment petAppointment)
     {
+        // 容量校验：同一门店同一时段最多 SLOT_CAPACITY 单
+        if (petAppointment.getStoreId() != null && petAppointment.getAppointmentDate() != null)
+        {
+            int booked = petAppointmentMapper.countBookedSlot(petAppointment.getStoreId(), petAppointment.getAppointmentDate());
+            if (booked >= SLOT_CAPACITY)
+            {
+                throw new ServiceException("该时段已约满，请选择其他时段");
+            }
+        }
         return petAppointmentMapper.insertPetAppointment(petAppointment);
     }
 

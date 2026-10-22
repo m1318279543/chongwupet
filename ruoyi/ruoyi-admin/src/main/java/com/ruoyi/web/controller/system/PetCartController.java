@@ -4,6 +4,7 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
@@ -27,7 +29,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import com.ruoyi.system.domain.PetCart;
+import com.ruoyi.system.domain.PetCustomer;
+import com.ruoyi.system.service.IPetOrderService;
+import com.ruoyi.system.domain.PetOrder;
+import com.ruoyi.system.domain.PetOrderItem;
 import com.ruoyi.system.service.IPetCartService;
+import com.ruoyi.system.service.IPetCustomerService;
+import com.ruoyi.system.service.IPetScopeService;
 
 /**
  * 购物车管理 Controller
@@ -47,6 +55,16 @@ public class PetCartController extends BaseController
     @Autowired
     private IPetNotificationService petNotificationService;
 
+    @Autowired
+    private IPetCustomerService petCustomerService;
+
+
+    @Autowired
+    private IPetOrderService petOrderService;
+
+    @Autowired
+    private IPetScopeService petScopeService;
+
     /** 生成订单号：ORD + 时间戳 + 3 位随机数 */
     private static String genOrderNo()
     {
@@ -60,7 +78,14 @@ public class PetCartController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(PetCart petCart)
     {
-        if (!SecurityUtils.isAdmin())
+        Long scope = petScopeService.currentStoreId();
+        if (scope != null)
+        {
+            // 店长/店员：按门店看全店数据；未绑定门店则查不到任何数据
+            petCart.setStoreId(scope);
+            petCart.setUserId(null);
+        }
+        else if (!SecurityUtils.isAdmin())
         {
             petCart.setUserId(SecurityUtils.getUserId());
         }
@@ -84,46 +109,22 @@ public class PetCartController extends BaseController
     }
 
     /**
-     * 结算提交：登录用户把选中的商品写入购物车/订单快照
+     * 结算提交：创建订单（订单头 + 明细），价格与库存都以服务端为准
      */
-    @Log(title = "购物车管理", businessType = BusinessType.INSERT)
+    @Log(title = "订单提交", businessType = BusinessType.INSERT)
     @PostMapping("/submit")
     public AjaxResult submit(@RequestBody List<PetCart> items)
     {
-        if (items == null || items.isEmpty())
-        {
-            return error("购物车为空，无法提交");
-        }
-        Long userId = SecurityUtils.getUserId();
-        String userName = SecurityUtils.getUsername();
-        String orderNo = genOrderNo();
-        int count = 0;
-        double total = 0;
-        for (PetCart item : items)
-        {
-            item.setCartId(null);
-            item.setUserId(userId);
-            item.setUserName(userName);
-            item.setOrderNo(orderNo);
-            item.setPayStatus("0");
-            if (item.getQty() == null || item.getQty() < 1) item.setQty(1);
-            if (item.getPrice() != null && item.getQty() != null)
-            {
-                item.setAmount(item.getPrice() * item.getQty());
-                total += item.getAmount();
-            }
-            count += petCartService.insertPetCart(item);
-        }
+        PetOrder order = petOrderService.createOrder(items, SecurityUtils.getUserId(), SecurityUtils.getUsername());
         Map<String, Object> data = new HashMap<>();
-        data.put("orderNo", orderNo);
-        data.put("count", count);
-        data.put("total", Math.round(total * 100) / 100.0);
-        AjaxResult ok = AjaxResult.success("下单成功，待支付", data);
-        return ok;
+        data.put("orderNo", order.getOrderNo());
+        data.put("count", order.getItemCount());
+        data.put("total", order.getPayAmount());
+        return AjaxResult.success("下单成功，待支付", data);
     }
 
     /**
-     * 模拟支付：按订单号支付当前用户名下待支付订单，成功后写站内通知
+     * 模拟支付：按订单号支付，幂等；成功后写站内通知
      */
     @Log(title = "订单支付", businessType = BusinessType.UPDATE)
     @PostMapping("/pay/{orderNo}")
@@ -132,33 +133,35 @@ public class PetCartController extends BaseController
     {
         String payMethod = body == null || body.get("payMethod") == null ? "alipay" : String.valueOf(body.get("payMethod"));
         Long userId = SecurityUtils.getUserId();
-        int n = petCartService.payOrder(orderNo, userId, payMethod);
-        if (n <= 0)
+        PetOrder order = petOrderService.selectPetOrderByNo(orderNo);
+        if (order == null)
         {
-            return error("订单不可支付（可能已支付或已取消）");
+            return error("订单不存在");
         }
-        // 汇总本单信息写通知
-        PetCart q = new PetCart();
-        q.setUserId(userId);
-        q.setOrderNo(orderNo);
-        double total = 0;
-        StringBuilder names = new StringBuilder();
-        for (PetCart c : petCartService.selectPetCartList(q))
+        if (!SecurityUtils.isAdmin() && (order.getUserId() == null || !order.getUserId().equals(userId)))
         {
-            if (c.getAmount() != null) total += c.getAmount();
+            return error("只能支付自己的订单");
+        }
+        int rows = petOrderService.payOrder(orderNo, payMethod, SecurityUtils.getUsername());
+        if (rows == 0)
+        {
+            return success("订单已支付，无需重复支付");
+        }
+        StringBuilder names = new StringBuilder();
+        for (PetOrderItem item : order.getItems())
+        {
             if (names.length() > 0) names.append("、");
-            names.append(c.getGoodsName());
+            names.append(item.getGoodsName());
         }
         String method = "wechat".equals(payMethod) ? "微信支付" : "balance".equals(payMethod) ? "余额支付" : "支付宝";
-        petNotificationService.push(userId, SecurityUtils.getUsername(), "order",
+        petNotificationService.push(order.getUserId(), order.getUserName(), "order",
                 "订单支付成功",
-                "订单 " + orderNo + " 已通过" + method + "支付成功，共 ¥" + String.format("%.2f", total)
+                "订单 " + orderNo + " 已通过" + method + "支付成功，共 ¥" + order.getPayAmount()
                         + "（" + names + "），我们会尽快为你安排发货。",
-                null);
+                order.getOrderId());
         Map<String, Object> data = new HashMap<>();
         data.put("orderNo", orderNo);
-        data.put("items", n);
-        data.put("total", Math.round(total * 100) / 100.0);
+        data.put("total", order.getPayAmount());
         return AjaxResult.success("支付成功", data);
     }
 
@@ -181,7 +184,14 @@ public class PetCartController extends BaseController
             return error("只能取消自己的订单");
         }
         boolean byAdmin = SecurityUtils.isAdmin() && !SecurityUtils.getUserId().equals(cart.getUserId());
-        petCartService.cancelPetCart(cartId, reason, SecurityUtils.getUserId(), SecurityUtils.getUsername());
+        if (StringUtils.isNotBlank(cart.getOrderNo()))
+        {
+            petOrderService.cancelOrder(cart.getOrderNo(), reason, SecurityUtils.getUsername());
+        }
+        else
+        {
+            petCartService.cancelPetCart(cartId, reason, SecurityUtils.getUserId(), SecurityUtils.getUsername());
+        }
         // 通知订单主人（自己取消也留一条记录）
         petNotificationService.push(cart.getUserId(), cart.getUserName(), "order",
                 byAdmin ? "订单已被管理员取消" : "订单已取消",

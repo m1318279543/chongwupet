@@ -117,13 +117,13 @@ onMounted(loadData)
 </script>
 
 <style scoped lang="scss">
-.my-fav { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-.guest-alert { background: #fff7ef; border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; font-size: 14px; color: #a06a3c; display: flex; align-items: center; gap: 4px; }
+.my-fav { max-width: var(--container-lg); margin: 0 auto; padding: 32px 24px; }
+.guest-alert { background: var(--brand-50); border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; font-size: 14px; color: var(--brand-800); display: flex; align-items: center; gap: 4px; }
 .page-head { margin-bottom: 24px;
-  h1 { font-size: 26px; color: #303133; margin: 0 0 4px; }
-  p { color: #909399; margin: 0; }
+  h1 { font-size: 26px; color: var(--text-1); margin: 0 0 4px; }
+  p { color: var(--text-3); margin: 0; }
 }
-.empty { text-align: center; padding: 80px 0; color: #c0c4cc;
+.empty { text-align: center; padding: 80px 0; color: var(--text-4);
   .icon { font-size: 56px; display: block; margin-bottom: 12px; }
 }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 20px; }
@@ -133,14 +133,14 @@ onMounted(loadData)
     .avatar-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
   }
   .info { padding: 14px 16px; }
-  .name { font-size: 17px; font-weight: 600; color: #303133; margin-bottom: 8px; }
+  .name { font-size: 17px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; }
   .tags { display: flex; gap: 6px; margin-bottom: 6px; }
-  .price { color: #f56c6c; font-weight: 700; }
+  .price { color: var(--danger-500); font-weight: 700; }
   .ops { padding: 0 16px 16px; display: flex; gap: 8px; }
 }
 
 /* 手机端：两列小卡 + 图片等比（宽高 1:1），不再一张图占一屏 */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .my-fav { padding: 20px 12px; }
   .page-head { margin-bottom: 16px;
     h1 { font-size: 20px; }

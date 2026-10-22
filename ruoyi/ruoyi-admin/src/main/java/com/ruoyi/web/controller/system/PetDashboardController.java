@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.system;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,6 +29,7 @@ public class PetDashboardController extends BaseController
      *
      * @param days 统计天数（含今天），默认 30
      */
+    @PreAuthorize("@ss.hasPermi('pet:dashboard:view')")
     @GetMapping("/all")
     public AjaxResult all(@RequestParam(value = "days", defaultValue = "30") Integer days)
     {
@@ -37,6 +39,7 @@ public class PetDashboardController extends BaseController
     /**
      * 实时数据：今日指标 + 最新业务动态（供前端轮询）
      */
+    @PreAuthorize("@ss.hasPermi('pet:dashboard:view')")
     @GetMapping("/realtime")
     public AjaxResult realtime()
     {

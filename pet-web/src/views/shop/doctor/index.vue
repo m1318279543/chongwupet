@@ -137,9 +137,9 @@ onMounted(loadWiki)
 </script>
 
 <style scoped lang="scss">
-.doctor { background: #f7f8fa; min-height: 100vh; padding: 28px 16px; }
-.doc-inner { max-width: 880px; margin: 0 auto; }
-.doc-hero { display: flex; gap: 18px; align-items: center; background: linear-gradient(135deg, #ff8c42, #ffb347); border-radius: 16px; padding: 24px 28px; color: #fff; margin-bottom: 20px;
+.doctor { background: var(--bg-page); padding: 28px 16px; }
+.doc-inner { max-width: var(--container-sm); margin: 0 auto; }
+.doc-hero { display: flex; gap: 18px; align-items: center; background: linear-gradient(135deg, var(--brand-600), var(--brand-500)); border-radius: 16px; padding: 24px 28px; color: #fff; margin-bottom: 20px;
   .doc-avatar { font-size: 52px; background: rgba(255,255,255,.2); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   h1 { margin: 0 0 8px; font-size: 24px; }
   p { margin: 0; font-size: 13px; line-height: 1.7; opacity: .95; }
@@ -149,46 +149,46 @@ onMounted(loadWiki)
   .ask-box { }
   .ask-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap;
     .chips { display: flex; gap: 8px; flex-wrap: wrap; flex: 1;
-      .chip { font-size: 12px; color: #ff8c42; background: #fff4ea; border: 1px solid #ffd9b3; border-radius: 14px; padding: 4px 10px; cursor: pointer; transition: all .2s;
-        &:hover { background: #ff8c42; color: #fff; }
+      .chip { font-size: 12px; color: var(--brand-500); background: var(--brand-50); border: 1px solid var(--brand-200); border-radius: 14px; padding: 4px 10px; cursor: pointer; transition: all .2s;
+        &:hover { background: var(--brand-500); color: #fff; }
       }
     }
   }
-  .thinking { margin: 10px 2px 0; font-size: 13px; color: #ff8c42; opacity: .85; animation: blink 1.2s infinite; }
+  .thinking { margin: 10px 2px 0; font-size: 13px; color: var(--brand-500); opacity: .85; animation: blink 1.2s infinite; }
   @keyframes blink { 0%,100% { opacity: .4; } 50% { opacity: .9; } }
   .answer { margin-top: 20px;
-      .bubble { background: #fff8f1; border: 1px solid #ffe2c7; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
-        .who { font-size: 13px; color: #ff8c42; font-weight: 600; display: block; margin-bottom: 6px;
+      .bubble { background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+        .who { font-size: 13px; color: var(--brand-500); font-weight: 600; display: block; margin-bottom: 6px;
           .src-tag { font-size: 11px; font-weight: 500; margin-left: 8px; padding: 1px 8px; border-radius: 10px; vertical-align: middle;
-            &.ai { color: #6b4f2a; background: #ffe9cf; border: 1px solid #ffd29e; }
+            &.ai { color: var(--brand-900); background: var(--brand-100); border: 1px solid var(--brand-200); }
             &.kb { color: #5a6b7a; background: #eef3f8; border: 1px solid #d6e2ec; }
           }
         }
-        p { margin: 0; font-size: 14px; color: #303133; line-height: 1.8; }
+        p { margin: 0; font-size: 14px; color: var(--text-1); line-height: 1.8; }
       }
-    .match-title { font-size: 14px; color: #909399; margin: 4px 0 10px; }
-    .issue-card { border: 1px solid #eef0f3; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: #fcfcfd;
+    .match-title { font-size: 14px; color: var(--text-3); margin: 4px 0 10px; }
+    .issue-card { border: 1px solid #eef0f3; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: var(--bg-page);
       .issue-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
-        .issue-name { font-size: 15px; font-weight: 600; color: #303133; flex: 1; min-width: 140px; }
+        .issue-name { font-size: 15px; font-weight: 600; color: var(--text-1); flex: 1; min-width: 140px; }
       }
-      .issue-row { font-size: 13px; line-height: 1.7; padding: 3px 0; border-bottom: 1px dashed #f3f3f3;
+      .issue-row { font-size: 13px; line-height: 1.7; padding: 3px 0; border-bottom: 1px dashed var(--bg-sunken);
         &:last-child { border-bottom: none; }
-        b { display: inline-block; width: 40px; color: #909399; font-weight: 600; }
-        span { color: #606266; }
+        b { display: inline-block; width: 40px; color: var(--text-3); font-weight: 600; }
+        span { color: var(--text-2); }
       }
     }
   }
 }
 
 .wiki { background: #fff; border-radius: 16px; padding: 22px; box-shadow: 0 4px 20px rgba(0,0,0,.05);
-  h2 { margin: 0 0 16px; font-size: 18px; color: #303133; }
-  .wiki-issue { padding: 10px 0; border-bottom: 1px dashed #f0f0f0;
+  h2 { margin: 0 0 16px; font-size: 18px; color: var(--text-1); }
+  .wiki-issue { padding: 10px 0; border-bottom: 1px dashed var(--border-2);
     &:last-child { border-bottom: none; }
     .wiki-name { display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
-      b { font-size: 14px; color: #303133; }
+      b { font-size: 14px; color: var(--text-1); }
     }
-    .wiki-row { font-size: 13px; color: #606266; line-height: 1.7; padding: 2px 0;
-      .lbl { display: inline-block; width: 40px; color: #909399; font-weight: 600; }
+    .wiki-row { font-size: 13px; color: var(--text-2); line-height: 1.7; padding: 2px 0;
+      .lbl { display: inline-block; width: 40px; color: var(--text-3); font-weight: 600; }
     }
   }
 }

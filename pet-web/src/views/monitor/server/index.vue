@@ -109,7 +109,7 @@ onMounted(getList)
   font-size: 14px;
 }
 .text-danger {
-  color: #f56c6c;
+  color: var(--danger-500);
   font-weight: 600;
 }
 </style>

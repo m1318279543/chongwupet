@@ -31,7 +31,7 @@
       <el-col :span="1.5"><el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain icon="Delete" @click="handleClean">清空</el-button></el-col>
       <el-col :span="10" style="line-height: 32px; color: #909399; font-size: 13px">
-        累计智能匹配 <b style="color: #ff6b35">{{ stat.total }}</b> 次 ·
+        累计智能匹配 <b style="color: var(--brand-600)">{{ stat.total }}</b> 次 ·
         其中无匹配 <b class="stat-empty">{{ stat.empty }}</b> 次（{{ stat.emptyRate }}%）·
         今日 <b>{{ stat.today }}</b> 次
       </el-col>
@@ -320,7 +320,7 @@ loadStat();
 <style scoped>
 .sub-id {
   font-size: 12px;
-  color: #a8abb2;
+  color: var(--text-4);
 }
 .portrait {
   display: flex;
@@ -329,19 +329,19 @@ loadStat();
 }
 .p-tag {
   font-size: 12px;
-  color: #606266;
-  background: #f4f6f8;
+  color: var(--text-2);
+  background: var(--bg-page);
   border-radius: 10px;
   padding: 2px 8px;
   line-height: 18px;
 }
 .top-name {
   font-weight: 600;
-  color: #303133;
+  color: var(--text-1);
 }
 .result-text {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
 }
 .detail-box {
   padding: 0 4px;
@@ -357,11 +357,11 @@ loadStat();
 .d-user {
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-1);
 }
 .d-time {
   font-size: 12px;
-  color: #a8abb2;
+  color: var(--text-4);
   margin-top: 4px;
 }
 .d-block {
@@ -370,7 +370,7 @@ loadStat();
 .d-title {
   font-size: 13px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-1);
   margin-bottom: 10px;
 }
 .d-answers {
@@ -382,15 +382,15 @@ loadStat();
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  background: #fafbfc;
+  background: var(--bg-page);
   border-radius: 8px;
   padding: 8px 12px;
 }
 .a-key {
-  color: #909399;
+  color: var(--text-3);
 }
 .a-val {
-  color: #303133;
+  color: var(--text-1);
   font-weight: 600;
 }
 .top-item {
@@ -400,18 +400,18 @@ loadStat();
   padding: 9px 12px;
   border-radius: 8px;
   font-size: 13px;
-  background: #fafbfc;
+  background: var(--bg-page);
   margin-bottom: 6px;
 }
 .top-item:nth-child(2) {
-  background: #fff6f0;
+  background: var(--brand-50);
 }
 .rank {
   width: 20px;
   height: 20px;
   border-radius: 50%;
   background: #eef0f3;
-  color: #909399;
+  color: var(--text-3);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -419,35 +419,35 @@ loadStat();
   flex-shrink: 0;
 }
 .rank.first {
-  background: #ff6b35;
+  background: var(--brand-600);
   color: #fff;
 }
 .t-name {
   font-weight: 600;
-  color: #303133;
+  color: var(--text-1);
   width: 120px;
 }
 .t-score {
-  color: #ff6b35;
+  color: var(--brand-600);
   font-weight: 700;
   width: 56px;
 }
 .t-price {
-  color: #909399;
+  color: var(--text-3);
   width: 80px;
 }
 .t-reason {
-  color: #529b2e;
+  color: var(--success-500);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .stat-empty {
-  color: #f56c6c;
+  color: var(--danger-500);
 }
 .empty-reason {
-  color: #f56c6c;
+  color: var(--danger-500);
   font-size: 12px;
 }
 .diag-grid {
@@ -467,15 +467,15 @@ loadStat();
 }
 .diag-cell span {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
 }
 .diag-cell b {
   font-size: 17px;
-  color: #f56c6c;
+  color: var(--danger-500);
 }
 .diag-tip {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-2);
   line-height: 1.9;
 }
 </style>

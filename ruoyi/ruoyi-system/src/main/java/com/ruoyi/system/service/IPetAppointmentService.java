@@ -14,6 +14,9 @@ public interface IPetAppointmentService
 
     public PetAppointment selectPetAppointmentByAppointmentId(Long appointmentId);
 
+    /** 查询某门店某天的可约时段（含已约/剩余） */
+    public List<java.util.Map<String, Object>> selectSlots(Long storeId, String date);
+
     public int insertPetAppointment(PetAppointment petAppointment);
 
     public int updatePetAppointment(PetAppointment petAppointment);
