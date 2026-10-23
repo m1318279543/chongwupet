@@ -5,6 +5,8 @@ import 'element-plus/dist/index.css'
 import './styles/tokens.scss'
 import './styles/element.scss'
 import './styles/index.scss'
+// 极简排版基元（.ui-*）：只新增类名，不覆盖既有样式
+import './styles/flat.scss'
 import locale from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'

@@ -14,7 +14,7 @@ export const MENU_GROUPS = [
     key: 'petBase',
     title: '宠物资料',
     icon: 'Goods',
-    items: ['/admin/category', '/admin/info', '/admin/health', '/admin/preference', '/admin/issue']
+    items: ['/admin/category', '/admin/info', '/admin/health', '/admin/preference']
   },
   {
     key: 'petService',
@@ -36,7 +36,6 @@ export const MENU_GROUPS = [
       '/admin/like',
       '/admin/comment',
       '/admin/consult',
-      '/admin/doctor',
       '/admin/cancel',
       '/admin/match'
     ]

@@ -31,7 +31,7 @@
         <template #default="scope">
           <div class="pet-cell">
             <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="pet-img" />
-            <span v-else class="pet-emoji">🐾</span>
+            <span v-else class="pet-emoji">—</span>
             <span>{{ scope.row.petName }}</span>
           </div>
         </template>

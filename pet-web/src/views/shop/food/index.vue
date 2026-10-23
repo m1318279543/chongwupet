@@ -1,13 +1,13 @@
 <template>
   <div class="food-page">
     <section class="hero">
-      <h1>🍚 宠物粮 · 科学喂养每一餐</h1>
-      <p>覆盖店内全部 7 类宠物，从主粮到营养补充，按品类挑对口好粮</p>
+      <h1>宠物粮 · 科学喂养每一餐</h1>
+      <p>覆盖店内全部宠物品类，从主粮到营养补充，按品类挑对口好粮</p>
     </section>
 
     <nav class="cat-tabs">
-      <!-- 选中态统一走品牌行动色，分类色只留作小圆点，避免 7 种颜色抢主色 -->
-      <button v-for="c in FOOD_CATEGORIES" :key="c.id"
+      <!-- 类目随商品接口派生（foodData 只提供名称/配色元数据），后台上下架新品类前台自动跟随 -->
+      <button v-for="c in categories" :key="c.id"
         class="cat-tab" :class="{ active: active === c.id }"
         @click="active = c.id">
         <i class="dot" :style="{ background: c.color }"></i>{{ c.name }}
@@ -31,7 +31,7 @@
           </div>
           <div class="desc">{{ p.desc }}</div>
           <div class="price-row">
-            <span class="rating-tag" v-if="foodRating(p.fid)">⭐ {{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
+            <span class="rating-tag" v-if="foodRating(p.fid)"><el-icon><Star /></el-icon>{{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
             <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
           </div>
         </div>
@@ -39,7 +39,7 @@
     </section>
 
     <section class="tip">
-      <h3>💡 换粮小贴士</h3>
+      <h3>换粮小贴士</h3>
       <p>
         新粮请按「7 日过渡法」逐步替换旧粮（旧 75% → 50% → 25% → 全换新），观察排便与食欲，减少肠胃应激。
         具体喂量参考包装建议并结合宠物体型调整；水族、爬行类请配合对应温控与水质管理。
@@ -72,7 +72,7 @@
           </ul>
           <div class="detail-actions">
             <el-button type="warning" size="large" round :disabled="detail && detail.stock === 0" @click="addToCart(detail)">
-              {{ detail && detail.stock === 0 ? '暂时缺货' : '🛒 加入购物车' }}
+              {{ detail && detail.stock === 0 ? '暂时缺货' : '加入购物车' }}
             </el-button>
             <span class="stock-hint" v-if="detail">
               {{ detail.stock > 0 ? '现货 ' + detail.stock + ' 件' : '补货中，可先咨询客服' }}
@@ -90,14 +90,13 @@
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
 import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
-import { onMounted } from 'vue'
 
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
@@ -143,6 +142,24 @@ async function loadGoods() {
 
 const filtered = computed(() => goodsList.value.filter(p => p.cat === active.value))
 
+// 类目清单：随商品数据派生（按 FOOD_CATEGORIES 元数据顺序排，出现新 cat 值则追加在末尾）
+const CAT_META = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.id, c]))
+const categories = computed(() => {
+  const seen = []
+  for (const p of goodsList.value) {
+    if (p.cat && !seen.includes(p.cat)) seen.push(p.cat)
+  }
+  // 元数据顺序优先，未知类目兜底追加
+  const ordered = [
+    ...FOOD_CATEGORIES.filter(c => seen.includes(c.id)),
+    ...seen.filter(id => !CAT_META[id]).map(id => ({ id, name: id, color: '#9aa79f' }))
+  ]
+  return ordered
+})
+watch(categories, (list) => {
+  if (list.length && !list.some(c => c.id === active.value)) active.value = list[0].id
+})
+
 // 详情弹窗
 // 评分角标：fid -> {avg,count}
 const ratingMap = ref({})
@@ -165,7 +182,7 @@ onMounted(() => {
 
 const detailVisible = ref(false)
 const detail = ref(null)
-const currentCat = computed(() => FOOD_CATEGORIES.find(c => c.id === detail.value?.cat) || {})
+const currentCat = computed(() => categories.value.find(c => c.id === detail.value?.cat) || {})
 function openDetail(p) {
   detail.value = p
   detailVisible.value = true

@@ -3,7 +3,7 @@
     <!-- 点赞区 -->
     <div class="like-bar">
       <button class="like-btn" :class="{ liked: liked, bounce: bouncing }" @click="toggleLike">
-        <span class="icon">{{ liked ? '❤️' : '🤍' }}</span>
+        <span class="icon"><el-icon><StarFilled v-if="liked" /><Star v-else /></el-icon></span>
         <span class="txt">{{ liked ? '已点赞' : '点赞' }}</span>
         <span class="num">{{ likeCount }}</span>
       </button>
@@ -29,7 +29,7 @@
           <span class="rs-count">{{ stat.commentCount || 0 }} 条评价</span>
         </div>
       </div>
-      <div class="rs-bars">
+      <div class="rs-bars" v-if="Number(stat.commentCount) > 0">
         <div class="bar-row" v-for="n in [5, 4, 3, 2, 1]" :key="n">
           <span class="bar-label">{{ n }} 星</span>
           <div class="bar-track">
@@ -38,6 +38,7 @@
           <span class="bar-num">{{ dist(n) }}</span>
         </div>
       </div>
+      <div class="rs-empty" v-else>还没有评价，来发表第一条吧</div>
     </div>
 
     <!-- 评论区 -->
@@ -121,7 +122,7 @@
         </div>
 
         <div class="empty" v-if="!loading && commentTree.length === 0">
-          <span class="e-icon">💬</span>
+          <span class="e-icon"><el-icon><ChatDotRound /></el-icon></span>
           <p>暂无评论，快来抢沙发～</p>
         </div>
         <div class="more" v-if="hasMore">
@@ -364,6 +365,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
     .rs-right { display: flex; flex-direction: column; gap: 4px; }
     .rs-count { font-size: 12.5px; color: var(--text-3); }
   }
+  .rs-empty { display: flex; align-items: center; min-height: 60px; font-size: 13px; color: var(--text-4); }
   .rs-bars { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 5px;
     .bar-row { display: flex; align-items: center; gap: 8px;
       .bar-label { width: 34px; font-size: 12px; color: var(--text-3); }

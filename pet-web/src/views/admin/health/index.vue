@@ -44,7 +44,7 @@
           <template #default="{ row }">
             <div class="pet-cell">
               <img v-if="isImage(row.image)" :src="row.image" class="thumb" :alt="row.petName" />
-              <span v-else class="thumb-emoji">🐾</span>
+              <span v-else class="thumb-emoji">—</span>
               <div class="pet-meta">
                 <el-link type="primary" underline="never" @click="goFront(row)">{{ row.petName }}</el-link>
                 <span class="sub">{{ row.breed || '—' }}</span>

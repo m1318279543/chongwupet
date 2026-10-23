@@ -19,7 +19,7 @@
 
           <p class="hero-sub">
             每一只在售宠物都完成<b>健康筛查</b>与<b>疫苗、驱虫记录</b>核验，
-            支持到店看宠、线上问诊、7 天健康观察。
+            支持到店看宠、养护咨询、7 天健康观察。
           </p>
 
           <!-- 搜索：全站唯一入口 -->
@@ -38,7 +38,7 @@
           <div class="hero-cta">
             <button type="button" class="btn btn-primary" @click="router.push('/shop/match')">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
-              AI 智能选宠 · 30 秒
+              智能选宠 · 30 秒
             </button>
             <button type="button" class="btn btn-ghost" @click="scrollToPets">先随便逛逛</button>
           </div>
@@ -136,7 +136,6 @@
             :faved="isFav(pet.petId)"
             :rating="petRating(pet.petId)"
             :gradient="petGradient(pet.petId)"
-            :emoji="petEmoji(pet.categoryId)"
             @open="goDetail"
             @fav="toggleFav"
           />
@@ -149,39 +148,7 @@
       </div>
     </section>
 
-    <!-- ④ 宠物粮专区 -->
-    <section class="sec">
-      <div class="sec-inner">
-        <div class="food-panel">
-          <div class="sec-head">
-            <div>
-              <h2>宠物粮专区</h2>
-              <p>{{ FOOD_CATEGORIES.length }} 类宠物 · {{ FOOD_LIST.length }} 款主粮 · 营养指标与喂食建议公开可查</p>
-            </div>
-            <router-link class="more" to="/shop/food">
-              全部 {{ FOOD_LIST.length }} 款
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
-            </router-link>
-          </div>
-          <div class="food-grid">
-            <router-link class="food" v-for="item in featuredFoods" :key="item.id" to="/shop/food">
-              <div class="food-img">
-                <img v-if="isImage(item.image)" :src="item.image" :alt="item.name" loading="lazy" />
-                <span v-else class="food-emoji">🛒</span>
-              </div>
-              <div class="food-body">
-                <span class="food-tag">{{ item.catName }}</span>
-                <div class="food-name">{{ item.name }}</div>
-                <div class="food-spec">{{ item.spec }}</div>
-                <div class="food-price num"><i>¥</i>{{ item.price }}</div>
-              </div>
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ⑤ 服务保障 -->
+    <!-- ④ 服务保障 -->
     <section class="sec">
       <div class="sec-inner">
         <div class="sec-head">
@@ -219,7 +186,7 @@
       </div>
     </section>
 
-    <!-- ⑥ 门店：把「本地直营」这条信任信息摆到页面上（数据来自 /pet/store） -->
+    <!-- ⑤ 门店：把「本地直营」这条信任信息摆到页面上（数据来自 /pet/store） -->
     <section class="sec stores" v-if="stores.length">
       <div class="sec-inner">
         <div class="sec-head">
@@ -260,12 +227,11 @@
     <section class="cta-band">
       <div class="cta-inner">
         <div>
-          <h3>拿不定主意？让医生和顾问帮你选</h3>
-          <p>在线问诊免费，工作日 9:00–21:00 有人应答</p>
+          <h3>拿不定主意？和门店聊聊</h3>
+          <p>选宠、喂养、健康疑问，客服与门店顾问随时帮你解答</p>
         </div>
         <div class="cta-actions">
-          <router-link class="btn btn-primary" to="/shop/doctor">在线问诊</router-link>
-          <router-link class="btn btn-ghost" to="/shop/consult">联系客服</router-link>
+          <router-link class="btn btn-primary" to="/shop/consult">联系客服</router-link>
         </div>
       </div>
     </section>
@@ -283,10 +249,9 @@ import { listCategory } from '@/api/pet/category'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { commentStatGroup } from '@/api/pet/petComment'
 import { storeOptions } from '@/api/pet/petStore'
-import { FOOD_CATEGORIES, FOOD_LIST } from '@/views/shop/food/foodData'
 import { useUserStore } from '@/store/modules/user'
 import PetCard from './PetCard.vue'
-import { EMOJI_POOL, PET_GRADIENTS } from './homeData'
+import { PET_GRADIENTS } from './homeData'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -326,7 +291,6 @@ async function loadRatings() {
   } catch (e) { /* 静默 */ }
 }
 
-function petEmoji(c) { return EMOJI_POOL[(c || 0) % EMOJI_POOL.length] }
 function petGradient(id) {
   const c = PET_GRADIENTS[(id || 0) % PET_GRADIENTS.length]
   return `linear-gradient(135deg, ${c[0]}, ${c[1]})`
@@ -335,20 +299,6 @@ function petGradient(id) {
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
 function isLogged() { return !!userStore.token }
 function isFav(petId) { return myFavorites.value.includes(petId) }
-
-// 首页宠物粮推荐：每类取 1 款主推
-const catNameMap = FOOD_CATEGORIES.reduce((m, c) => { m[c.id] = c.name; return m }, {})
-const featuredFoods = computed(() => {
-  const seen = new Set()
-  const result = []
-  for (const f of FOOD_LIST) {
-    if (!seen.has(f.cat)) {
-      seen.add(f.cat)
-      result.push({ ...f, catName: catNameMap[f.cat] })
-    }
-  }
-  return result.slice(0, 4)
-})
 
 // 分类计数：品类 chip 上的数量用真实数据，不写死
 const catCounts = computed(() => {
@@ -702,42 +652,7 @@ h1 {
   p { margin-bottom: 16px; font-size: 14px; }
 }
 
-/* ===== ④ 宠物粮 ===== */
-.food-panel {
-  background: var(--bg-sunken); border: 1px solid var(--border-1);
-  border-radius: var(--radius-xl); padding: 32px;
-}
-.food-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.food {
-  display: block; background: var(--bg-card); border-radius: var(--radius-md);
-  overflow: hidden; border: 1px solid transparent;
-  transition: transform .2s, box-shadow .2s;
-  &:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
-}
-.food-img {
-  aspect-ratio: 1 / 1; overflow: hidden; background: #fff;
-  display: grid; place-items: center;
-  img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
-  .food-emoji { font-size: 36px; }
-  .food:hover & img { transform: scale(1.05); }
-}
-.food-body { padding: 12px 14px 14px; }
-.food-tag {
-  display: inline-block; padding: 2px 7px; border-radius: var(--radius-xs);
-  background: var(--brand-50); color: var(--brand-700); font-size: 11.5px; font-weight: 600;
-}
-.food-name {
-  margin-top: 7px; font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--text-1);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; min-height: 40px;
-}
-.food-spec { margin-top: 2px; font-size: 12px; color: var(--text-3); }
-.food-price {
-  margin-top: 8px; font-size: 16px; font-weight: 700; color: var(--price); letter-spacing: -.01em;
-  i { font-style: normal; font-size: 11.5px; font-weight: 600; }
-}
-
-/* ===== ⑤ 服务保障 ===== */
+/* ===== ④ 服务保障 ===== */
 .svc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
 .svc {
   padding-right: 16px;
@@ -757,7 +672,7 @@ h1 {
   &:hover { text-decoration: underline; }
 }
 
-/* ===== ⑥ 门店 ===== */
+/* ===== ⑤ 门店 ===== */
 .stores { background: var(--bg-card); border-top: 1px solid var(--border-1); border-bottom: 1px solid var(--border-1); }
 .store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .store {
@@ -805,7 +720,6 @@ h1 {
   .hero-media { height: auto; aspect-ratio: 1.55; }
   .media-badge { left: 12px; bottom: 12px; }
   .sec { padding: 64px 0; }
-  .food-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .store-grid { grid-template-columns: 1fr; }
   .cta-inner { flex-direction: column; align-items: flex-start; padding: 24px; }
@@ -841,9 +755,6 @@ h1 {
   .sec-head { h2 { font-size: 21px; } p { margin-top: 4px; font-size: 12.5px; } }
   .more { font-size: 13px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .food-panel { padding: 16px; border-radius: var(--radius-lg); }
-  .food-grid { gap: 10px; }
-  .food-name { font-size: 13px; min-height: 38px; }
   .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .svc { padding-right: 0;
     .svc-ico { width: 38px; height: 38px; border-radius: 10px; margin-bottom: 10px;

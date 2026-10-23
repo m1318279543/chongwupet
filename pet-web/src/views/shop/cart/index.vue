@@ -1,68 +1,97 @@
 <template>
-  <div class="cart-page">
-    <div class="page-head">
-      <h1>🛒 我的购物车</h1>
-      <span class="sub">共 {{ cartStore.totalCount }} 件商品</span>
-    </div>
-
-    <!-- 空购物车 -->
-    <div class="empty" v-if="cartStore.isEmpty">
-      <div class="empty-icon">🛒</div>
-      <p class="empty-text">购物车还是空的</p>
-      <el-button type="warning" round @click="goShop">去挑选宠物粮</el-button>
-    </div>
-
-    <!-- 购物车列表 -->
-    <template v-else>
-      <div class="cart-card">
-        <!-- 表头 -->
-        <div class="row head">
-          <div class="col-check">
-            <el-checkbox :model-value="cartStore.allChecked" @change="toggleAll">全选</el-checkbox>
-          </div>
-          <div class="col-goods">商品</div>
-          <div class="col-price">单价</div>
-          <div class="col-qty">数量</div>
-          <div class="col-sub">小计</div>
-          <div class="col-op">操作</div>
-        </div>
-
-        <!-- 商品行 -->
-        <div class="row item" v-for="item in cartStore.items" :key="item.id">
-          <div class="col-check">
-            <el-checkbox :model-value="item.checked" @change="(v) => cartStore.setChecked(item.id, v)" />
-          </div>
-          <div class="col-goods">
-            <img :src="item.image" :alt="item.name" class="thumb" />
-            <div class="goods-info">
-              <div class="name">{{ item.name }}</div>
-              <div class="spec">{{ item.spec }}</div>
-            </div>
-          </div>
-          <div class="col-price">¥{{ item.price }}</div>
-          <div class="col-qty">
-            <el-input-number :model-value="item.qty" :min="1" :max="99" size="small"
-              @change="(v) => cartStore.updateQty(item.id, v)" />
-          </div>
-          <div class="col-sub">¥{{ (item.price * item.qty).toFixed(2) }}</div>
-          <div class="col-op">
-            <el-button link type="danger" @click="removeItem(item)">删除</el-button>
-          </div>
-        </div>
+  <div class="ui-page ui-page--md">
+    <!-- 页面头：标题左、件数右，1px 线收口 -->
+    <header class="ui-head">
+      <div class="ui-head__main">
+        <p class="ui-eyebrow">Cart</p>
+        <h1 class="ui-title">我的购物车</h1>
+        <p class="ui-sub">勾选要结算的商品，数量改动即时生效。</p>
       </div>
+      <div class="ui-head__aside">
+        <span class="ui-count"><b>{{ cartStore.totalCount }}</b>件商品</span>
+      </div>
+    </header>
 
-      <!-- 结算栏 -->
-      <div class="checkout-bar">
-        <div class="cb-left">
+    <!-- 空态：不套壳、不插图 -->
+    <div class="ui-empty" v-if="cartStore.isEmpty">
+      <p class="ui-empty__title">购物车还是空的</p>
+      <p class="ui-empty__desc">去宠物粮专区挑几袋，回来这里一起结算。</p>
+      <div class="ui-empty__act">
+        <button type="button" class="ui-btn ui-btn--line" @click="goShop">去挑选宠物粮</button>
+      </div>
+    </div>
+
+    <template v-else>
+      <!-- 明细：原生表格（多字段规整数据），表头 + 行分割线区分行 -->
+      <table class="ui-table cart-table">
+        <thead>
+          <tr>
+            <th class="c-check">
+              <el-checkbox :model-value="cartStore.allChecked" @change="toggleAll">全选</el-checkbox>
+            </th>
+            <th class="c-goods">商品</th>
+            <th class="c-price align-right">单价</th>
+            <th class="c-qty">数量</th>
+            <th class="c-sub align-right">小计</th>
+            <th class="c-op align-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in cartStore.items" :key="item.id">
+            <td class="c-check">
+              <el-checkbox :model-value="item.checked" @change="(v) => cartStore.setChecked(item.id, v)" />
+            </td>
+            <td class="c-goods">
+              <div class="goods">
+                <img :src="item.image" :alt="item.name" class="thumb" loading="lazy" />
+                <div class="goods__text">
+                  <div class="goods__name">{{ item.name }}</div>
+                  <div class="goods__spec">
+                    {{ item.spec }}<span class="unit"> · ¥{{ item.price }}</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="c-price align-right ui-num">¥{{ item.price }}</td>
+            <td class="c-qty">
+              <el-input-number
+                :model-value="item.qty"
+                :min="1"
+                :max="99"
+                size="small"
+                @change="(v) => cartStore.updateQty(item.id, v)"
+              />
+            </td>
+            <td class="c-sub align-right">
+              <span class="ui-price">¥{{ (item.price * item.qty).toFixed(2) }}</span>
+            </td>
+            <td class="c-op align-right">
+              <button type="button" class="ui-linkbtn ui-linkbtn--danger" @click="removeItem(item)">删除</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 结算条：底部吸附，顶部一条 1px 线隔离，不做悬浮卡片 -->
+      <div class="checkout">
+        <div class="checkout__left">
           <el-checkbox :model-value="cartStore.allChecked" @change="toggleAll">全选</el-checkbox>
-          <el-button link type="info" @click="clearCart">清空购物车</el-button>
+          <button type="button" class="ui-linkbtn ui-linkbtn--muted" @click="clearCart">清空购物车</button>
         </div>
-        <div class="cb-right">
-          <span class="sel-tip">已选 {{ cartStore.selectedCount }} 件</span>
-          <span class="total-label">合计：</span>
-          <span class="total-price">¥{{ cartStore.selectedPrice.toFixed(2) }}</span>
-          <el-button type="warning" size="large" round :disabled="cartStore.selectedCount === 0"
-            @click="checkout">结算</el-button>
+        <div class="checkout__right">
+          <span class="checkout__count">已选 <b>{{ cartStore.selectedCount }}</b> 件</span>
+          <span class="checkout__sum">
+            <i>合计</i>
+            <span class="ui-price">¥{{ cartStore.selectedPrice.toFixed(2) }}</span>
+          </span>
+          <button
+            type="button"
+            class="ui-btn ui-btn--solid"
+            :disabled="cartStore.selectedCount === 0"
+            @click="checkout"
+          >
+            结算
+          </button>
         </div>
       </div>
     </template>
@@ -136,7 +165,7 @@ function checkout() {
         .then((res) => {
           cartStore.clear()
           const orderNo = res?.data?.orderNo
-          ElMessage.success('下单成功！即将进入收银台 🎉')
+          ElMessage.success('下单成功！即将进入收银台')
           // 带上订单号去订单页，自动弹出模拟收银台
           setTimeout(() => router.push(orderNo ? { path: '/shop/order', query: { pay: orderNo } } : '/shop/order'), 600)
         })
@@ -147,49 +176,154 @@ function checkout() {
 </script>
 
 <style scoped lang="scss">
-.cart-page { max-width: var(--container-md); margin: 0 auto; padding: 24px; }
-.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px;
-  h1 { font-size: 24px; color: var(--text-1); margin: 0; }
-  .sub { color: var(--text-3); font-size: 14px; }
-}
-.empty { text-align: center; padding: 80px 0; background: #fff; border-radius: 14px;
-  .empty-icon { font-size: 64px; opacity: .5; }
-  .empty-text { color: var(--text-3); font-size: 16px; margin: 16px 0 24px; }
-}
-.cart-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.05); }
-.row { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--bg-sunken);
-  &:last-child { border-bottom: none; }
-  &.head { background: var(--bg-page); color: var(--text-3); font-size: 13px; }
-  &.item:hover { background: var(--brand-50); }
-}
-.col-check { width: 70px; flex-shrink: 0; }
-.col-goods { flex: 1; display: flex; align-items: center; gap: 14px;
-  .thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: var(--bg-page); }
-  .goods-info { .name { font-size: 15px; color: var(--text-1); font-weight: 600; }
-    .spec { font-size: 13px; color: var(--text-3); margin-top: 4px; } }
-}
-.col-price { width: 100px; color: var(--text-2); font-size: 14px; }
-.col-qty { width: 140px; }
-.col-sub { width: 110px; color: var(--brand-500); font-weight: 700; font-size: 15px; }
-.col-op { width: 70px; text-align: right; }
+// 表格骨架来自 .ui-table；这里只定义列宽与两处页面特有内容（商品单元、结算条）。
 
-.checkout-bar { display: flex; align-items: center; justify-content: space-between;
-  margin-top: 16px; padding: 16px 24px; background: #fff; border-radius: 14px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.05);
-  .cb-left { display: flex; align-items: center; gap: 16px; }
-  .cb-right { display: flex; align-items: center; gap: 12px;
-    .sel-tip { color: var(--text-3); font-size: 14px; }
-    .total-label { color: var(--text-2); font-size: 14px; }
-    .total-price { color: var(--brand-500); font-size: 24px; font-weight: 700; }
+.cart-table {
+  margin-top: 8px;
+
+  // 首列左对齐页面边线，末列贴右，避免整表内缩
+  th:first-child, td:first-child { padding-left: 0; }
+  th:last-child, td:last-child { padding-right: 0; }
+
+  // 行内带交互控件，去掉斑马纹，只保留 1px 行分割线
+  tbody tr:nth-child(even) { background: transparent; }
+}
+
+// 列宽用固定值，保证各行竖直对齐
+.c-check { width: 76px; }
+.c-goods { min-width: 240px; }
+.c-price { width: 110px; }
+.c-qty { width: 148px; }
+.c-sub { width: 116px; }
+.c-op { width: 72px; }
+
+// 商品单元：72px 缩略图 + 名称/规格两行
+.goods {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.thumb {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: var(--rule);
+  border-radius: var(--r-2);
+  background: var(--bg-sunken);
+}
+.goods__text { min-width: 0; }
+.goods__name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-1);
+  line-height: 1.45;
+}
+.goods__spec {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+// 单价在窄屏并入规格行（见下方媒体查询），桌面端隐藏，避免重复显示
+.goods__spec .unit { display: none; }
+
+/* ============================================================
+   结算条：吸附在视口底部，靠顶部 1px 线把「明细」和「汇总」切开
+   ============================================================ */
+.checkout {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--text-1);
+  background: var(--bg-page);
+}
+.checkout__left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.checkout__right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.checkout__count {
+  font-size: 13px;
+  color: var(--text-3);
+  b {
+    font-weight: 650;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;
   }
 }
-@media (max-width: 768px) {
-  .row.head { display: none; }
-  .row.item { flex-wrap: wrap; gap: 8px;
-    .col-goods { width: 100%; }
-    .col-price, .col-qty, .col-sub, .col-op { width: auto; flex: 1; }
+.checkout__sum {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  i {
+    font-style: normal;
+    font-size: 13px;
+    color: var(--text-3);
   }
-  .checkout-bar { flex-direction: column; gap: 12px; align-items: stretch;
-    .cb-right { flex-wrap: wrap; justify-content: space-between; } }
+  .ui-price { font-size: 22px; }
+}
+
+/* ============================================================
+   手机端：表格折成两行式条目（仍是一行一条 + 1px 分割线）
+   ============================================================ */
+@media (max-width: 768px) {
+  .cart-table {
+    margin-top: 4px;
+    thead { display: none; }
+    tbody, tr, td { display: block; }
+    tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 12px;
+      padding: 14px 0;
+      border-bottom: var(--rule-soft);
+    }
+    td { border: 0; padding: 0; }
+  }
+
+  .c-check { width: 22px; flex: 0 0 22px; }
+  .c-goods { flex: 1 1 calc(100% - 34px); min-width: 0; }
+  // 窄屏不单列单价：并进规格行，第二行只留 数量 / 小计 / 删除
+  // 选择器带 .cart-table 是为了压过上面 `.cart-table td { display:block }` 的优先级
+  .cart-table .c-price { display: none; }
+  .goods__spec .unit { display: inline; }
+  .c-qty {
+    order: 3;
+    width: auto;
+    // 与上方缩略图左缘对齐（勾选框 22px + 间距 12px）
+    margin-left: 34px;
+    :deep(.el-input-number) { width: 116px; }
+  }
+  .c-sub { order: 4; width: auto; margin-left: auto;
+    .ui-price { font-size: 15px; }
+  }
+  .c-op { order: 5; width: auto; }
+
+  .thumb { width: 60px; height: 60px; }
+  .goods { gap: 12px; }
+  .goods__name { font-size: 14px; }
+
+  // 结算条：左右两栏压缩，价格与按钮占一行
+  .checkout {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 0;
+  }
+  .checkout__left { gap: 14px; }
+  .checkout__right { gap: 12px; margin-left: auto; }
+  .checkout__count { display: none; } // 窄屏省掉重复计数，只留合计
+  .checkout__sum .ui-price { font-size: 19px; }
 }
 </style>

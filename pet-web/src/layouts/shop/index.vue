@@ -18,11 +18,10 @@
           <router-link to="/shop/home" class="nav-item" :class="{ on: petsActive }">在售宠物</router-link>
           <router-link to="/shop/match" class="nav-item nav-ai">
             <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
-            AI 选宠
+            智能选宠
           </router-link>
           <router-link to="/shop/food" class="nav-item">宠物粮</router-link>
           <router-link to="/shop/service" class="nav-item" :class="{ on: route.path.startsWith('/shop/service') }">服务保障</router-link>
-          <router-link to="/shop/doctor" class="nav-item">问诊社区</router-link>
         </nav>
 
         <div class="user-area">
@@ -40,8 +39,8 @@
           <!-- 桌面端用户区 -->
           <div class="desk-user">
             <template v-if="!isLogged">
+              <!-- 注册入口暂不开放：注册链路未启用（账号由后台导入），开放前先统一加密口径，见 docs/上线前注意事项.md -->
               <el-button type="primary" round size="default" @click="openAuth('login')">登录</el-button>
-              <el-button round size="default" @click="openAuth('register')">注册</el-button>
             </template>
             <el-dropdown v-else @command="handleCommand">
               <span class="user">
@@ -68,13 +67,11 @@
         <div v-if="menuOpen" class="m-menu">
           <router-link to="/shop/home" class="m-item" @click="closeMenu">在售宠物</router-link>
           <router-link to="/shop/match" class="m-item m-ai" @click="closeMenu">
-            AI 选宠<span class="m-tag">智能推荐</span>
+            智能选宠<span class="m-tag">智能推荐</span>
           </router-link>
           <router-link to="/shop/food" class="m-item" @click="closeMenu">宠物粮</router-link>
 
           <router-link to="/shop/service" class="m-item" @click="closeMenu">服务保障</router-link>
-
-          <router-link to="/shop/doctor" class="m-item" @click="closeMenu">问诊社区</router-link>
           <router-link to="/shop/cart" class="m-item" @click="closeMenu">
             购物车
             <span class="cart-badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</span>
@@ -99,8 +96,8 @@
           <template v-else>
             <div class="m-divider"></div>
             <div class="m-auth">
+              <!-- 注册入口暂不开放，同桌面端 -->
               <button type="button" class="m-btn m-btn-primary" @click="openAuthFromMenu('login')">登录</button>
-              <button type="button" class="m-btn" @click="openAuthFromMenu('register')">注册</button>
             </div>
           </template>
         </div>
@@ -128,12 +125,12 @@
               </span>
               <strong>宠物之家</strong>
             </div>
-            <p>重庆本地宠物直营门店，提供选宠、看宠、养护与问诊的一站式服务。每一只在售宠物都有可查的健康记录。</p>
+            <p>重庆本地宠物直营门店，提供选宠、看宠与养护咨询的一站式服务。每一只在售宠物都有可查的健康记录。</p>
           </div>
           <div class="foot-col">
             <h6>选购</h6>
             <router-link to="/shop/home">在售宠物</router-link>
-            <router-link to="/shop/match">AI 智能选宠</router-link>
+            <router-link to="/shop/match">智能选宠</router-link>
             <router-link to="/shop/food">宠物粮</router-link>
             <router-link to="/shop/cart">购物车</router-link>
           </div>
@@ -146,7 +143,6 @@
           </div>
           <div class="foot-col">
             <h6>联系</h6>
-            <router-link to="/shop/doctor">在线问诊</router-link>
             <router-link to="/shop/consult">联系客服</router-link>
             <a href="tel:02388880001">客服 023-8888 0001</a>
             <router-link to="/shop/home">门店地址</router-link>
@@ -161,9 +157,6 @@
 
     <!-- 登录注册对话框 -->
     <AuthDialog ref="authRef" @success="onAuthSuccess" />
-
-    <!-- 全站 AI 智能助手（悬浮球） -->
-    <AiAssistant />
   </div>
 </template>
 
@@ -175,7 +168,6 @@ import { ArrowDown, ShoppingCart } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import AuthDialog from '@/components/AuthDialog.vue'
-import AiAssistant from '@/components/AiAssistant.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 
 const route = useRoute()

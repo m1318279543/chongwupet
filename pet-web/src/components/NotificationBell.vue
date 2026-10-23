@@ -16,7 +16,7 @@
         </div>
         <div class="np-list" v-loading="loading">
           <div v-for="n in list" :key="n.notifyId" class="np-item" :class="{ unread: n.isRead === '0' }" @click="openItem(n)">
-            <span class="np-icon">{{ typeIcon(n.type) }}</span>
+            <span class="np-icon"><el-icon><component :is="typeIcon(n.type)" /></el-icon></span>
             <div class="np-body">
               <div class="np-title">
                 <span>{{ n.title }}</span>
@@ -27,7 +27,7 @@
             </div>
           </div>
           <div v-if="!loading && list.length === 0" class="np-empty">
-            <span>🔔</span>
+            <el-icon><Bell /></el-icon>
             <p>暂时没有消息</p>
           </div>
         </div>
@@ -63,9 +63,9 @@ const total = ref(0)
 const ringing = ref(false)
 let pollTimer = null
 
-const ICONS = { order: '📦', appointment: '📅', consult: '💬', system: '🔔' }
+const ICONS = { order: 'Box', appointment: 'Calendar', consult: 'ChatDotRound', system: 'Bell' }
 function typeIcon(t) {
-  return ICONS[t] || '🔔'
+  return ICONS[t] || 'Bell'
 }
 
 async function loadUnread() {

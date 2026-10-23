@@ -76,15 +76,15 @@
         <div class="d-row"><span class="d-lbl">取消人</span><span>{{ current.userName || '游客' }}{{ current.userId ? '（ID: ' + current.userId + '）' : '' }}</span></div>
         <div class="d-row"><span class="d-lbl">取消时间</span><span>{{ parseTime(current.createTime) }}</span></div>
         <div class="d-block">
-          <div class="d-title">📌 取消对象</div>
+          <div class="d-title">取消对象</div>
           <div class="d-content">{{ current.targetName || '—' }}</div>
         </div>
         <div class="d-block">
-          <div class="d-title">📋 明细快照</div>
+          <div class="d-title">明细快照</div>
           <div class="d-content">{{ current.detail || '（无）' }}</div>
         </div>
         <div class="d-block">
-          <div class="d-title">💬 取消原因</div>
+          <div class="d-title">取消原因</div>
           <div class="d-content r">{{ current.reason || '（用户未填写）' }}</div>
         </div>
       </div>

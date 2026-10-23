@@ -5,11 +5,11 @@
       <div class="left">
         <div class="big-avatar" :style="{ background: petGradient(pet.petId) }">
           <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="big-photo" />
-          <span v-else>{{ petEmoji(pet.categoryId) }}</span>
+          <span v-else class="no-img">暂无图片</span>
         </div>
         <!-- 游客提示 -->
         <div class="guest-tip" v-if="!userStore.token">
-          <span>👀 您正在以游客身份浏览，</span>
+          <span>您正在以游客身份浏览，</span>
           <el-link type="primary" underline="never" @click="openAuth('login')">登录后</el-link>
           <span>可收藏、预约、点赞和评论</span>
         </div>
@@ -19,7 +19,7 @@
         <h1>{{ pet.petName }}</h1>
         <div class="tags">
           <el-tag type="info">{{ pet.breed || '未知品种' }}</el-tag>
-          <el-tag type="success" v-if="pet.age">{{ pet.age }}岁</el-tag>
+          <el-tag type="success" v-if="pet.age">{{ pet.age }}</el-tag>
           <el-tag type="warning">{{ genderText(pet.gender) }}</el-tag>
           <el-tag type="danger" v-if="pet.status">{{ statusText(pet.status) }}</el-tag>
           <el-tag type="success" effect="dark" v-if="health.healthId">
@@ -27,7 +27,7 @@
           </el-tag>
         </div>
         <div class="price" v-if="pet.price">
-          <span class="label">领养价</span>
+          <span class="label">售价</span>
           <span class="amount">¥ {{ pet.price }}</span>
         </div>
         <div class="desc" v-if="pet.description">
@@ -36,13 +36,13 @@
         </div>
         <div class="actions">
           <el-button size="large" round :type="isFav ? 'danger' : 'default'" @click="toggleFav">
-            {{ isFav ? '❤️ 已收藏' : '🤍 收藏' }}
+            {{ isFav ? '已收藏' : '收藏' }}
           </el-button>
           <el-button size="large" type="primary" round :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
-            {{ pet.status === '0' ? '🛒 立即购买' : '已被订走' }}
+            {{ pet.status === '0' ? '立即购买' : '已被订走' }}
           </el-button>
-          <el-button size="large" type="primary" plain round @click="openAppoint">📅 立即预约</el-button>
-          <el-button size="large" round class="ai-ask" @click="askAi">🤖 问 AI</el-button>
+          <el-button size="large" type="primary" plain round @click="openAppoint">立即预约</el-button>
+          <el-button size="large" round class="ai-ask" @click="askAi">问 AI</el-button>
         </div>
       </div>
     </div>
@@ -50,14 +50,14 @@
     <!-- 健康与服务档案（后台维护，前台实时展示） -->
     <div class="health-panel" v-if="pet.petId && health.healthId">
       <div class="panel-head">
-        <h2>🗂️ 健康与服务档案</h2>
+        <h2>健康与服务档案</h2>
         <span class="archive">档案编号 {{ health.archiveNo }} · 体检机构：{{ health.examHospital }}</span>
       </div>
 
       <div class="health-grid">
         <!-- 健康筛查 -->
         <section class="h-card">
-          <h3><span class="ico">🩺</span>健康筛查</h3>
+          <h3>健康筛查</h3>
           <ul>
             <li><span class="k">疫苗接种</span><span class="v">{{ health.vaccineName }}（{{ health.vaccineProgress }}）· {{ fmtDate(health.vaccineDate) }}</span></li>
             <li><span class="k">体内外驱虫</span><span class="v">{{ health.dewormName }} · {{ fmtDate(health.dewormDate) }}</span></li>
@@ -71,7 +71,7 @@
 
         <!-- 真实信息 -->
         <section class="h-card">
-          <h3><span class="ico">📋</span>真实信息</h3>
+          <h3>真实信息</h3>
           <ul>
             <li><span class="k">来源渠道</span><span class="v">{{ health.sourceChannel }}</span></li>
             <li><span class="k">来源地</span><span class="v">{{ health.sourcePlace }}</span></li>
@@ -84,7 +84,7 @@
 
         <!-- 专业养护 -->
         <section class="h-card">
-          <h3><span class="ico">🐾</span>专业养护</h3>
+          <h3>专业养护</h3>
           <ul>
             <li><span class="k">性格特点</span><span class="v">{{ health.temperament }}</span></li>
             <li><span class="k">饲养难度</span><span class="v"><el-tag size="small" :type="skillTag(health.skillLevel)">{{ health.skillLevel }}</el-tag></span></li>
@@ -95,7 +95,7 @@
 
         <!-- 售后无忧 -->
         <section class="h-card">
-          <h3><span class="ico">🛡️</span>售后无忧</h3>
+          <h3>售后无忧</h3>
           <ul>
             <li><span class="k">健康保障</span><span class="v">{{ health.guaranteeDays }} 天重大传染病保障</span></li>
             <li><span class="k">合同编号</span><span class="v">{{ health.contractNo }}</span></li>
@@ -109,36 +109,16 @@
     <!-- 宠物喜好 -->
     <div class="pref-panel" v-if="pet.petId && preference.preferenceId">
       <div class="panel-head">
-        <h2>🐾 它的小喜好</h2>
+        <h2>它的小喜好</h2>
         <span class="archive">投其所好，相处更甜</span>
       </div>
       <div class="pref-grid">
-        <div class="pref-item" v-if="preference.foodLike"><span class="ico">🍖</span><div><b>爱吃</b><p>{{ preference.foodLike }}</p></div></div>
-        <div class="pref-item" v-if="preference.toyLike"><span class="ico">🧶</span><div><b>爱玩</b><p>{{ preference.toyLike }}</p></div></div>
-        <div class="pref-item" v-if="preference.personality"><span class="ico">💗</span><div><b>性格</b><p>{{ preference.personality }}</p></div></div>
-        <div class="pref-item" v-if="preference.activityLevel"><span class="ico">⚡</span><div><b>活跃度</b><p>{{ preference.activityLevel }}</p></div></div>
-        <div class="pref-item" v-if="preference.envLike"><span class="ico">🏡</span><div><b>喜欢的环境</b><p>{{ preference.envLike }}</p></div></div>
-        <div class="pref-item warn" v-if="preference.taboo"><span class="ico">⚠️</span><div><b>禁忌注意</b><p>{{ preference.taboo }}</p></div></div>
-      </div>
-    </div>
-
-    <!-- 常见健康问题 -->
-    <div class="issue-panel" v-if="pet.petId && issues.length">
-      <div class="panel-head">
-        <h2>⚕️ 常见健康问题</h2>
-        <el-link type="primary" underline="never" @click="router.push('/shop/doctor')">宠物医生智能问答 ›</el-link>
-      </div>
-      <div class="issue-list">
-        <div class="issue-card" v-for="it in issues" :key="it.issueId">
-          <div class="issue-top">
-            <span class="issue-name">🔹 {{ it.issueName }}</span>
-            <el-tag size="small" :type="it.severity === '重' ? 'danger' : it.severity === '中' ? 'warning' : 'success'">{{ it.severity }}</el-tag>
-            <el-tag size="small" type="info">{{ it.family }}</el-tag>
-          </div>
-          <div class="issue-row" v-if="it.symptoms"><b>症状</b><span>{{ it.symptoms }}</span></div>
-          <div class="issue-row" v-if="it.solution"><b>措施</b><span>{{ it.solution }}</span></div>
-          <div class="issue-row" v-if="it.prevention"><b>预防</b><span>{{ it.prevention }}</span></div>
-        </div>
+        <div class="pref-item" v-if="preference.foodLike"><div><b>爱吃</b><p>{{ preference.foodLike }}</p></div></div>
+        <div class="pref-item" v-if="preference.toyLike"><div><b>爱玩</b><p>{{ preference.toyLike }}</p></div></div>
+        <div class="pref-item" v-if="preference.personality"><div><b>性格</b><p>{{ preference.personality }}</p></div></div>
+        <div class="pref-item" v-if="preference.activityLevel"><div><b>活跃度</b><p>{{ preference.activityLevel }}</p></div></div>
+        <div class="pref-item" v-if="preference.envLike"><div><b>喜欢的环境</b><p>{{ preference.envLike }}</p></div></div>
+        <div class="pref-item warn" v-if="preference.taboo"><div><b>禁忌注意</b><p>{{ preference.taboo }}</p></div></div>
       </div>
     </div>
 
@@ -146,7 +126,7 @@
     <PetSocial v-if="pet.petId" :pet-id="route.params.id" @auth="openAuth('login')" />
 
     <div class="not-found" v-else-if="!loading">
-      <span class="icon">😿</span>
+      <el-icon class="icon"><Search /></el-icon>
       <p>未找到该宠物信息</p>
       <el-button @click="$router.push('/shop/home')">返回首页</el-button>
     </div>
@@ -202,7 +182,6 @@ import { addPetAppointment, getAppointmentSlots } from '@/api/pet/petAppointment
 import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
 import { getPetPreference } from '@/api/pet/petPreference'
-import { listIssueFront } from '@/api/pet/petHealthIssue'
 import { useUserStore } from '@/store/modules/user'
 import PetSocial from '@/components/PetSocial/index.vue'
 
@@ -214,7 +193,6 @@ const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对
 const pet = ref({})
 const health = ref({})
 const preference = ref({})
-const issues = ref([])
 const loading = ref(true)
 const isFav = ref(false)
 const showAppoint = ref(false)
@@ -243,8 +221,6 @@ watch(() => appointForm.contactPhone, (val) => {
   }
 })
 
-const emojiPool = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🐟', '🦎']
-function petEmoji(c) { return emojiPool[(c || 0) % emojiPool.length] }
 function petGradient(id) {
   const colors = [['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0']]
   return `linear-gradient(135deg, ${colors[(id||0)%colors.length][0]}, ${colors[(id||0)%colors.length][1]})`
@@ -262,7 +238,7 @@ async function loadPet() {
   try {
     const res = await getPetInfo(route.params.id)
     pet.value = res.data || {}
-    await Promise.all([loadFavStatus(), loadHealth(), loadPreference(), loadIssues()])
+    await Promise.all([loadFavStatus(), loadHealth(), loadPreference()])
   } catch (e) {
     ElMessage.error('加载失败')
   } finally {
@@ -285,15 +261,6 @@ async function loadPreference() {
     preference.value = (res.data && res.data.preferenceId) ? res.data : {}
   } catch (e) {
     preference.value = {}
-  }
-}
-
-async function loadIssues() {
-  try {
-    const res = await listIssueFront({ categoryId: pet.value.categoryId, pageSize: 100 })
-    issues.value = res.data || []
-  } catch (e) {
-    issues.value = []
   }
 }
 
@@ -328,7 +295,7 @@ async function toggleFav() {
     } else {
       await addPetFavorite({ petId: route.params.id, userId: userStore.userId })
       isFav.value = true
-      ElMessage.success('收藏成功 ❤️')
+      ElMessage.success('收藏成功')
     }
   } catch (e) {
     ElMessage.error(e?.message || '操作失败')
@@ -520,26 +487,6 @@ onMounted(() => {
     }
   }
 }
-
-/* 常见健康问题 */
-.issue-panel { background: #fff; border-radius: 16px; padding: 26px 30px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
-  .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
-    h2 { margin: 0; font-size: 20px; color: var(--text-1); }
-  }
-  .issue-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px;
-    .issue-card { border: 1px solid #eef0f3; border-radius: 12px; padding: 16px 18px; background: var(--bg-page);
-      .issue-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
-        .issue-name { font-size: 15px; font-weight: 600; color: var(--text-1); flex: 1; min-width: 140px; }
-      }
-      .issue-row { font-size: 13px; line-height: 1.7; padding: 4px 0; color: var(--text-2); border-bottom: 1px dashed var(--bg-sunken);
-        &:last-child { border-bottom: none; }
-        b { display: inline-block; width: 44px; color: var(--text-3); flex-shrink: 0; font-weight: 600; }
-        span { color: var(--text-2); }
-      }
-    }
-  }
-}
-
 /* 手机端：左右结构改上下，大图等比例缩小，不再一张图占一屏 */
 @media (max-width: 768px) {
   .detail { padding: 16px 12px; }
@@ -564,7 +511,7 @@ onMounted(() => {
       .el-button { flex: 1 1 30%; min-width: 0; padding-left: 8px; padding-right: 8px; }
     }
   }
-  .health-panel, .pref-panel, .issue-panel { padding: 18px 14px;
+  .health-panel, .pref-panel { padding: 18px 14px;
     .panel-head h2 { font-size: 17px; }
   }
 }

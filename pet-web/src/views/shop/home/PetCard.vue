@@ -3,7 +3,7 @@
   <article class="pet-card" @click="$emit('open', pet.petId)">
     <div class="pet-media" :style="isImage(pet.image) ? null : { background: gradient }">
       <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy" />
-      <span v-else class="pet-emoji">{{ emoji }}</span>
+      <span v-else class="pet-emoji">暂无图片</span>
 
       <span class="pet-flag" :class="{ sold: pet.status === '1' }">
         <span class="d"></span>{{ pet.status === '1' ? '已售' : '可到店看' }}
@@ -23,7 +23,7 @@
     <div class="pet-body">
       <h3 class="pet-name">{{ pet.petName }}</h3>
       <p class="pet-meta">
-        {{ metaText }}<template v-if="rating"> · ★ {{ rating.avg }}</template>
+        {{ metaText }}<template v-if="rating"> · <el-icon class="star"><Star /></el-icon>{{ rating.avg }}</template>
       </p>
       <div class="pet-foot">
         <span class="pet-price num" v-if="pet.price > 0"><i>¥</i>{{ formatPrice(pet.price) }}</span>
@@ -45,7 +45,6 @@ const props = defineProps({
   faved: { type: Boolean, default: false },
   rating: { type: Object, default: null },
   gradient: { type: String, default: '' },
-  emoji: { type: String, default: '🐾' }
 })
 defineEmits(['open', 'fav'])
 
@@ -91,13 +90,12 @@ const metaText = computed(() => {
     background: linear-gradient(to top, rgba(22, 33, 29, .07), rgba(22, 33, 29, 0));
   }
 
-  .pet-emoji { font-size: 64px; transition: transform .3s; }
+  .pet-emoji { font-size: 13px; color: var(--text-3); }
   .pet-photo {
     width: 100%; height: 100%; object-fit: cover; display: block;
     transition: transform .5s cubic-bezier(.2, .7, .3, 1);
   }
   .pet-card:hover & .pet-photo { transform: scale(1.05); }
-  .pet-card:hover & .pet-emoji { transform: scale(1.12); }
 }
 
 .pet-flag {
@@ -154,7 +152,7 @@ const metaText = computed(() => {
 @media (max-width: 768px) {
   .pet-card { border-radius: var(--radius-md); }
   .pet-media { aspect-ratio: 1 / 1;
-    .pet-emoji { font-size: 44px; } }
+    .pet-emoji { font-size: 12px; } }
   .pet-body { padding: 10px 11px 12px; }
   .pet-name { font-size: 13.5px; }
   .pet-meta { font-size: 11.5px; }

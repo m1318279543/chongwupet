@@ -28,7 +28,6 @@ public interface PetDashboardMapper
             + "(SELECT COUNT(*) FROM pet_cart WHERE create_time >= #{start} AND create_time < #{end} AND status = '3') AS cancelledOrders, "
             + "(SELECT IFNULL(SUM(amount),0) FROM pet_cart WHERE create_time >= #{start} AND create_time < #{end} AND status <> '3') AS revenue, "
             + "(SELECT COUNT(*) FROM pet_consult WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end}) AS consults, "
-            + "(SELECT COUNT(*) FROM pet_doctor_consult WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end}) AS doctorConsults, "
             + "(SELECT COUNT(*) FROM pet_favorite WHERE create_time >= #{start} AND create_time < #{end}) AS favorites, "
             + "(SELECT COUNT(*) FROM pet_comment WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end}) AS comments, "
             + "(SELECT COUNT(*) FROM pet_like WHERE create_time >= #{start} AND create_time < #{end}) AS likes, "
@@ -52,7 +51,6 @@ public interface PetDashboardMapper
             + "(SELECT COUNT(*) FROM pet_cart WHERE DATE(create_time) = CURDATE()) AS todayOrders, "
             + "(SELECT IFNULL(SUM(amount),0) FROM pet_cart WHERE DATE(create_time) = CURDATE() AND status <> '3') AS todayRevenue, "
             + "(SELECT COUNT(*) FROM pet_consult WHERE DATE(create_time) = CURDATE() AND del_flag = '0') AS todayConsults, "
-            + "(SELECT COUNT(*) FROM pet_doctor_consult WHERE DATE(create_time) = CURDATE() AND del_flag = '0') AS todayDoctorConsults, "
             + "(SELECT COUNT(*) FROM pet_favorite WHERE DATE(create_time) = CURDATE()) AS todayFavorites, "
             + "(SELECT COUNT(*) FROM pet_cancel_record WHERE DATE(create_time) = CURDATE() AND del_flag = '0') AS todayCancels")
     Map<String, Object> selectToday();
@@ -63,28 +61,25 @@ public interface PetDashboardMapper
     @Select("SELECT DATE(t.create_time) AS d, "
             + "SUM(t.apt) AS appointments, SUM(t.aptValid) AS validAppointments, "
             + "SUM(t.ord) AS orders, SUM(t.rev) AS revenue, SUM(t.cancelOrd) AS cancelledOrders, "
-            + "SUM(t.cons) AS consults, SUM(t.doc) AS doctorConsults, "
+            + "SUM(t.cons) AS consults, "
             + "SUM(t.fav) AS favorites, SUM(t.cmt) AS comments, SUM(t.lk) AS likes "
             + "FROM ( "
-            + "  SELECT create_time, 1 AS apt, IF(status <> '3', 1, 0) AS aptValid, 0 AS ord, 0 AS rev, 0 AS cancelOrd, 0 AS cons, 0 AS doc, 0 AS fav, 0 AS cmt, 0 AS lk "
+            + "  SELECT create_time, 1 AS apt, IF(status <> '3', 1, 0) AS aptValid, 0 AS ord, 0 AS rev, 0 AS cancelOrd, 0 AS cons, 0 AS fav, 0 AS cmt, 0 AS lk "
             + "    FROM pet_appointment WHERE create_time >= #{start} AND create_time < #{end} "
             + "  UNION ALL "
-            + "  SELECT create_time, 0, 0, 1, IF(status <> '3', IFNULL(amount,0), 0), IF(status = '3', 1, 0), 0, 0, 0, 0, 0 "
+            + "  SELECT create_time, 0, 0, 1, IF(status <> '3', IFNULL(amount,0), 0), IF(status = '3', 1, 0), 0, 0, 0, 0 "
             + "    FROM pet_cart WHERE create_time >= #{start} AND create_time < #{end} "
             + "  UNION ALL "
-            + "  SELECT create_time, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 "
+            + "  SELECT create_time, 0, 0, 0, 0, 0, 1, 0, 0, 0 "
             + "    FROM pet_consult WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end} "
             + "  UNION ALL "
-            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 "
-            + "    FROM pet_doctor_consult WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end} "
-            + "  UNION ALL "
-            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 "
+            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 1, 0, 0 "
             + "    FROM pet_favorite WHERE create_time >= #{start} AND create_time < #{end} "
             + "  UNION ALL "
-            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 "
+            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 0, 1, 0 "
             + "    FROM pet_comment WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end} "
             + "  UNION ALL "
-            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 "
+            + "  SELECT create_time, 0, 0, 0, 0, 0, 0, 0, 0, 1 "
             + "    FROM pet_like WHERE create_time >= #{start} AND create_time < #{end} "
             + ") t GROUP BY DATE(t.create_time) ORDER BY d")
     List<Map<String, Object>> selectDailyTrend(@Param("start") String start, @Param("end") String end);
@@ -141,7 +136,7 @@ public interface PetDashboardMapper
     List<Map<String, Object>> selectHourly(@Param("start") String start, @Param("end") String end);
 
     /**
-     * 实时动态：最近业务事件（预约 / 订单 / 咨询 / 医生问答 / 取消）
+     * 实时动态：最近业务事件（预约 / 订单 / 咨询 / 取消）
      */
     @Select("SELECT * FROM ( "
             + "  (SELECT 'appointment' AS type, CONCAT('新预约 · ', IFNULL(p.pet_name,'宠物')) AS title, "
@@ -156,10 +151,6 @@ public interface PetDashboardMapper
             + "  (SELECT 'consult' AS type, CONCAT('在线咨询 · ', LEFT(question, 20)) AS title, "
             + "          create_time AS event_time, status AS status, NULL AS amount "
             + "     FROM pet_consult WHERE del_flag = '0' ORDER BY create_time DESC LIMIT 8) "
-            + "  UNION ALL "
-            + "  (SELECT 'doctor' AS type, CONCAT('医生问答 · ', LEFT(question, 20)) AS title, "
-            + "          create_time AS event_time, '0' AS status, NULL AS amount "
-            + "     FROM pet_doctor_consult WHERE del_flag = '0' ORDER BY create_time DESC LIMIT 8) "
             + "  UNION ALL "
             + "  (SELECT 'cancel' AS type, CONCAT('取消', IF(target_type = 'order', '订单', '预约'), ' · ', IFNULL(target_name,'')) AS title, "
             + "          create_time AS event_time, '3' AS status, NULL AS amount "

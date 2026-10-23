@@ -184,7 +184,7 @@
           <el-table-column label="宠物" min-width="120">
             <template #default="scope">
               <div class="pet-cell">
-                <span class="pet-avatar">{{ isImage(scope.row.image) ? '' : (scope.row.image || '🐾') }}</span>
+                <span class="pet-avatar">{{ isImage(scope.row.image) ? '' : (scope.row.image || '—') }}</span>
                 <span>{{ scope.row.petName }}</span>
               </div>
             </template>

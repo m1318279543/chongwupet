@@ -4,7 +4,7 @@
          以前这里硬编码了 30 个 el-menu-item，和 router、pageTitle 表各存一份，新增页面要改三处 -->
     <el-aside :width="isNarrow ? '64px' : '220px'" class="sidebar">
       <div class="logo">
-        <span class="icon">🐾</span>
+        <span class="icon">宠</span>
         <span v-if="!isNarrow" class="text">宠物管理后台</span>
       </div>
       <el-menu

@@ -83,6 +83,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where h.pet_id = #{petId} and h.del_flag = '0'
     </select>
 
+    <!-- 前台：在售宠物档案（服务页专用）——inner join 语义 + 仅在售，孤儿档案与已售宠物不外泄 -->
+    <select id="selectOnSaleHealthList" resultMap="PetHealthResult">
+        <include refid="selectPetHealthVo"/>
+        where h.del_flag = '0'
+          and p.pet_id is not null
+          and p.del_flag = '0'
+          and p.status = '0'
+        order by h.health_id desc
+    </select>
+
     <select id="selectPetHealthByHealthId" parameterType="Long" resultMap="PetHealthResult">
         <include refid="selectPetHealthVo"/>
         where h.health_id = #{healthId}

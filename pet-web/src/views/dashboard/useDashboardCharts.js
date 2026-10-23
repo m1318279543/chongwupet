@@ -5,8 +5,10 @@ import { init } from 'echarts/core'
 // 契约：
 //   dashboard —— 看板数据 ref（renderXxx 内部直接读 .value）
 //   money     —— 金额格式化函数
+//   fmtInt    —— 整数格式化函数（未传时用内置兜底）
 //   refs      —— { trend, aptStatus, orderStatus, category, topPets, topGoods, hourly } 模板 ref
-export function useDashboardCharts({ dashboard, money, refs }) {
+export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
+  const intFmt = typeof fmtInt === 'function' ? fmtInt : (v) => Number(v || 0).toLocaleString('zh-CN')
   const charts = {
     trend: null,
     aptStatus: null,
@@ -41,10 +43,10 @@ export function useDashboardCharts({ dashboard, money, refs }) {
   const SPLIT_LINE = { lineStyle: { color: '#f0f2f5', type: 'dashed' } }
 
   function renderTrend() {
-    if (!trend.value) return
+    const t = dashboard.value?.trend
+    if (!t || !t.dates || !t.dates.length) return
     ensureCharts()
     if (!charts.trend) return
-    const t = trend.value
     const showZoom = t.dates.length > 31
     charts.trend.setOption(
       {
@@ -157,7 +159,7 @@ export function useDashboardCharts({ dashboard, money, refs }) {
     return {
       color: colors,
       title: {
-        text: fmtInt(total),
+        text: intFmt(total),
         subtext: '总计',
         left: 'center',
         top: '32%',
