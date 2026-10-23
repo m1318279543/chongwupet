@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 选宠 / 百科问答 · 可交互演示</title>
+<style>
+:root{
+  --brand-50:#eff6f3;--brand-100:#dcede6;--brand-200:#b9dbce;--brand-300:#8fc3b0;
+  --brand-400:#4f9f87;--brand-500:#1f7a63;--brand-600:#14614e;--brand-700:#0f4e3f;--brand-800:#0c4034;
+  --success-500:#15803d;--success-50:#f0fdf4;--success-100:#dcfce7;
+  --warning-500:#b45309;--warning-50:#fffbeb;
+  --danger-500:#dc2626;--danger-50:#fef2f2;
+  --text-1:#16211d;--text-2:#4a5a54;--text-3:#63716b;--text-4:#aeb8b3;
+  --border-1:#e4eae6;--border-2:#edf1ee;
+  --bg-page:#f8faf9;--bg-sunken:#e9f0ec;--bg-card:#fff;
+  --price:#a8542b;
+  --r-xs:6px;--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;--r-pill:999px;
+  --sh-card:0 1px 2px rgba(22,25,23,.05);
+  --sh-sm:0 1px 3px rgba(22,25,23,.05),0 4px 12px -2px rgba(22,25,23,.06);
+  --sh-float:0 2px 6px rgba(22,25,23,.04),0 16px 32px -12px rgba(22,25,23,.14);
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono","JetBrains Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{font-family:var(--font);background:#eef2f0;color:var(--text-1);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+
+/* ---------- 演示工具条 ---------- */
+.bar{
+  position:sticky;top:0;z-index:80;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:9px 20px;background:#1b2a25;color:#fff;
+}
+.bar-l{display:flex;align-items:center;gap:9px}
+.bar-l b{font-size:12.5px;font-weight:600;letter-spacing:.02em}
+.bar-l .tag{
+  padding:2px 7px;border-radius:var(--r-xs);background:rgba(255,255,255,.12);
+  font-size:11px;color:#cfe3da;
+}
+.bar-c{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.seg{display:flex;padding:2px;background:rgba(255,255,255,.1);border-radius:9px}
+.seg button{
+  height:26px;padding:0 12px;border:0;border-radius:7px;background:transparent;
+  font-size:12px;font-weight:600;color:#c4d6ce;cursor:pointer;transition:.15s;
+}
+.seg button:hover{color:#fff}
+.seg button.on{background:#fff;color:var(--brand-700)}
+.bar a{
+  font-size:12px;color:#cfe3da;text-decoration:none;padding:5px 9px;border-radius:7px;
+  background:rgba(255,255,255,.1);
+}
+.bar a:hover{color:#fff;background:rgba(255,255,255,.18)}
+
+/* ---------- 应用外壳 ---------- */
+#app{background:var(--bg-page);min-height:calc(100vh - 44px)}
+.bnav{display:flex;align-items:center;gap:26px;height:58px;padding:0 22px;background:#fff;border-bottom:1px solid var(--border-1)}
+.logo{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;letter-spacing:-.01em}
+.logo i{width:19px;height:19px;border-radius:7px;background:var(--brand-600);position:relative;display:block}
+.logo i::after{content:"";position:absolute;inset:6px 5px;border-radius:50% 50% 50% 0;background:#fff;transform:rotate(-45deg)}
+.menu{display:flex;gap:3px}
+.menu button{
+  padding:6px 11px;border:0;border-radius:var(--r-sm);background:transparent;
+  font-size:12.5px;color:var(--text-2);cursor:pointer;
+}
+.menu button.on{background:var(--brand-50);color:var(--brand-700);font-weight:600}
+.nava{margin-left:auto;width:24px;height:24px;border-radius:50%;background:var(--bg-sunken)}
+.wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+
+.eb{
+  display:inline-flex;align-items:center;gap:7px;padding:4px 11px 4px 9px;
+  background:#fff;border:1px solid var(--border-1);border-radius:var(--r-pill);
+  font-size:11.5px;color:var(--text-2);box-shadow:var(--sh-card);
+}
+.eb i{width:5px;height:5px;border-radius:50%;background:var(--brand-500)}
+
+.card{background:#fff;border:1px solid var(--border-1);border-radius:var(--r-lg);box-shadow:var(--sh-sm)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 17px;
+  border:1px solid transparent;border-radius:var(--r-md);font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:.16s;
+}
+.btn--solid{background:var(--brand-600);color:#fff}
+.btn--solid:hover{background:var(--brand-700)}
+.btn--line{background:#fff;border-color:var(--border-1);color:var(--text-1)}
+.btn--line:hover{border-color:var(--brand-300);color:var(--brand-700)}
+.btn--ghost{background:transparent;color:var(--text-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn--sm{height:32px;padding:0 13px;font-size:12.5px}
+.btn--full{width:100%}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:var(--r-xs);font-size:11.5px;font-weight:600;background:var(--bg-page);color:var(--text-3);white-space:nowrap}
+.chip--brand{background:var(--brand-50);color:var(--brand-700);border:1px solid var(--brand-100)}
+.chip--warn{background:var(--warning-50);color:var(--warning-500)}
+.chip--ok{background:var(--success-50);color:var(--success-500)}
+.chip--danger{background:var(--danger-50);color:var(--danger-500)}
+
+/* ---------- 选宠：页头 ---------- */
+.phead{padding:30px 0 22px}
+.phead h1{margin:13px 0 0;font-size:29px;line-height:1.26;font-weight:700;letter-spacing:-.018em}
+.phead h1 .hl{background:linear-gradient(to top,var(--brand-100) 0 34%,transparent 34%);padding:0 2px;color:var(--brand-800)}
+.phead>p{margin:9px 0 0;max-width:36em;font-size:13px;line-height:1.8;color:var(--text-2)}
+.qfill{display:flex;align-items:center;gap:9px;margin-top:16px;padding:6px 7px 6px 14px;background:#fff;border:1px solid var(--border-1);border-radius:var(--r-pill);box-shadow:var(--sh-card)}
+.qfill .k{font-size:11.5px;color:var(--text-3);white-space:nowrap}
+.qfill input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;color:var(--text-1)}
+.qfill input::placeholder{color:var(--text-4)}
+.qfill .btn{height:31px;border-radius:var(--r-pill);font-size:12.5px}
+.aihint{display:flex;align-items:center;gap:7px;margin:10px 0 0;padding:8px 12px;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-sm);font-size:12px;color:var(--success-500)}
+.aihint b{font-weight:600}
+
+/* ---------- 选宠：向导布局 ---------- */
+.wz{display:grid;grid-template-columns:240px minmax(0,1fr);gap:26px;padding-bottom:44px;align-items:start}
+.wzside{position:sticky;top:60px}
+.steps{display:flex;flex-direction:column;gap:1px}
+.step{
+  display:flex;align-items:center;gap:9px;padding:12px 12px;border:0;border-left:2px solid transparent;
+  border-radius:var(--r-md);background:transparent;cursor:pointer;text-align:left;transition:.15s;
+}
+.step:hover{background:rgba(255,255,255,.6)}
+.step.on{background:#fff;border-left-color:var(--brand-600);box-shadow:var(--sh-sm)}
+.step .no{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--brand-600);width:16px;flex-shrink:0}
+.step.done .no{color:var(--success-500)}
+.step .tx{min-width:0;flex:1}
+.step b{display:block;font-size:13px;font-weight:600}
+.step em{display:block;margin-top:1px;font-style:normal;font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step .cnt{font-size:10.5px;color:var(--text-4);font-variant-numeric:tabular-nums;flex-shrink:0}
+.step.done .cnt{color:var(--success-500)}
+.prog{margin-top:18px;padding:13px;background:#fff;border:1px solid var(--border-1);border-radius:var(--r-md)}
+.prog-top{display:flex;justify-content:space-between;font-size:11px;color:var(--text-3)}
+.prog-top b{font-size:11.5px;color:var(--brand-700)}
+.bar{height:5px;margin-top:8px;background:var(--bg-sunken);border-radius:var(--r-pill);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:var(--r-pill);background:var(--brand-600);transition:width .3s ease}
+.tip{margin:13px 0 0;font-size:11px;line-height:1.7;color:var(--text-3)}
+
+.wzmain{min-width:0}
+.qcard{padding:24px 26px 10px}
+.qhead{display:flex;align-items:center;gap:11px;padding-bottom:14px;border-bottom:1px solid var(--border-2)}
+.qno{width:25px;height:25px;display:grid;place-items:center;border-radius:50%;background:var(--brand-50);font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--brand-700)}
+.qhead h2{margin:0;font-size:15.5px;font-weight:700}
+.qhead p{margin:2px 0 0;font-size:11.5px;color:var(--text-3)}
+.q{padding:18px 0 8px}
+.q+.q{border-top:1px dashed var(--border-2)}
+.qt{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:600;margin-bottom:10px}
+.qt span{font-size:11.5px;font-weight:400;color:var(--text-3)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:8px}
+.opt{
+  display:flex;flex-direction:column;gap:2px;padding:12px 14px;text-align:left;background:#fff;
+  border:1px solid var(--border-1);border-radius:var(--r-md);cursor:pointer;transition:.14s;
+}
+.opt b{font-size:13px;font-weight:600;line-height:1.4;color:var(--text-1)}
+.opt em{font-style:normal;font-size:11px;line-height:1.5;color:var(--text-3)}
+.opt:hover{border-color:var(--brand-300);background:var(--brand-50)}
+.opt.on{border-color:var(--brand-600);background:var(--brand-50);box-shadow:inset 0 0 0 1px var(--brand-600)}
+.opt.on b{color:var(--brand-800)}
+.wzfoot{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px 16px;background:#fff;border:1px solid var(--border-1);border-radius:var(--r-lg);box-shadow:var(--sh-sm)}
+.dots{display:flex;gap:6px;margin:0 auto}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--border-1);transition:.2s}
+.dots i.on{width:18px;border-radius:var(--r-pill);background:var(--brand-600)}
+.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* ---------- 选宠：分析中 ---------- */
+.analyzing{padding:74px 20px;text-align:center}
+.ring-spin{width:52px;height:52px;margin:0 auto 20px;border-radius:50%;border:3px solid var(--brand-100);border-top-color:var(--brand-600);animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.analyzing h3{margin:0 0 7px;font-size:16px;font-weight:700}
+.analyzing p{margin:0;font-size:12.5px;color:var(--text-3)}
+
+/* ---------- 选宠：结果 ---------- */
+.rhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:20px 22px;margin-bottom:14px}
+.rhead .rh{display:inline-block;padding:3px 9px;background:var(--brand-50);border-radius:var(--r-xs);font-size:11px;font-weight:600;color:var(--brand-700)}
+.rhead h2{margin:9px 0 5px;font-size:18px;font-weight:700;line-height:1.5}
+.rhead p{margin:0;font-size:11.5px;line-height:1.7;color:var(--text-3)}
+.rhead p .on{color:var(--success-500)}
+.top{display:grid;grid-template-columns:330px minmax(0,1fr);background:#fff;border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-sm)}
+.topimg{position:relative;min-height:330px;background:linear-gradient(150deg,var(--brand-100),var(--bg-sunken) 60%,#dbe7e1);cursor:pointer;display:grid;place-items:center}
+.topimg .ph{font-size:12.5px;color:var(--brand-700);background:#fff;padding:7px 14px;border-radius:var(--r-pill);border:1px solid var(--border-1)}
+.crown{position:absolute;left:13px;top:13px;padding:4px 10px;background:var(--brand-600);border-radius:var(--r-pill);font-size:11px;font-weight:600;color:#fff}
+.tpmain{display:flex;flex-direction:column;gap:14px;padding:22px 24px;min-width:0}
+.tphead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.tpcat{font-size:11.5px;color:var(--text-3)}
+.tpid h3{margin:4px 0 7px;font-size:23px;font-weight:700}
+.tpprice{font-size:21px;font-weight:700;color:var(--price);font-variant-numeric:tabular-nums}
+.tpprice em{margin-left:7px;font-style:normal;font-size:11.5px;font-weight:400;color:var(--text-3)}
+.scorering{position:relative;width:82px;height:82px;flex-shrink:0}
+.scorering svg{width:82px;height:82px;display:block}
+.scorering .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.scorering .val strong{font-size:21px;font-weight:700;line-height:1;color:var(--brand-700);font-variant-numeric:tabular-nums}
+.scorering .val span{margin-top:2px;font-size:10px;color:var(--text-3)}
+.dims{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 20px;padding:12px 15px;background:var(--bg-page);border-radius:var(--r-md)}
+.dim{display:flex;align-items:center;gap:8px}
+.dim span.k{width:38px;flex-shrink:0;font-size:11.5px;color:var(--text-3)}
+.dim .dbar{flex:1;height:5px;background:var(--bg-sunken);border-radius:var(--r-pill);overflow:hidden}
+.dim .dbar i{display:block;height:100%;width:0;border-radius:var(--r-pill);background:var(--brand-500);transition:width .8s ease}
+.dim span.v{width:22px;text-align:right;font-size:11px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.rblk{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px}
+.rblk .t{font-size:12px;font-weight:600}
+.reasons{display:flex;flex-wrap:wrap;gap:6px}
+.reason{padding:3px 8px;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-xs);font-size:11.5px;color:var(--success-500)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:3px 8px;background:var(--bg-page);border-radius:var(--r-xs);font-size:11.5px;color:var(--text-2)}
+.tag.warn{background:var(--warning-50);color:var(--warning-500)}
+.tpact{display:flex;gap:9px;margin-top:auto}
+.sechead{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 12px}
+.sechead h2{margin:0;font-size:15px;font-weight:700}
+.sechead span{font-size:11.5px;color:var(--text-3)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.pcard{background:#fff;border:1px solid var(--border-1);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--sh-card);cursor:pointer;transition:.16s}
+.pcard:hover{box-shadow:var(--sh-sm);transform:translateY(-1px);border-color:var(--brand-200)}
+.pcard .pimg{height:112px;background:linear-gradient(150deg,var(--brand-100),var(--bg-sunken));display:grid;place-items:center;position:relative}
+.pcard .pimg span{font-size:11px;color:var(--brand-700);background:#fff;padding:4px 10px;border-radius:var(--r-pill)}
+.pcard .pimg b{position:absolute;right:8px;top:8px;padding:3px 8px;border-radius:var(--r-pill);background:rgba(20,97,78,.92);color:#fff;font-size:10.5px;font-weight:600}
+.pcard .pbody{padding:11px 13px 12px}
+.pcard h3{margin:0;font-size:13.5px;font-weight:600}
+.pcard .meta{margin:3px 0 7px;font-size:11px;color:var(--text-3)}
+.pcard .pp{font-size:14px;font-weight:700;color:var(--price)}
+.pcard .why{margin:6px 0 0;font-size:11px;line-height:1.6;color:var(--success-500)}
+.footnote{margin:20px 0 0;text-align:center;font-size:11.5px;line-height:1.7;color:var(--text-3)}
+
+/* ---------- 百科 ---------- */
+.wikitop{background:#fff;border-bottom:1px solid var(--border-1)}
+.wikitop .wrap{display:flex;align-items:center;gap:18px;height:52px}
+.bc{font-size:11.5px;color:var(--text-3);white-space:nowrap}
+.bc b{color:var(--text-1);font-weight:600}
+.wsearch{margin-left:auto;display:flex;align-items:center;gap:9px;height:33px;padding:0 13px;width:250px;background:var(--bg-page);border:1px solid var(--border-1);border-radius:var(--r-pill);font-size:12px;color:var(--text-4);cursor:text}
+.wsearch::before{content:"";width:10px;height:10px;border:1.5px solid var(--text-4);border-radius:50%;flex-shrink:0}
+
+.doc{display:grid;grid-template-columns:190px minmax(0,1fr) 262px;gap:24px;padding:22px 0 44px;align-items:start}
+.docleft{position:sticky;top:60px}
+.treeh{margin:0 0 7px;font-size:10.5px;letter-spacing:.12em;color:var(--text-4)}
+.tree{list-style:none;margin:0;padding:0}
+.tree button{
+  width:100%;display:flex;align-items:center;justify-content:space-between;padding:7px 9px;
+  border:0;border-left:2px solid transparent;border-radius:var(--r-sm);background:transparent;
+  font-size:12.5px;color:var(--text-2);cursor:pointer;text-align:left;transition:.14s;
+}
+.tree button:hover{background:rgba(255,255,255,.7)}
+.tree button span{font-size:10.5px;color:var(--text-4)}
+.tree button.on{background:#fff;border-left-color:var(--brand-600);color:var(--brand-800);font-weight:600;box-shadow:var(--sh-card)}
+.tree button.on span{color:var(--brand-600)}
+.treefoot{margin-top:12px;padding-top:11px;border-top:1px solid var(--border-2);font-size:10.5px;color:var(--text-4);line-height:1.6}
+
+.docmain{min-width:0}
+.askbox{padding:14px 16px}
+.askbox textarea{width:100%;height:52px;border:0;outline:0;resize:none;background:transparent;font-family:inherit;font-size:13.5px;line-height:1.7;color:var(--text-1)}
+.askbox textarea::placeholder{color:var(--text-4)}
+.askfoot{display:flex;align-items:center;gap:9px;padding-top:10px;border-top:1px solid var(--border-2)}
+.chips{display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:0}
+.chips button{height:25px;padding:0 9px;border:1px solid var(--border-1);border-radius:var(--r-xs);background:transparent;font-size:11px;color:var(--text-3);cursor:pointer;transition:.14s}
+.chips button:hover{border-color:var(--brand-300);color:var(--brand-700);background:var(--brand-50)}
+
+.browse{margin-top:14px;padding:14px 16px 6px;background:#fff;border:1px solid var(--border-1);border-radius:var(--r-lg);box-shadow:var(--sh-card)}
+.browse-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.browse-h b{font-size:12.5px;font-weight:700}
+.browse-h span{font-size:11px;color:var(--text-3)}
+.browse-h .x{margin-left:auto;border:0;background:transparent;font-size:11px;color:var(--text-3);cursor:pointer}
+.bitem{width:100%;display:flex;align-items:center;gap:8px;padding:9px 0;border:0;border-top:1px dashed var(--border-2);background:transparent;text-align:left;cursor:pointer}
+.bitem:hover b{color:var(--brand-700)}
+.bitem b{font-size:12.5px;font-weight:600;color:var(--text-1);flex-shrink:0}
+.bitem em{font-style:normal;font-size:11px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.bitem .go{margin-left:auto;font-size:11px;color:var(--brand-600);flex-shrink:0}
+
+.turn{padding:20px 0 18px;border-bottom:1px solid var(--border-2)}
+.turn:first-child{padding-top:18px}
+.who{display:flex;align-items:center;gap:8px;margin:0 0 7px;font-size:10.5px;font-weight:600;letter-spacing:.1em;color:var(--text-3)}
+.qtext{margin:0 0 16px;font-size:15px;font-weight:600;line-height:1.6}
+.ans{font-size:13.5px;line-height:1.85;color:var(--text-1)}
+.ans p{margin:0 0 9px}
+.ans p:last-child{margin-bottom:0}
+.ans ul,.ans ol{margin:5px 0 10px;padding-left:19px}
+.ans li{margin:3px 0}
+.ans strong{font-weight:650}
+.srcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.src{
+  display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 9px;border-radius:var(--r-xs);
+  background:var(--brand-50);border:1px solid var(--brand-100);font-size:11px;color:var(--brand-700);cursor:pointer;
+}
+.src b{font-family:var(--mono);font-size:10px}
+.src.flash{animation:flash 1.2s}
+@keyframes flash{0%,100%{background:var(--brand-50)}30%{background:#ffe9a8;border-color:#f0c96a}}
+.thinking{display:flex;align-items:center;gap:5px;padding:14px 0;font-size:12px;color:var(--text-3)}
+.thinking i{width:5px;height:5px;border-radius:50%;background:var(--brand-400);animation:bnc 1.2s infinite}
+.thinking i:nth-child(2){animation-delay:.15s}
+.thinking i:nth-child(3){animation-delay:.3s}
+@keyframes bnc{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-4px);opacity:1}}
+
+.docright{position:sticky;top:60px}
+.drh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+.drh b{font-size:12px;font-weight:700}
+.drh span{font-size:10.5px;color:var(--text-3)}
+.hitcard{width:100%;text-align:left;padding:11px 12px;background:#fff;border:1px solid var(--border-1);border-radius:var(--r-md);box-shadow:var(--sh-card);cursor:pointer;transition:.14s}
+.hitcard+.hitcard{margin-top:8px}
+.hitcard:hover{border-color:var(--brand-200)}
+.hitcard.on{border-color:var(--brand-300);box-shadow:inset 0 0 0 1px var(--brand-200)}
+.hc{display:flex;align-items:center;gap:6px}
+.hc i{width:14px;height:14px;border-radius:4px;background:var(--brand-600);color:#fff;font-size:9.5px;font-style:normal;display:grid;place-items:center;flex-shrink:0;font-family:var(--mono)}
+.hc b{font-size:12px;font-weight:600;flex:1;min-width:0;text-align:left}
+.hitcard p{margin:5px 0 0;font-size:11px;line-height:1.6;color:var(--text-3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.emptyhint{font-size:11px;line-height:1.7;color:var(--text-4);padding:8px 2px}
+.sug{margin-top:16px;padding:12px;background:var(--bg-page);border-radius:var(--r-md)}
+.sug b{display:block;font-size:11px;color:var(--text-3);margin-bottom:6px}
+.sug button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:4px 0;font-size:11.5px;color:var(--brand-700);cursor:pointer}
+.sug button:hover{text-decoration:underline}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translate(-50%,10px);z-index:99;
+  padding:10px 16px;background:#1b2a25;color:#fff;border-radius:var(--r-pill);
+  font-size:12.5px;opacity:0;transition:.22s;pointer-events:none;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- 响应式 ---------- */
+@media (max-width:900px){
+  .wz{grid-template-columns:minmax(0,1fr)}
+  .wzside{position:static}
+  .steps{flex-direction:row;gap:4px}
+  .step{flex:1;min-width:0;padding:8px 9px;border-left:0;border-top:2px solid transparent}
+  .step.on{border-left:0;border-top-color:var(--brand-600)}
+  .step em,.step .cnt{display:none}
+  .prog,.tip{display:none}
+  .top{grid-template-columns:minmax(0,1fr)}
+  .topimg{min-height:0;aspect-ratio:16/9;max-height:230px}
+  .dims{grid-template-columns:minmax(0,1fr)}
+  .doc{grid-template-columns:minmax(0,1fr)}
+  .docleft,.docright{position:static}
+  .docleft{order:2}
+  .docright{order:3}
+  .menu{display:none}
+  .wsearch{width:100%;margin-left:0}
+  .wikitop .wrap{height:auto;flex-wrap:wrap;gap:8px;padding:9px 16px}
+}
+@media (max-width:620px){
+  .wrap{padding:0 14px}
+  .phead h1{font-size:24px}
+  .qfill{flex-wrap:wrap;padding:8px 10px}
+  .qfill input{flex:1 1 100%;padding:0 4px}
+  .qfill .btn{width:100%}
+  .opts{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+  .qcard{padding:18px 15px 8px}
+  .wzfoot{padding:9px 11px}
+  .wzfoot .btn{flex:1}
+  .dims{grid-template-columns:minmax(0,1fr)}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .tpmain{padding:18px 15px}
+  .tpid h3{font-size:20px}
+  .tpact .btn{flex:1}
+  .scorering{width:66px;height:66px}
+  .scorering svg{width:66px;height:66px}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-l">
+    <b>可交互演示</b>
+    <span class="tag">模拟数据 · 不读写数据库</span>
+  </div>
+  <div class="bar-c">
+    <div class="seg" id="pageSeg">
+      <button class="on" data-page="match">AI 选宠</button>
+      <button data-page="wiki">百科问答</button>
+    </div>
+    <div class="seg"><button id="btnReset">重置本页</button></div>
+    <a href="./redesign-options.html">方案对照</a>
+  </div>
+</div>
+
+<main id="app">
+
+  <!-- ==================== AI 选宠 ==================== -->
+  <section id="pageMatch">
+    <nav class="bnav">
+      <span class="logo"><i></i>爪印 PetShop</span>
+      <div class="menu">
+        <button>首页</button><button>宠物粮</button>
+        <button class="on">AI 选宠</button><button data-go="wiki">百科问答</button>
+      </div>
+      <span class="nava"></span>
+    </nav>
+
+    <div class="wrap">
+      <header class="phead">
+        <span class="eb"><i></i>AI 智能选宠</span>
+        <h1>三步找到<span class="hl">对的那只</span></h1>
+        <p>按居住与家庭、生活方式、经验与预算三组作答，从 96 只在售宠物里筛出真正适配的那几只。</p>
+
+        <div class="qfill">
+          <span class="k">不想点选？说一句</span>
+          <input id="aiText" maxlength="60" placeholder="例如：小户型上班族，预算 3000 想养猫">
+          <button class="btn btn--solid" id="btnAi">智能填答</button>
+        </div>
+        <p class="aihint" id="aiHint" hidden></p>
+      </header>
+
+      <div class="wz" id="wz">
+        <aside class="wzside">
+          <div class="steps" id="steps"></div>
+          <div class="prog">
+            <div class="prog-top"><span id="progText">已完成 0 / 10</span><b id="progPct">0%</b></div>
+            <div class="bar"><i id="progBar"></i></div>
+          </div>
+          <p class="tip">答完 10 题约 2 分钟，中途离开会自动保存进度。</p>
+        </aside>
+
+        <section class="wzmain">
+          <div class="card qcard">
+            <div class="qhead">
+              <span class="qno" id="qNo">01</span>
+              <div><h2 id="qTitle"></h2><p id="qSub"></p></div>
+            </div>
+            <div id="qBody"></div>
+          </div>
+          <div class="wzfoot">
+            <button class="btn btn--ghost" id="btnPrev">上一步</button>
+            <div class="dots" id="dots"></div>
+            <button class="btn btn--solid" id="btnNext">下一步</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="analyzing" id="analyzing" hidden>
+        <div class="ring-spin"></div>
+        <h3>正在分析你的生活方式</h3>
+        <p id="analyzeText">正在读取你的居住空间与生活节奏…</p>
+      </div>
+
+      <div id="result" hidden></div>
+    </div>
+  </section>
+
+  <!-- ==================== 百科问答 ==================== -->
+  <section id="pageWiki" hidden>
+    <nav class="bnav">
+      <span class="logo"><i></i>爪印 PetShop</span>
+      <div class="menu">
+        <button>首页</button><button>宠物粮</button>
+        <button data-go="match">AI 选宠</button><button class="on">百科问答</button>
+      </div>
+      <span class="nava"></span>
+    </nav>
+
+    <div class="wikitop">
+      <div class="wrap">
+        <span class="bc">百科问答 / <b id="bcFam">猫科</b></span>
+        <span class="wsearch">搜索症状、科系或条目名称</span>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="doc">
+        <aside class="docleft">
+          <p class="treeh">科系</p>
+          <ul class="tree" id="tree"></ul>
+          <div class="treefoot" id="treeFoot"></div>
+        </aside>
+
+        <main class="docmain">
+          <div class="card askbox">
+            <textarea id="wq" maxlength="120" placeholder="描述症状或现象，例如：猫咪软便三天，精神还好"></textarea>
+            <div class="askfoot">
+              <div class="chips" id="wChips"></div>
+              <button class="btn btn--solid btn--sm" id="btnAsk">提问</button>
+            </div>
+          </div>
+
+          <div id="browseBox"></div>
+          <div id="turns"></div>
+        </main>
+
+        <aside class="docright">
+          <div class="drh"><b>本次命中</b><span id="hitCount">0 条</span></div>
+          <div id="hits"></div>
+          <div class="sug" id="sug" hidden></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   1. 数据（演示用，结构对齐真实接口字段）
+   ================================================================ */
+const STEPS = [
+  { key:'life', title:'居住与家庭', sub:'先看看你家的环境', questions:[
+    { key:'home', title:'你现在的居住环境是？', hint:'决定宠物的活动空间', options:[
+      { value:'small', label:'小户型 / 合租', desc:'一室或合租，空间有限' },
+      { value:'apartment', label:'普通住宅', desc:'两室一厅，有阳台' },
+      { value:'house', label:'大房子 / 带院子', desc:'空间充裕' }]},
+    { key:'kids', title:'家里有 12 岁以下的小朋友吗？', hint:'会优先排除不适合儿童的品种', options:[
+      { value:'yes', label:'有小朋友' }, { value:'no', label:'没有' }]},
+    { key:'noise', title:'你对宠物叫声的容忍度？', hint:'公寓隔音差建议选安静型', options:[
+      { value:'low', label:'几乎不能接受', desc:'怕吵到邻居' },
+      { value:'mid', label:'偶尔叫可以' }, { value:'high', label:'完全无所谓' }]}
+  ]},
+  { key:'pace', title:'生活方式', sub:'你的日常节奏很重要', questions:[
+    { key:'activity', title:'你的日常活动量？', hint:'喜欢户外的人更适合高精力犬种', options:[
+      { value:'low', label:'宅家为主', desc:'很少出门运动' },
+      { value:'medium', label:'偶尔运动', desc:'周末会出门走走' },
+      { value:'high', label:'每天运动', desc:'常跑步、爬山' }]},
+    { key:'time', title:'每天能陪宠物多久？', hint:'决定它需要多高的照料投入', options:[
+      { value:'lt1', label:'不到 1 小时', desc:'工作忙，只有早晚' },
+      { value:'1to3', label:'1 ~ 3 小时' }, { value:'gt3', label:'3 小时以上', desc:'时间充裕' }]},
+    { key:'companion', title:'你期待的相处模式？', hint:'性格匹配比品种更重要', options:[
+      { value:'clingy', label:'粘人陪伴', desc:'希望它主动亲近我' },
+      { value:'independent', label:'独立省心', desc:'各过各的也很好' },
+      { value:'any', label:'都可以' }]}
+  ]},
+  { key:'budget', title:'经验与预算', sub:'最后一步，马上出结果', questions:[
+    { key:'experience', title:'你的养宠经验？', hint:'新手会优先推荐好养品种', options:[
+      { value:'none', label:'第一次养', desc:'需要省心的品种' },
+      { value:'some', label:'养过 1 ~ 2 只' }, { value:'pro', label:'多年经验', desc:'能驾驭高难度品种' }]},
+    { key:'budget', title:'购宠预算大概是？', hint:'超出预算的宠物会被直接过滤', options:[
+      { value:'1000', label:'1000 元以内' }, { value:'3000', label:'1000 ~ 3000 元' },
+      { value:'6000', label:'3000 ~ 6000 元' }, { value:'99999', label:'6000 元以上 / 不限' }]},
+    { key:'monthly', title:'每月养护预算？', hint:'含粮、用品、医疗等日常开销', options:[
+      { value:'200', label:'200 元以内' }, { value:'500', label:'200 ~ 500 元' },
+      { value:'1000', label:'500 ~ 1000 元' }, { value:'99999', label:'1000 元以上 / 不限' }]},
+    { key:'prefer', title:'有偏好的宠物类型吗？', hint:'选择后只在对应类别中推荐', options:[
+      { value:'any', label:'不限，都可以' }, { value:'1', label:'猫咪' }, { value:'2', label:'狗狗' },
+      { value:'3', label:'兔子' }, { value:'4', label:'仓鼠' }, { value:'5', label:'鸟类' },
+      { value:'6', label:'水族' }, { value:'7', label:'爬行宠物' }]}
+  ]}
+];
+
+const PETS = [
+  { id:1, name:'布偶猫 · 海豹双色', cat:'1', catName:'猫科', price:4200, monthly:380,
+    space:'small', easy:1, quiet:1, clingy:1, kid:1, traits:['安静','粘人','长毛'], cautions:['掉毛较多，需每周梳毛'] },
+  { id:2, name:'英短蓝猫', cat:'1', catName:'猫科', price:2800, monthly:260,
+    space:'small', easy:1, quiet:1, clingy:0, kid:1, traits:['安静','独立','短毛'], cautions:[] },
+  { id:3, name:'金渐层', cat:'1', catName:'猫科', price:3800, monthly:300,
+    space:'small', easy:1, quiet:1, clingy:1, kid:1, traits:['粘人','短毛'], cautions:[] },
+  { id:4, name:'柯基 · 三色', cat:'2', catName:'犬科', price:5600, monthly:420,
+    space:'apartment', easy:0, quiet:0, clingy:1, kid:1, traits:['活泼','亲人'], cautions:['掉毛多','每天需遛 1 小时'] },
+  { id:5, name:'比熊 · 幼犬', cat:'2', catName:'犬科', price:3200, monthly:320,
+    space:'apartment', easy:1, quiet:1, clingy:1, kid:1, traits:['温顺','适合小孩','不掉毛'], cautions:['需定期美容'] },
+  { id:6, name:'柴犬 · 赤色', cat:'2', catName:'犬科', price:4800, monthly:380,
+    space:'house', easy:0, quiet:1, clingy:0, kid:1, traits:['独立','安静','爱干净'], cautions:['换季掉毛明显'] },
+  { id:7, name:'垂耳兔', cat:'3', catName:'兔子', price:380, monthly:120,
+    space:'small', easy:1, quiet:1, clingy:1, kid:1, traits:['安静','笼养','可训厕所'], cautions:['需磨牙草'] },
+  { id:8, name:'金丝熊仓鼠', cat:'4', catName:'仓鼠', price:60, monthly:40,
+    space:'small', easy:1, quiet:0, clingy:0, kid:1, traits:['夜行','独居','占用小'], cautions:['夜间跑轮有声音'] },
+  { id:9, name:'玄凤鹦鹉 · 手养', cat:'5', catName:'鸟类', price:450, monthly:90,
+    space:'apartment', easy:0, quiet:0, clingy:1, kid:0, traits:['亲人','会学口哨'], cautions:['叫声穿透力强'] },
+  { id:10, name:'锦鲤 · 红白', cat:'6', catName:'水族', price:260, monthly:60,
+    space:'house', easy:1, quiet:1, clingy:0, kid:1, traits:['观赏','低互动'], cautions:['需过滤系统'] },
+  { id:11, name:'豹纹守宫', cat:'7', catName:'爬行', price:680, monthly:70,
+    space:'small', easy:1, quiet:1, clingy:0, kid:0, traits:['安静','夜行','占用小'], cautions:['需控温设备'] }
+];
+
+const ISSUES = [
+  { id:1, name:'猫咪软便', fam:'猫科', sev:'中', kw:['软便','拉稀','腹泻','便软','不成形'],
+    symptoms:'排便不成形或呈糊状，次数增加，肛门周围沾附残便',
+    cause:'突然换粮、环境变化、受凉、寄生虫或抗生素使用后菌群波动',
+    solution:'停掉新粮回到原配方；补充益生菌；观察 24 小时并记录排便形态',
+    prevention:'换粮用 7 天过渡法，避免频繁更换主粮与环境变动' },
+  { id:2, name:'猫瘟', fam:'猫科', sev:'重', kw:['猫瘟','高热','白细胞','呕吐不止'],
+    symptoms:'突发高热、剧烈呕吐、腹泻带血，白细胞骤降，精神沉郁',
+    cause:'猫细小病毒感染，未完成疫苗接种的幼猫风险最高',
+    solution:'立即就医，补液与抗病毒支持治疗，隔离其他猫只',
+    prevention:'按时完成三针疫苗，新猫进家先隔离观察 14 天' },
+  { id:3, name:'猫藓', fam:'猫科', sev:'轻', kw:['猫藓','掉毛','皮屑','环形','癣'],
+    symptoms:'圆形脱毛斑、皮屑增多，边缘发红，常从耳后与四肢开始',
+    cause:'真菌感染，潮湿环境与免疫力下降时高发，可传给人',
+    solution:'外用抗真菌药，剃短患处毛发，环境与用具同步消毒',
+    prevention:'保持干燥通风，新猫进家隔离观察，接触后洗手' },
+  { id:4, name:'猫泌尿道堵塞', fam:'猫科', sev:'重', kw:['尿不出','排尿','泌尿','憋尿','尿血'],
+    symptoms:'频繁进猫砂盆但尿量极少或无尿，蹲厕时叫唤，腹部胀硬',
+    cause:'公猫尿道狭窄、饮水不足、高镁饮食与肥胖',
+    solution:'立即就医导尿，超过 24 小时无尿可能引发急性肾衰',
+    prevention:'增加饮水（湿粮 / 流动水），控制体重，减少应激' },
+  { id:5, name:'犬细小', fam:'犬科', sev:'重', kw:['细小','血便','幼犬','脱水'],
+    symptoms:'剧烈呕吐、番茄汁样血便、脱水，病程进展极快',
+    cause:'犬细小病毒感染，未免疫幼犬高发，通过粪便传播',
+    solution:'立即住院输液与抗病毒治疗，严格隔离',
+    prevention:'幼犬按时完成免疫程序，避免去未消毒的公共场所' },
+  { id:6, name:'狗狗皮肤病', fam:'犬科', sev:'中', kw:['皮肤病','挠','痒','脱毛','红斑','真菌'],
+    symptoms:'反复挠痒、红斑、脱毛、结痂，夜间加重',
+    cause:'真菌、螨虫、跳蚤过敏或食物过敏，需区分病因',
+    solution:'先做皮肤刮片与真菌镜检，再针对性用药，勿自行用激素',
+    prevention:'定期驱虫，保持窝垫干燥，洗澡后彻底吹干' },
+  { id:7, name:'犬髋关节发育不良', fam:'犬科', sev:'中', kw:['髋关节','跛行','瘸','后腿'],
+    symptoms:'后肢跛行、起身困难、跑动后不愿站立，大型犬多见',
+    cause:'遗传性关节发育异常，幼年期过快生长与肥胖会加重',
+    solution:'控制体重、补充关节营养，必要时手术评估',
+    prevention:'幼犬期控制生长速度，避免过早高强度跳跃运动' },
+  { id:8, name:'仓鼠湿尾', fam:'啮齿', sev:'重', kw:['湿尾','仓鼠','腹泻','尾部'],
+    symptoms:'尾部与肛门周围被稀便浸湿，精神萎靡、拒食、脱水',
+    cause:'细菌感染叠加应激（运输、换笼、温度骤变）',
+    solution:'立即保温并就医，24 小时内不处理极易脱水死亡',
+    prevention:'减少搬动与惊吓，保持笼内干燥，饮水洁净' },
+  { id:9, name:'兔子胃肠停滞', fam:'啮齿', sev:'重', kw:['兔','不吃','不吃东西','胃肠','胀气'],
+    symptoms:'超过 12 小时不进食、不排便，腹部胀大，蜷缩磨牙',
+    cause:'精料过多、毛球堵塞、应激或牙齿问题导致进食减少',
+    solution:'立即就医，可轻柔按摩腹部，切勿强行喂食',
+    prevention:'无限量供应提摩西草，定期梳毛，控制精料比例' },
+  { id:10, name:'鹦鹉拉稀', fam:'鸟类', sev:'中', kw:['鹦鹉','拉稀','鸟','粪便'],
+    symptoms:'粪便稀薄带水、羽毛蓬松、精神差、食欲下降',
+    cause:'受凉、饲料变质、饮水污染或细菌感染',
+    solution:'先保温（28 - 30℃），更换饲料与饮水，观察 12 小时',
+    prevention:'避免穿堂风与温差骤变，蔬果当天吃完，饮水每日更换' },
+  { id:11, name:'观赏鱼白点病', fam:'水族', sev:'中', kw:['白点','鱼','水族','小白点'],
+    symptoms:'鱼体与鳍上出现针尖大小白点，蹭缸、呼吸急促',
+    cause:'小瓜虫寄生，水温骤变或新鱼未隔离时暴发',
+    solution:'缓慢升温至 28 - 30℃ 并保持一周，配合专用药浴',
+    prevention:'新鱼隔离 2 周，换水控制温差不超过 2℃' },
+  { id:12, name:'龟腐皮腐甲', fam:'爬行', sev:'中', kw:['龟','腐皮','腐甲','壳'],
+    symptoms:'皮肤发白溃烂、甲壳软化有异味，拒食少动',
+    cause:'水质恶化、长期干养或外伤后细菌感染',
+    solution:'隔离干养，清理创面并外用碘伏，改善水质',
+    prevention:'每日换水并晒背，提供 UVB 灯与干燥晒台' }
+];
+
+/* ================================================================
+   2. 通用工具
+   ================================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const FAMILIES = ['猫科','犬科','啮齿','鸟类','水族','爬行'];
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+function renderAnswer(text) {
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const out = [];
+  let list = null;
+  const close = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { close(); continue; }
+    const ul = /^[-*]\s+(.*)$/.exec(line);
+    const ol = /^(\d+)[.、)]\s+(.*)$/.exec(line);
+    if (ul) {
+      if (list !== 'ul') { close(); out.push('<ul>'); list = 'ul'; }
+      out.push('<li>' + inline(ul[1]) + '</li>');
+    } else if (ol) {
+      if (list !== 'ol') { close(); out.push('<ol>'); list = 'ol'; }
+      out.push('<li>' + inline(ol[2]) + '</li>');
+    } else {
+      close();
+      out.push('<p>' + inline(line) + '</p>');
+    }
+  }
+  close();
+  return out.join('');
+}
+
+/* ================================================================
+   3. AI 选宠
+   ================================================================ */
+const mState = { step: 0, answers: {}, view: 'quiz', busy: false };
+
+function totalCount() { return STEPS.reduce((n, s) => n + s.questions.length, 0); }
+function doneCount() { return Object.keys(mState.answers).filter(k => mState.answers[k]).length; }
+function groupDone(g) { return g.questions.filter(q => mState.answers[q.key]).length; }
+function groupAll(g) { return g.questions.every(q => mState.answers[q.key]); }
+
+function renderSteps() {
+  $('#steps').innerHTML = STEPS.map((g, i) => {
+    const cls = ['step'];
+    if (i === mState.step) cls.push('on');
+    if (groupAll(g)) cls.push('done');
+    return `<button class="${cls.join(' ')}" data-step="${i}">
+      <span class="no">${pad(i + 1)}</span>
+      <span class="tx"><b>${g.title}</b><em>${g.sub}</em></span>
+      <span class="cnt">${groupDone(g)}/${g.questions.length}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderProgress() {
+  const d = doneCount(), t = totalCount(), pct = Math.round(d / t * 100);
+  $('#progText').textContent = `已完成 ${d} / ${t}`;
+  $('#progPct').textContent = pct + '%';
+  $('#progBar').style.width = pct + '%';
+}
+
+function renderQuestions() {
+  const g = STEPS[mState.step];
+  $('#qNo').textContent = pad(mState.step + 1);
+  $('#qTitle').textContent = g.title;
+  $('#qSub').textContent = g.sub;
+  $('#qBody').innerHTML = g.questions.map(q => `
+    <div class="q">
+      <div class="qt">${q.title}${q.hint ? `<span>${q.hint}</span>` : ''}</div>
+      <div class="opts">
+        ${q.options.map(o => `<button class="opt${mState.answers[q.key] === o.value ? ' on' : ''}" data-k="${q.key}" data-v="${o.value}">
+          <b>${o.label}</b>${o.desc ? `<em>${o.desc}</em>` : ''}
+        </button>`).join('')}
+      </div>
+    </div>`).join('');
+
+  $('#dots').innerHTML = STEPS.map((_, i) => `<i class="${i <= mState.step ? 'on' : ''}"></i>`).join('');
+
+  $('#btnPrev').disabled = mState.step === 0;
+  const last = mState.step === STEPS.length - 1;
+  $('#btnNext').textContent = last ? '开始智能匹配' : '下一步';
+  $('#btnNext').classList.toggle('btn--solid', true);
+}
+
+function renderQuiz() {
+  renderSteps();
+  renderProgress();
+  renderQuestions();
+}
+
+$('#steps').addEventListener('click', e => {
+  const b = e.target.closest('.step');
+  if (!b) return;
+  mState.step = Number(b.dataset.step);
+  renderQuiz();
+});
+
+$('#qBody').addEventListener('click', e => {
+  const b = e.target.closest('.opt');
+  if (!b) return;
+  mState.answers[b.dataset.k] = b.dataset.v;
+  renderQuiz();
+});
+
+$('#btnPrev').addEventListener('click', () => {
+  if (mState.step > 0) { mState.step--; renderQuiz(); }
+});
+
+$('#btnNext').addEventListener('click', () => {
+  const g = STEPS[mState.step];
+  if (!groupAll(g)) {
+    $('#btnNext').classList.remove('shake');
+    void $('#btnNext').offsetWidth;
+    $('#btnNext').classList.add('shake');
+    const left = g.questions.length - groupDone(g);
+    toast(`这一步还有 ${left} 题没选`);
+    return;
+  }
+  if (mState.step < STEPS.length - 1) {
+    mState.step++;
+    renderQuiz();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    startMatch();
+  }
+});
+
+/* ---------- 一句话填答 ---------- */
+const RULES = [
+  { re: /小户型|合租|单间|一居/, k: 'home', v: 'small' },
+  { re: /大房|院子|别墅|三层/, k: 'home', v: 'house' },
+  { re: /两居|普通住宅|两室/, k: 'home', v: 'apartment' },
+  { re: /小孩|孩子|宝宝|儿童/, k: 'kids', v: 'yes' },
+  { re: /怕吵|安静|隔音|邻居/, k: 'noise', v: 'low' },
+  { re: /宅|不爱出门|家里蹲/, k: 'activity', v: 'low' },
+  { re: /跑步|爬山|健身|户外/, k: 'activity', v: 'high' },
+  { re: /上班|加班|出差|很忙|没时间/, k: 'time', v: 'lt1' },
+  { re: /时间充裕|在家办公|退休|自由职业/, k: 'time', v: 'gt3' },
+  { re: /粘人|亲近|陪着我/, k: 'companion', v: 'clingy' },
+  { re: /省心|独立|不用管/, k: 'companion', v: 'independent' },
+  { re: /第一次|新手|没养过/, k: 'experience', v: 'none' },
+  { re: /养过|老手|多年/, k: 'experience', v: 'some' },
+  { re: /猫/, k: 'prefer', v: '1' }, { re: /狗|犬/, k: 'prefer', v: '2' },
+  { re: /兔/, k: 'prefer', v: '3' }, { re: /仓鼠|鼠/, k: 'prefer', v: '4' },
+  { re: /鹦鹉|鸟/, k: 'prefer', v: '5' }, { re: /鱼|水族/, k: 'prefer', v: '6' },
+  { re: /龟|爬行|守宫/, k: 'prefer', v: '7' }
+];
+
+function parseText(text) {
+  const hits = {};
+  for (const r of RULES) if (r.re.test(text)) hits[r.k] = r.v;
+  const b = /预算\s*(\d{3,6})/.exec(text) || /(\d{3,6})\s*(?:元|块)/.exec(text);
+  if (b) {
+    const n = Number(b[1]);
+    hits.budget = n < 1000 ? '1000' : n < 3000 ? '3000' : n < 6000 ? '6000' : '99999';
+    hits.monthly = n < 1000 ? '200' : n < 3000 ? '500' : '1000';
+  } else if (!hits.budget) {
+    if (/预算不多|预算有限|便宜/.test(text)) { hits.budget = '1000'; hits.monthly = '200'; }
+  }
+  return hits;
+}
+
+$('#btnAi').addEventListener('click', () => {
+  const text = $('#aiText').value.trim();
+  if (!text) { toast('先用一句话说说你的情况'); $('#aiText').focus(); return; }
+  const btn = $('#btnAi');
+  btn.disabled = true;
+  btn.textContent = '解析中';
+  setTimeout(() => {
+    const hits = parseText(text);
+    Object.keys(hits).forEach(k => { mState.answers[k] = hits[k]; });
+    const n = Object.keys(hits).length;
+    const hint = $('#aiHint');
+    hint.hidden = false;
+    hint.innerHTML = `<b>已识别</b>「${text}」，自动填好 ${n} / ${totalCount()} 项 · 本地规则解析`;
+    btn.disabled = false;
+    btn.textContent = '智能填答';
+    const firstIncomplete = STEPS.findIndex(g => !groupAll(g));
+    if (firstIncomplete >= 0) mState.step = firstIncomplete;
+    renderQuiz();
+    toast(`已自动填写 ${n} 项`);
+  }, 620);
+});
+
+$('#aiText').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnAi').click(); });
+
+/* ---------- 匹配 ---------- */
+function scorePet(p, a) {
+  let s = 58;
+  if (a.home === 'small') s += p.space === 'small' ? 14 : -6;
+  else if (a.home === 'apartment') s += p.space === 'apartment' ? 12 : p.space === 'small' ? 9 : 6;
+  else s += p.space === 'house' ? 10 : 5;
+
+  if (a.noise === 'low') s += p.quiet ? 11 : -9;
+  else if (a.noise === 'mid') s += p.quiet ? 7 : 2;
+
+  if (a.time === 'lt1') s += p.easy ? 10 : -8;
+  else if (a.time === 'gt3') s += 6;
+
+  if (a.kids === 'yes') s += p.kid ? 8 : -10;
+  if (a.companion === 'clingy') s += p.clingy ? 7 : 1;
+  if (a.companion === 'independent') s += p.clingy ? 2 : 7;
+  if (a.experience === 'none') s += p.easy ? 6 : -6;
+
+  s += (p.id * 7) % 5;
+  return Math.max(56, Math.min(97, s));
+}
+
+function reasonsFor(p, a) {
+  const r = [];
+  if (a.home === 'small' && p.space === 'small') r.push('小户型也能活动开');
+  if (a.time === 'lt1' && p.easy) r.push('独处能力强，适合上班族');
+  if (a.noise === 'low' && p.quiet) r.push('安静，不易扰邻');
+  if (a.kids === 'yes' && p.kid) r.push('对孩子友好');
+  if (a.companion === 'clingy' && p.clingy) r.push('主动亲近人');
+  if (a.companion === 'independent' && !p.clingy) r.push('独立，不需要全天陪伴');
+  if (a.experience === 'none' && p.easy) r.push('新手也能上手');
+  if (p.price <= Number(a.budget || 99999)) r.push('在购宠预算内');
+  return r.slice(0, 3);
+}
+
+function dimsFor(p, a) {
+  return {
+    '空间': Math.min(98, 62 + (a.home === 'small' ? (p.space === 'small' ? 30 : 4) : 22)),
+    '时间': Math.min(98, 60 + (p.easy ? 28 : 8)),
+    '预算': Math.min(98, Math.round(100 - (p.price / Math.max(Number(a.budget || 6000), 1)) * 32)),
+    '性格': Math.min(98, 64 + (p.clingy === (a.companion === 'clingy') ? 28 : 12)),
+    '经验': Math.min(98, p.easy ? 92 : 68),
+    '人气': 62 + (p.id * 13) % 33
+  };
+}
+
+function startMatch() {
+  mState.view = 'loading';
+  $('#wz').hidden = true;
+  $('#analyzing').hidden = false;
+  const texts = [
+    '正在读取你的居住空间与生活节奏…',
+    '比对 96 只宠物的空间 / 精力 / 照料特征…',
+    '计算与你相似用户的偏好…',
+    '生成个性化匹配报告…'
+  ];
+  let i = 0;
+  const tm = setInterval(() => { i = (i + 1) % texts.length; $('#analyzeText').textContent = texts[i]; }, 520);
+  setTimeout(() => {
+    clearInterval(tm);
+    $('#analyzing').hidden = true;
+    mState.view = 'result';
+    renderResult();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 1700);
+}
+
+function renderResult() {
+  const a = mState.answers;
+  const budget = Number(a.budget || 99999);
+  const monthly = Number(a.monthly || 99999);
+  let pool = PETS.filter(p => p.price <= budget && p.monthly <= monthly);
+  if (a.prefer && a.prefer !== 'any') pool = pool.filter(p => p.cat === a.prefer);
+  if (!pool.length) pool = PETS.filter(p => p.price <= budget);
+  if (!pool.length) pool = PETS.slice();
+
+  const list = pool.map(p => ({ ...p, score: scorePet(p, a) })).sort((x, y) => y.score - x.score);
+  const top = list[0];
+  const rest = list.slice(1, 5);
+  const dims = dimsFor(top, a);
+  const reasons = reasonsFor(top, a);
+
+  const R = 34, C = 2 * Math.PI * R;
+  const dash = C * (1 - top.score / 100);
+
+  $('#result').innerHTML = `
+    <div class="card rhead">
+      <div>
+        <span class="rh">匹配结果</span>
+        <h2>${top.name.split(' · ')[0]} 与你最合拍，匹配度 ${top.score}%</h2>
+        <p>六维画像打分 · 已比对你作答的 ${doneCount()} 项条件<span class="on"> · 登录后可结合收藏 / 预约行为进一步优化</span></p>
+      </div>
+      <button class="btn btn--line" id="btnRestart">重新测评</button>
+    </div>
+
+    <div class="top">
+      <div class="topimg"><span class="ph">${top.catName} · 暂无实拍图</span><span class="crown">最佳匹配</span></div>
+      <div class="tpmain">
+        <div class="tphead">
+          <div class="tpid">
+            <span class="tpcat">${top.catName} · ${top.name.split(' · ')[0]}</span>
+            <h3>${top.name}</h3>
+            <div class="tpprice">¥${top.price.toLocaleString('zh-CN')}<em>月均养护约 ¥${top.monthly}</em></div>
+          </div>
+          <div class="scorering">
+            <svg viewBox="0 0 82 82">
+              <circle cx="41" cy="41" r="${R}" fill="none" stroke="#dcede6" stroke-width="7"/>
+              <circle id="ringFg" cx="41" cy="41" r="${R}" fill="none" stroke="#14614e" stroke-width="7"
+                stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}"
+                transform="rotate(-90 41 41)" style="transition:stroke-dashoffset 1s ease"/>
+            </svg>
+            <div class="val"><strong>${top.score}</strong><span>匹配度</span></div>
+          </div>
+        </div>
+
+        <div class="dims">
+          ${Object.entries(dims).map(([k, v]) => `
+            <div class="dim">
+              <span class="k">${k}</span>
+              <div class="dbar"><i data-w="${v}"></i></div>
+              <span class="v">${v}</span>
+            </div>`).join('')}
+        </div>
+
+        <div class="rblk">
+          <span class="t">为什么推荐它</span>
+          <div class="reasons">${reasons.map(r => `<span class="reason">${r}</span>`).join('') || '<span class="reason">综合维度最接近你的画像</span>'}</div>
+        </div>
+
+        <div class="tags">
+          ${top.traits.map(t => `<span class="tag">${t}</span>`).join('')}
+          ${top.cautions.map(c => `<span class="tag warn">注意：${c}</span>`).join('')}
+        </div>
+
+        <div class="tpact">
+          <button class="btn btn--solid">查看详情</button>
+          <button class="btn btn--line">预约看宠</button>
+        </div>
+      </div>
+    </div>
+
+    ${rest.length ? `
+      <div class="sechead"><h2>其他高匹配推荐</h2><span>按匹配度排序，共 ${rest.length} 只</span></div>
+      <div class="cards">
+        ${rest.map(p => `
+          <div class="pcard">
+            <div class="pimg"><span>${p.catName}</span><b>${p.score}%</b></div>
+            <div class="pbody">
+              <h3>${p.name}</h3>
+              <p class="meta">${p.catName} · 月均 ¥${p.monthly}</p>
+              <div class="pp">¥${p.price.toLocaleString('zh-CN')}</div>
+              <p class="why">${reasonsFor(p, a)[0] || '综合维度匹配'}</p>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+
+    <p class="footnote">匹配结果由六维画像打分（72% - 84%）、相似用户行为（12% - 16%）与全站人气（12% - 16%）共同计算。</p>
+  `;
+  $('#result').hidden = false;
+
+  requestAnimationFrame(() => {
+    const fg = $('#ringFg');
+    if (fg) fg.style.strokeDashoffset = dash.toFixed(1);
+    document.querySelectorAll('.dim .dbar i').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  });
+
+  $('#btnRestart').addEventListener('click', resetMatch);
+}
+
+function resetMatch() {
+  mState.step = 0;
+  mState.answers = {};
+  mState.view = 'quiz';
+  $('#result').hidden = true;
+  $('#result').innerHTML = '';
+  $('#analyzing').hidden = true;
+  $('#wz').hidden = false;
+  $('#aiHint').hidden = true;
+  $('#aiText').value = '';
+  renderQuiz();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ================================================================
+   4. 百科问答
+   ================================================================ */
+const wState = { fam: '猫科', turns: [], hits: [], loading: false, browse: true };
+
+function renderTree() {
+  $('#tree').innerHTML = FAMILIES.map(f => {
+    const n = ISSUES.filter(i => i.fam === f).length;
+    return `<li><button class="${wState.fam === f ? 'on' : ''}" data-fam="${f}">
+      <b style="font-weight:inherit">${f}</b><span>${n}</span>
+    </button></li>`;
+  }).join('');
+  $('#treeFoot').textContent = `共 ${ISSUES.length} 条 · 10 月更新`;
+  $('#bcFam').textContent = wState.fam;
+}
+
+function renderChips() {
+  const list = ISSUES.filter(i => i.fam === wState.fam).slice(0, 4);
+  $('#wChips').innerHTML = list.map(i => `<button data-q="${i.name}怎么办">${i.name}</button>`).join('');
+}
+
+function renderBrowse() {
+  const list = ISSUES.filter(i => i.fam === wState.fam);
+  if (!wState.browse) { $('#browseBox').innerHTML = ''; return; }
+  $('#browseBox').innerHTML = `
+    <div class="browse">
+      <div class="browse-h">
+        <b>${wState.fam}</b><span>${list.length} 条 · 点条目直接提问</span>
+        <button class="x" id="btnCloseBrowse">收起</button>
+      </div>
+      ${list.map(i => `
+        <button class="bitem" data-q="${i.name}怎么办">
+          <b>${i.name}</b>
+          <span class="chip ${sevClass(i.sev)}">${i.sev}</span>
+          <em>${i.symptoms}</em>
+          <span class="go">提问 →</span>
+        </button>`).join('')}
+    </div>`;
+  $('#btnCloseBrowse').addEventListener('click', () => { wState.browse = false; renderBrowse(); });
+}
+
+function sevClass(s) { return s === '重' ? 'chip--danger' : s === '中' ? 'chip--warn' : 'chip--ok'; }
+
+function renderTurns() {
+  $('#turns').innerHTML = wState.turns.map((m, ti) => {
+    if (m.role === 'user') {
+      return `<article class="turn">
+        <p class="who">我的提问</p>
+        <p class="qtext">${m.text}</p>
+      </article>`;
+    }
+    return `<article class="turn">
+      <p class="who">百科助手 <span class="chip chip--brand">在线模型 · Qwen</span></p>
+      <div class="ans">${renderAnswer(m.text)}</div>
+      ${m.hits.length ? `<div class="srcs">
+        ${m.hits.map((h, i) => `<span class="src" data-src="${ti}-${i}" data-issue="${h.id}"><b>${i + 1}</b>${h.name}</span>`).join('')}
+      </div>` : ''}
+    </article>`;
+  }).join('') + (wState.loading ? `<div class="thinking"><i></i><i></i><i></i><span>在线模型正在思考，请稍候…</span></div>` : '');
+}
+
+function renderHits() {
+  $('#hitCount').textContent = wState.hits.length + ' 条';
+  if (!wState.hits.length) {
+    $('#hits').innerHTML = `<p class="emptyhint">还没有提问。左侧选科系，或直接描述症状。</p>`;
+    $('#sug').hidden = true;
+    return;
+  }
+  $('#hits').innerHTML = wState.hits.map((h, i) => `
+    <button class="hitcard ${i === 0 ? 'on' : ''}" data-issue="${h.id}">
+      <div class="hc"><i>${i + 1}</i><b>${h.name}</b><span class="chip ${sevClass(h.sev)}">${h.sev}</span></div>
+      <p>${h.symptoms}</p>
+    </button>`).join('');
+
+  const first = wState.hits[0];
+  const qs = [
+    `${first.name}需要马上就医吗`,
+    `${first.name}会传染给其他宠物吗`,
+    `怎么预防${first.name}`
+  ];
+  $('#sug').hidden = false;
+  $('#sug').innerHTML = `<b>继续追问</b>` + qs.map(q => `<button data-q="${q}">${q}</button>`).join('');
+}
+
+function findIssues(text) {
+  const t = text.toLowerCase();
+  return ISSUES
+    .map(i => {
+      let s = 0;
+      if (t.includes(i.name.toLowerCase())) s += 10;
+      i.kw.forEach(k => { if (t.includes(k.toLowerCase())) s += 4; });
+      if (t.includes(i.fam)) s += 1;
+      return { i, s };
+    })
+    .filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 2)
+    .map(x => x.i);
+}
+
+function buildAnswer(issue) {
+  const steps = issue.solution.split(/[；;]/).filter(Boolean);
+  const lines = [
+    `**先判断严重程度。** ${issue.name}的典型表现是：${issue.symptoms}。${issue.cause ? '常见诱因包括' + issue.cause + '。' : ''}`,
+    '',
+    '可以按这个顺序处理：',
+    ...steps.map((s, i) => `${i + 1}. ${s.replace(/[。；]$/, '')}`),
+    '',
+    `预防上，${issue.prevention.replace(/[。]$/, '')}。`,
+    '',
+    '如果 24 小时内没有好转，或出现持续呕吐、精神萎靡、拒食，请直接联系线下宠物医院。'
+  ];
+  return lines.join('\n');
+}
+
+function ask(text) {
+  const q = String(text || '').trim();
+  if (!q) { toast('先说一句你想问的'); return; }
+  if (wState.loading) return;
+
+  wState.turns.push({ role: 'user', text: q });
+  wState.loading = true;
+  const box = $('#turns');
+  renderTurns();
+  box.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  setTimeout(() => {
+    const hits = findIssues(q);
+    let answer;
+    if (hits.length) {
+      answer = buildAnswer(hits[0]);
+    } else {
+      answer = [
+        '知识库里没有完全匹配的条目。',
+        '',
+        '可以换个说法再试，比如把症状描述得更具体：',
+        '- 从什么时候开始、持续多久',
+        '- 精神与食欲有没有变化',
+        '- 排便、呕吐、皮肤等可观察的细节',
+        '',
+        '如果症状正在加重，建议直接联系线下宠物医院。'
+      ].join('\n');
+    }
+    wState.turns.push({ role: 'doc', text: answer, hits });
+    wState.loading = false;
+    wState.hits = hits;
+    renderTurns();
+    renderHits();
+  }, 950);
+}
+
+/* 事件绑定 */
+$('#tree').addEventListener('click', e => {
+  const b = e.target.closest('button[data-fam]');
+  if (!b) return;
+  wState.fam = b.dataset.fam;
+  wState.browse = true;
+  renderTree(); renderChips(); renderBrowse();
+});
+
+$('#wChips').addEventListener('click', e => {
+  const b = e.target.closest('button[data-q]');
+  if (b) ask(b.dataset.q);
+});
+
+$('#browseBox').addEventListener('click', e => {
+  const b = e.target.closest('.bitem');
+  if (b) ask(b.dataset.q);
+});
+
+$('#btnAsk').addEventListener('click', () => { ask($('#wq').value); $('#wq').value = ''; });
+
+$('#wq').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { $('#btnAsk').click(); }
+});
+
+$('#hits').addEventListener('click', e => {
+  const b = e.target.closest('.hitcard');
+  if (!b) return;
+  const id = Number(b.dataset.issue);
+  const issue = ISSUES.find(i => i.id === id);
+  document.querySelectorAll('.hitcard').forEach(x => x.classList.toggle('on', x === b));
+  const chip = document.querySelector(`.src[data-issue="${id}"]`);
+  if (chip) {
+    chip.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    chip.classList.remove('flash');
+    void chip.offsetWidth;
+    chip.classList.add('flash');
+  } else if (issue) {
+    toast('该条目尚未在这次回答中引用');
+  }
+});
+
+$('#sug').addEventListener('click', e => {
+  const b = e.target.closest('button[data-q]');
+  if (b) { ask(b.dataset.q); window.scrollTo({ top: 200, behavior: 'smooth' }); }
+});
+
+function resetWiki() {
+  wState.turns = [];
+  wState.hits = [];
+  wState.loading = false;
+  wState.fam = '猫科';
+  wState.browse = true;
+  $('#wq').value = '';
+  renderTree(); renderChips(); renderBrowse(); renderTurns(); renderHits();
+}
+
+/* ================================================================
+   5. 页面切换 / 初始化
+   ================================================================ */
+function showPage(p) {
+  $('#pageMatch').hidden = p !== 'match';
+  $('#pageWiki').hidden = p !== 'wiki';
+  document.querySelectorAll('#pageSeg button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+$('#pageSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-page]');
+  if (b) showPage(b.dataset.page);
+});
+
+document.querySelectorAll('[data-go]').forEach(b => {
+  b.addEventListener('click', () => showPage(b.dataset.go));
+});
+
+$('#btnReset').addEventListener('click', () => {
+  const isMatch = !$('#pageMatch').hidden;
+  if (isMatch) resetMatch(); else resetWiki();
+  toast('已重置本页');
+});
+
+renderQuiz();
+renderTree();
+renderChips();
+renderBrowse();
+renderTurns();
+renderHits();
+</script>
+</body>
+</html>

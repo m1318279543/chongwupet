@@ -50,6 +50,9 @@ Thumbs.db
 *.tmp
 *.bak
 
+# 本地清理回收目录（保留待确认的文件，不入库）
+.trash-*/
+
 # 会话工作目录（截图/补丁脚本/记忆，不入库）
 .runtime/
 .workbuddy/
