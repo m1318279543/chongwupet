@@ -22,13 +22,14 @@
 
     <div class="quick-tip">
       <!-- 注册入口暂不开放：账号由后台导入，开放前需先统一前后端加密口径（见 docs/上线前注意事项.md） -->
-      <el-tag type="warning" size="small" @click="fillAdmin" style="cursor:pointer">admin/admin123 体验</el-tag>
+      还没有账号？<el-link type="primary" :underline="false" @click="goConsult">联系客服开通</el-link>
     </div>
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { User, Lock, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getCodeImg, login } from '@/api/login'
@@ -41,6 +42,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'success'])
 
 const userStore = useUserStore()
+const router = useRouter()
 const formRef = ref()
 const visible = ref(props.modelValue)
 const loading = ref(false)
@@ -78,9 +80,9 @@ function getCode() {
   })
 }
 
-function fillAdmin() {
-  form.username = 'admin'
-  form.password = 'admin123'
+function goConsult() {
+  visible.value = false
+  router.push('/shop/consult')
 }
 
 function handleClose() {
