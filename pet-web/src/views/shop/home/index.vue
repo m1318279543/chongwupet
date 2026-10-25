@@ -1,7 +1,7 @@
 <template>
   <div class="home">
 
-    <!-- ① 主视觉：浅底深字，左文案 + 右图集（不再整块亮橙压白字） -->
+    <!-- ① 主视觉：浅底深字，左文案 + 右图集 -->
     <section class="hero">
       <div class="hero-inner">
         <div class="hero-copy">
@@ -22,7 +22,7 @@
             支持到店看宠、养护咨询、7 天健康观察。
           </p>
 
-          <!-- 搜索：全站唯一入口 -->
+          <!-- 搜索：跳到宠物售卖页出结果 -->
           <div class="hero-search">
             <el-icon class="s-ico"><Search /></el-icon>
             <input
@@ -44,7 +44,7 @@
           </div>
 
           <div class="trust">
-            <div><strong class="num">{{ categories.length || 7 }}</strong><span>大品类覆盖</span></div>
+            <div><strong class="num">{{ petCats || 7 }}</strong><span>大品类覆盖</span></div>
             <div><strong class="num">{{ stores.length || 3 }}</strong><span>重庆直营门店</span></div>
             <div><strong class="num">100<i>%</i></strong><span>健康筛查记录</span></div>
             <div><strong class="num">7<i> 天</i></strong><span>健康观察期</span></div>
@@ -67,65 +67,18 @@
       </div>
     </section>
 
-    <!-- ② 品类快筛：替代原来的「全部分类 + 统称分类/按科系」双层导航 -->
-    <div class="filters">
-      <div class="filters-inner">
-        <div class="chips" role="group" aria-label="按品类筛选">
-          <button type="button" class="chip" :class="{ on: !activeFilter }" @click="clearFilter">全部 <em>{{ allPets.length }}</em></button>
-          <button
-            v-for="c in categories" :key="c.categoryId" type="button" class="chip"
-            :class="{ on: activeType === 'category' && activeValue === c.categoryId }"
-            @click="applyFilter('category', c.categoryId)"
-          >
-            {{ c.categoryName }} <em>{{ catCounts[c.categoryId] || 0 }}</em>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ③ 宠物网格 -->
+    <!-- ② 本周值得一看：精选 12 只，右侧按钮去宠物售卖页看全部 -->
     <section class="sec pets-sec" ref="petsSec">
       <div class="sec-inner">
         <div class="sec-head">
           <div>
-            <h2>{{ gridTitle }}</h2>
-            <p>{{ gridSub }}</p>
+            <h2>本周值得一看</h2>
+            <p>按健康记录完整度与到店可看时间排序</p>
           </div>
-          <button v-if="canExpand" type="button" class="more" @click="showAll = true">
-            全部 {{ allPets.length }} 只
+          <router-link class="more" to="/shop/pets">
+            宠物售卖 · 全部 {{ allPets.length }} 只
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
-          </button>
-        </div>
-
-        <!-- 组合筛选（仅在有筛选/搜索时出现） -->
-        <div class="filter-bar" v-if="displayPets.length > 0 && showResult">
-          <div class="fb-item">
-            <span class="fb-label">性别</span>
-            <el-radio-group v-model="fGender" size="small">
-              <el-radio-button value="">全部</el-radio-button>
-              <el-radio-button value="0">公</el-radio-button>
-              <el-radio-button value="1">母</el-radio-button>
-            </el-radio-group>
-          </div>
-          <div class="fb-item">
-            <span class="fb-label">价格</span>
-            <el-select v-model="fPrice" size="small" style="width: 130px">
-              <el-option label="全部价格" value="" />
-              <el-option label="¥0 - 500" value="0-500" />
-              <el-option label="¥500 - 2000" value="500-2000" />
-              <el-option label="¥2000 - 5000" value="2000-5000" />
-              <el-option label="¥5000 以上" value="5000-" />
-            </el-select>
-          </div>
-          <div class="fb-item">
-            <span class="fb-label">排序</span>
-            <el-radio-group v-model="fSort" size="small">
-              <el-radio-button value="">默认</el-radio-button>
-              <el-radio-button value="asc">价格低→高</el-radio-button>
-              <el-radio-button value="desc">价格高→低</el-radio-button>
-            </el-radio-group>
-          </div>
-          <el-checkbox v-model="fOnSale" size="small">仅看在售</el-checkbox>
+          </router-link>
         </div>
 
         <div class="grid" v-loading="loading">
@@ -142,51 +95,41 @@
         </div>
 
         <div v-if="!loading && !gridPets.length" class="empty">
-          <p>没有找到相关宠物</p>
-          <button type="button" class="btn btn-ghost btn-sm" @click="clearFilter">看看全部在售</button>
+          <p>暂时没有在售宠物</p>
+          <button type="button" class="btn btn-ghost btn-sm" @click="router.push('/shop/pets')">去宠物售卖页看看</button>
         </div>
       </div>
     </section>
 
-    <!-- ④ 服务保障 -->
-    <section class="sec">
+    <!-- ③ 宠物粮精选：每类挑一款，入口去宠物粮专区 -->
+    <section class="sec food-sec" v-if="foodList.length">
       <div class="sec-inner">
         <div class="sec-head">
           <div>
-            <h2>买之前，先把这些说清楚</h2>
-            <p>四项承诺写进订单，出问题按条款处理</p>
+            <h2>宠物粮 · 今天吃什么</h2>
+            <p>从主粮到营养补充，按品类挑对口好粮</p>
           </div>
+          <router-link class="more" to="/shop/food">
+            进入宠物粮专区
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </router-link>
         </div>
-        <div class="svc-grid">
-          <div class="svc">
-            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span>
-            <h3>健康筛查</h3>
-            <p>到店前完成基础体检、疫苗与驱虫记录核验，档案随宠物交付。</p>
-            <router-link class="svc-link" to="/shop/service#health">了解流程 →</router-link>
-          </div>
-          <div class="svc">
-            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
-            <h3>真实信息</h3>
-            <p>品种、月龄、性别、来源如实登记，图片为实拍，不做美颜合成。</p>
-            <router-link class="svc-link" to="/shop/service#origin">查看标准 →</router-link>
-          </div>
-          <div class="svc">
-            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"/></svg></span>
-            <h3>专业养护</h3>
-            <p>交付附 30 天养护清单：喂养节奏、疫苗排期、常见问题处理。</p>
-            <router-link class="svc-link" to="/shop/service#care">养护指南 →</router-link>
-          </div>
-          <div class="svc">
-            <span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1114 5.3"/><path d="M4 17v-5h5"/><path d="M9 17h11"/></svg></span>
-            <h3>售后无忧</h3>
-            <p>7 天健康观察期内出现约定疾病，凭体检报告可协商退换。</p>
-            <router-link class="svc-link" to="/shop/service#after">售后条款 →</router-link>
-          </div>
+        <div class="food-grid">
+          <article class="food-card" v-for="p in foodList" :key="p.goodsId" @click="router.push('/shop/food')">
+            <div class="thumb"><img :src="p.image" :alt="p.name" loading="lazy" /></div>
+            <div class="body">
+              <div class="name">{{ p.name }}</div>
+              <div class="row">
+                <span class="spec">{{ p.spec }}</span>
+                <span class="price">¥{{ p.price }}<i>起</i></span>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- ⑤ 门店：把「本地直营」这条信任信息摆到页面上（数据来自 /pet/store） -->
+    <!-- ④ 门店：把「本地直营」这条信任信息摆到页面上（数据来自 /pet/store） -->
     <section class="sec stores" v-if="stores.length">
       <div class="sec-inner">
         <div class="sec-head">
@@ -245,9 +188,9 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { listPetInfo } from '@/api/pet/petInfo'
-import { listCategory } from '@/api/pet/category'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { commentStatGroup } from '@/api/pet/petComment'
+import { listGoods } from '@/api/pet/petGoods'
 import { storeOptions } from '@/api/pet/petStore'
 import { useUserStore } from '@/store/modules/user'
 import PetCard from './PetCard.vue'
@@ -258,23 +201,12 @@ const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
 
 const keyword = ref('')
-const activeType = ref('')          // '' | 'category'
-const activeValue = ref('')         // categoryId
-const categories = ref([])
 const petList = ref([])
 const allPets = ref([])
 const loading = ref(false)
 const myFavorites = ref([])
 const stores = ref([])
-const showAll = ref(false)
-const PAGE_SIZE = 12
 const petsSec = ref(null)
-
-// 组合筛选状态
-const fGender = ref('')
-const fPrice = ref('')
-const fSort = ref('')
-const fOnSale = ref(false)
 
 // 评分角标：petId -> {avg,count}
 const ratingMap = ref({})
@@ -300,13 +232,6 @@ function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') =
 function isLogged() { return !!userStore.token }
 function isFav(petId) { return myFavorites.value.includes(petId) }
 
-// 分类计数：品类 chip 上的数量用真实数据，不写死
-const catCounts = computed(() => {
-  const m = {}
-  for (const p of allPets.value) m[p.categoryId] = (m[p.categoryId] || 0) + 1
-  return m
-})
-
 // Hero 图集：猫 / 狗 / 小宠各取一张有图的
 const heroPets = computed(() => {
   const withImg = allPets.value.filter((p) => isImage(p.image))
@@ -318,43 +243,6 @@ const heroPets = computed(() => {
   return (pick.length >= 3 ? pick : withImg).slice(0, 3)
 })
 
-const activeFilter = computed(() => activeType.value !== '')
-const displayPets = computed(() => {
-  if (!activeFilter.value) return allPets.value
-  if (activeType.value === 'category') return allPets.value.filter(p => p.categoryId === activeValue.value)
-  return allPets.value
-})
-const showResult = computed(() => !!keyword.value || activeFilter.value)
-const resultPets = computed(() => keyword.value ? petList.value : displayPets.value)
-const gridTitle = computed(() => {
-  if (keyword.value) return '搜索结果'
-  if (activeType.value === 'category') {
-    const c = categories.value.find(x => x.categoryId === activeValue.value)
-    return c ? `${c.categoryName}专区` : '筛选结果'
-  }
-  return '本周值得一看'
-})
-const gridSub = computed(() => {
-  if (showResult.value) return `共 ${filteredPets.value.length} 只符合条件`
-  return '按健康记录完整度与到店可看时间排序'
-})
-
-// 组合筛选后的结果（性别/价格/在售/排序，纯前端过滤）
-const filteredPets = computed(() => {
-  let list = resultPets.value.slice()
-  if (fGender.value !== '') list = list.filter((p) => p.gender === fGender.value)
-  if (fPrice.value) {
-    const [min, max] = fPrice.value.endsWith('-')
-      ? [Number(fPrice.value.slice(0, -1)), Infinity]
-      : fPrice.value.split('-').map(Number)
-    list = list.filter((p) => (p.price || 0) >= min && (p.price || 0) <= max)
-  }
-  if (fOnSale.value) list = list.filter((p) => p.status !== '1')
-  if (fSort.value === 'asc') list.sort((a, b) => (a.price || 0) - (b.price || 0))
-  else if (fSort.value === 'desc') list.sort((a, b) => (b.price || 0) - (a.price || 0))
-  return list
-})
-
 // 首页精选顺序：猫 / 狗 / 兔 优先，其余按后台录入顺序
 // 后台新增数据通常按分类批量导入，不排的话首屏可能整屏都是水族或爬行
 const CAT_PRIORITY = { 1: 0, 2: 1, 3: 2 }
@@ -364,17 +252,31 @@ const featuredPets = computed(() => allPets.value.slice().sort((a, b) => {
   return pa - pb
 }))
 
-const gridPets = computed(() => {
-  if (showResult.value) return filteredPets.value
-  return showAll.value ? featuredPets.value : featuredPets.value.slice(0, PAGE_SIZE)
-})
-const canExpand = computed(() => !showResult.value && !showAll.value && allPets.value.length > PAGE_SIZE)
+// 首页只放精选 12 只，完整列表（含品类筛选）在宠物售卖页
+const HOME_COUNT = 12
+const gridPets = computed(() => featuredPets.value.slice(0, HOME_COUNT))
 
-async function loadCategories() {
+// 宠物粮精选：每个品类挑一款，展示 4 款
+const foodList = ref([])
+const petCats = computed(() => new Set(allPets.value.map(p => p.categoryId)).size)
+async function loadFood() {
   try {
-    const res = await listCategory({ pageNum: 1, pageSize: 100 })
-    categories.value = res.rows || []
-  } catch (e) { console.warn('分类加载失败', e) }
+    const res = await listGoods({ status: '0', pageNum: 1, pageSize: 200 })
+    const rows = (res.rows || []).map((g) => ({
+      goodsId: g.goodsId,
+      image: g.image,
+      name: g.goodsName,
+      spec: g.spec,
+      price: Number(g.price),
+      cat: g.cat
+    })).filter((g) => g.price > 0)
+    const seen = []
+    for (const g of rows) {
+      if (!seen.includes(g.cat)) { seen.push(g.cat); foodList.value.push(g) }
+      if (foodList.value.length >= 4) break
+    }
+    if (!foodList.value.length) foodList.value = rows.slice(0, 4)
+  } catch (e) { /* 接口不可用时不摆空壳 */ }
 }
 
 async function loadAllPets() {
@@ -382,20 +284,6 @@ async function loadAllPets() {
   try {
     const res = await listPetInfo({ pageNum: 1, pageSize: 1000 })
     allPets.value = res.rows || []
-  } catch (e) {
-    console.error('加载宠物失败', e)
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadPets() {
-  loading.value = true
-  try {
-    const query = { pageNum: 1, pageSize: 100 }
-    if (keyword.value) query.petName = keyword.value
-    const res = await listPetInfo(query)
-    petList.value = res.rows || []
   } catch (e) {
     console.error('加载宠物失败', e)
   } finally {
@@ -442,30 +330,14 @@ async function toggleFav(petId) {
   }
 }
 
-function applyFilter(type, value) {
-  activeType.value = type
-  activeValue.value = value
-  keyword.value = ''
-  showAll.value = false
-  scrollToPets()
-}
-
-function clearFilter() {
-  activeType.value = ''
-  activeValue.value = ''
-  keyword.value = ''
-}
-
 function scrollToPets() {
   petsSec.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+// 搜索：跳宠物售卖页出结果
 function handleSearch() {
-  if (!keyword.value) return
-  activeType.value = ''
-  activeValue.value = ''
-  loadPets()
-  scrollToPets()
+  const kw = keyword.value.trim()
+  router.push(kw ? { path: '/shop/pets', query: { kw } } : { path: '/shop/pets' })
 }
 
 function goDetail(petId) {
@@ -473,11 +345,11 @@ function goDetail(petId) {
 }
 
 onMounted(() => {
-  loadCategories()
   loadAllPets()
   loadMyFavorites()
   loadRatings()
   loadStores()
+  loadFood()
 })
 </script>
 
@@ -575,12 +447,12 @@ h1 {
   display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: 1fr 1fr;
   gap: 14px; height: 470px; position: relative;
   figure {
-    overflow: hidden; border-radius: var(--radius-lg); background: var(--bg-sunken);
-    box-shadow: var(--shadow-sm); margin: 0;
+    overflow: hidden; border-radius: var(--radius-md); background: var(--bg-sunken);
+    margin: 0;
     img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.3,1); }
     &:hover img { transform: scale(1.04); }
   }
-  .m-main { grid-row: span 2; border-radius: var(--radius-xl); background: var(--brand-50);
+  .m-main { grid-row: span 2; border-radius: var(--radius-lg); background: var(--brand-50);
     img { object-position: center 30%; } }
 }
 .media-badge {
@@ -595,33 +467,12 @@ h1 {
   & > span > span { display: block; font-size: 11.5px; color: var(--text-3); line-height: 1.35; }
 }
 
-/* ===== ② 品类快筛 ===== */
-.filters { background: var(--bg-card); border-bottom: 1px solid var(--border-1); }
-.filters-inner {
-  max-width: var(--container-lg); margin: 0 auto; padding: 0 24px;
-  display: flex; align-items: center; height: 70px;
-}
-.chips {
-  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px;
-  width: 100%;
-  &::-webkit-scrollbar { display: none; }
-}
-.chip {
-  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px;
-  border: 1px solid var(--border-1); border-radius: var(--radius-pill);
-  background: var(--bg-card); color: var(--text-2); font-size: 13.5px; font-weight: 500;
-  font-family: inherit; white-space: nowrap; cursor: pointer; transition: all .16s;
-  em { font-style: normal; font-size: 11.5px; opacity: .62; font-variant-numeric: tabular-nums; }
-  &:hover { border-color: var(--brand-200); color: var(--brand-700); background: var(--brand-50); }
-  &.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600;
-    em { opacity: .82; } }
-}
-
 /* ===== 区块通用 ===== */
 .sec { padding: 96px 0; }
 .sec-inner { max-width: var(--container-lg); margin: 0 auto; padding: 0 24px; }
 .sec-head {
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 32px;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  margin-bottom: 32px; padding-bottom: 18px; border-bottom: var(--rule);
   h2 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--text-1); }
   p { margin-top: 6px; font-size: 13.5px; color: var(--text-3); }
 }
@@ -629,22 +480,14 @@ h1 {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   font-size: 14px; font-weight: 600; color: var(--brand-700);
   background: none; border: 0; font-family: inherit; cursor: pointer; padding: 8px 0; white-space: nowrap;
+  text-decoration: none;
   svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .16s; }
   &:hover svg { transform: translateX(3px); }
 }
 
-/* 筛选条 */
-.filter-bar {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 12px 16px; margin-bottom: 20px;
-  background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md);
-  .fb-item { display: flex; align-items: center; gap: 8px; }
-  .fb-label { font-size: 13px; color: var(--text-3); flex-shrink: 0; }
-}
-
-/* 网格：4 / 3 / 2 列 */
+/* 网格：4 / 3 / 2 列；卡片已去壳，行距加大靠留白分组 */
 .grid {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 16px;
   min-height: 200px;
 }
 .empty {
@@ -652,35 +495,33 @@ h1 {
   p { margin-bottom: 16px; font-size: 14px; }
 }
 
-/* ===== ④ 服务保障 ===== */
-.svc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
-.svc {
-  padding-right: 16px;
-  h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text-1); }
-  p { font-size: 13px; line-height: 1.7; color: var(--text-3); }
-}
-.svc-ico {
-  width: 44px; height: 44px; border-radius: var(--radius-md);
-  background: var(--brand-50); border: 1px solid var(--brand-100);
-  display: grid; place-items: center; margin-bottom: 16px;
-  svg { width: 22px; height: 22px; stroke: var(--brand-700); fill: none;
-    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-}
-.svc-link {
-  display: inline-block; margin-top: 10px; font-size: 12.5px; font-weight: 600;
-  color: var(--brand-700);
-  &:hover { text-decoration: underline; }
+/* ===== ③ 宠物粮精选：与宠物卡同一套扁平语言 ===== */
+.food-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 16px; }
+.food-card {
+  background: none; border: 0; cursor: pointer; text-align: left; font-family: inherit;
+  &:hover .thumb { box-shadow: 0 0 0 1px var(--brand-200); }
+  .thumb {
+    height: 180px; background: var(--bg-sunken); border-radius: var(--radius-md);
+    overflow: hidden; transition: box-shadow .2s;
+    img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+    &:hover img { transform: scale(1.05); }
+  }
+  .body { padding: 12px 2px 0; }
+  .name { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .spec { font-size: 13px; color: var(--text-3); }
+  .price { font-size: 17px; font-weight: 700; color: var(--price); font-variant-numeric: tabular-nums;
+    i { font-style: normal; font-size: 11.5px; color: var(--text-3); font-weight: 400; margin-left: 1px; } }
 }
 
-/* ===== ⑤ 门店 ===== */
-.stores { background: var(--bg-card); border-top: 1px solid var(--border-1); border-bottom: 1px solid var(--border-1); }
-.store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+/* ===== ④ 门店：去卡化，列间 1px 细线，与整页扁平语言一致 ===== */
+.stores { border-top: var(--rule); }
+.store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .store {
   display: flex; flex-direction: column; gap: 12px;
-  padding: 24px; border: 1px solid var(--border-1); border-radius: var(--radius-lg);
-  background: var(--bg-card);
-  transition: border-color .2s, box-shadow .2s;
-  &:hover { border-color: var(--brand-200); box-shadow: var(--shadow-sm); }
+  padding: 0 28px; border-left: var(--rule-soft);
+  &:first-child { border-left: 0; padding-left: 0; }
+  &:last-child { padding-right: 0; }
 }
 .store-top {
   display: flex; align-items: center; gap: 8px;
@@ -712,7 +553,7 @@ h1 {
 
 /* ===== 响应式 ===== */
 @media (max-width: 1240px) {
-  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid, .food-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hero-media { height: 420px; }
 }
 @media (max-width: 1000px) {
@@ -720,14 +561,15 @@ h1 {
   .hero-media { height: auto; aspect-ratio: 1.55; }
   .media-badge { left: 12px; bottom: 12px; }
   .sec { padding: 64px 0; }
-  .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .store-grid { grid-template-columns: 1fr; }
+  .store { padding: 0; border-left: 0;
+    & + .store { margin-top: 20px; padding-top: 20px; border-top: var(--rule-soft); } }
   .cta-inner { flex-direction: column; align-items: flex-start; padding: 24px; }
   .cta-band { padding: 0 0 64px; }
 }
 @media (max-width: 768px) {
   .hero-inner { padding: 32px 16px 40px; }
-  .sec-inner, .filters-inner { padding: 0 16px; }
+  .sec-inner { padding: 0 16px; }
   h1 { font-size: 27px; }
   .hero-sub { font-size: 14.5px; }
   .hero-search { height: 52px; border-radius: var(--radius-md); margin-top: 24px;
@@ -744,25 +586,16 @@ h1 {
   .hero-media {
     height: auto; aspect-ratio: auto; gap: 10px;
     grid-template-columns: 1fr 1fr; grid-template-rows: auto auto;
-    .m-main { grid-row: auto; grid-column: 1 / -1; aspect-ratio: 16 / 9; border-radius: var(--radius-lg); }
-    figure:not(.m-main) { aspect-ratio: 1 / 1; border-radius: var(--radius-md); }
+    .m-main { grid-row: auto; grid-column: 1 / -1; aspect-ratio: 16 / 9; border-radius: var(--radius-md); }
+    figure:not(.m-main) { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
   }
   .media-badge { display: none; }
 
-  .filters-inner { height: 60px; }
-  .chip { height: 33px; padding: 0 12px; font-size: 13px; }
   .sec { padding: 48px 0; }
   .sec-head { h2 { font-size: 21px; } p { margin-top: 4px; font-size: 12.5px; } }
   .more { font-size: 13px; }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-  .svc { padding-right: 0;
-    .svc-ico { width: 38px; height: 38px; border-radius: 10px; margin-bottom: 10px;
-      svg { width: 19px; height: 19px; } }
-    h3 { font-size: 14px; }
-    p { font-size: 12px; line-height: 1.6; }
-  }
-  .store { padding: 16px; border-radius: var(--radius-md); }
+  .grid, .food-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 10px; }
+  .food-card .thumb { height: auto; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
   .cta-inner h3 { font-size: 17px; }
   .cta-actions { width: 100%;
     .btn { flex: 1; padding: 0 12px; font-size: 14px; } }

@@ -46,18 +46,13 @@ const routes = [
     component: () => import('@/layouts/shop/index.vue'),
     redirect: '/shop/home',
     children: [
-      { path: 'home', component: () => import('@/views/shop/home/index.vue'), meta: { title: '宠物首页' } },
+      { path: 'home', component: () => import('@/views/shop/home/index.vue'), meta: { title: '首页' } },
+      // 宠物售卖页：完整在售列表 + 品类快筛（首页只放精选，这里放全部）
+      { path: 'pets', component: () => import('@/views/shop/pets/index.vue'), meta: { title: '在售宠物' } },
       { path: 'match', component: () => import('@/views/shop/match/index.vue'), meta: { title: '智能选宠', perm: 'pet:match:list', icon: 'MagicStick' } },
       { path: 'pet/:id', component: () => import('@/views/shop/pet/detail.vue'), meta: { title: '宠物详情' } },
       { path: 'favorite', component: () => import('@/views/shop/favorite/index.vue'), meta: { title: '我的收藏', perm: 'pet:favorite:list', icon: 'Star' } },
       { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '我的预约', perm: 'pet:appointment:list', icon: 'Calendar' } },
-      // 服务保障：单页总览（健康筛查 / 真实信息 / 专业养护 / 售后无忧用锚点区分），
-      // 旧的四条子路径全部重定向到对应锚点，老链接不断
-      { path: 'service', component: () => import('@/views/shop/service/index.vue'), meta: { title: '服务保障' } },
-      { path: 'service/health', redirect: '/shop/service#health' },
-      { path: 'service/origin', redirect: '/shop/service#origin' },
-      { path: 'service/care', redirect: '/shop/service#care' },
-      { path: 'service/after', redirect: '/shop/service#after' },
       // 联系客服 / 我的咨询
       { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
       // 宠物粮专区（覆盖全部 7 类宠物）
@@ -87,11 +82,10 @@ const router = createRouter({
 
 // 路由守卫：登录态 + 用户信息加载
 // 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约（页面内提示登录）
-const guestList = ['/shop/home', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/order']
+const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/order']
 function isGuestAllowed(path) {
   if (guestList.includes(path)) return true
   if (path.startsWith('/shop/pet/')) return true  // 宠物详情页游客可看
-  if (path === '/shop/service' || path.startsWith('/shop/service/')) return true  // 服务保障页游客可看
   if (path === '/shop/food' || path.startsWith('/shop/food/')) return true  // 宠物粮页游客可看
   if (path === '/shop/cart' || path.startsWith('/shop/cart/')) return true  // 购物车页游客可看
   return false

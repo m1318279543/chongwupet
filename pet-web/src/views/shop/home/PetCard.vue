@@ -68,21 +68,17 @@ const metaText = computed(() => {
 <style scoped lang="scss">
 .pet-card {
   position: relative; display: block; width: 100%; text-align: left;
-  background: var(--bg-card); border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
-  transition: transform .2s cubic-bezier(.2, .7, .3, 1), box-shadow .2s, border-color .2s;
+  background: none; border: 0; cursor: pointer;
 
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-float);
-    border-color: var(--border-1);
-  }
+  /* 扁平方向：不再用白卡+阴影，靠图片圆角与 hover 细描边承载可点性 */
+  &:hover .pet-media { box-shadow: 0 0 0 1px var(--brand-200); }
 }
 
 .pet-media {
   position: relative; aspect-ratio: 4 / 3; overflow: hidden;
-  background: var(--bg-sunken); border-bottom: 1px solid var(--border-1);
+  background: var(--bg-sunken); border-radius: var(--radius-md);
   display: grid; place-items: center;
+  transition: box-shadow .2s;
 
   /* 图片底部压一层极淡渐变，白底棚拍图也能与文字区分开 */
   &::after {
@@ -123,7 +119,7 @@ const metaText = computed(() => {
   &[aria-pressed="true"] svg { stroke: var(--brand-600); fill: var(--brand-600); }
 }
 
-.pet-body { padding: 14px 16px 16px; }
+.pet-body { padding: 12px 2px 0; }
 
 .pet-name {
   font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--text-1);
@@ -150,10 +146,9 @@ const metaText = computed(() => {
 }
 
 @media (max-width: 768px) {
-  .pet-card { border-radius: var(--radius-md); }
-  .pet-media { aspect-ratio: 1 / 1;
+  .pet-media { aspect-ratio: 1 / 1; border-radius: var(--radius-sm);
     .pet-emoji { font-size: 12px; } }
-  .pet-body { padding: 10px 11px 12px; }
+  .pet-body { padding: 9px 1px 0; }
   .pet-name { font-size: 13.5px; }
   .pet-meta { font-size: 11.5px; }
   .pet-foot { margin-top: 9px; padding-top: 9px; }

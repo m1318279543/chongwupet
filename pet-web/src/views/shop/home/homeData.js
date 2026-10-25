@@ -1,5 +1,5 @@
 // 首页静态数据：卡片配色、分类 emoji、服务特色、品牌承诺
-// 与 shop/food/foodData.js、shop/service/serviceData.js 保持一致的组织方式
+// 与 shop/food/foodData.js 保持一致的组织方式
 // 无图宠物卡片的占位渐变（按 petId 取模）
 export const PET_GRADIENTS = [
   ['#fff4e6', '#ffe0b3'],
