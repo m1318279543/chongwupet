@@ -16,16 +16,39 @@
       </div>
       <!-- 右侧信息 -->
       <div class="right">
-        <h1>{{ pet.petName }}</h1>
-        <div class="tags">
-          <el-tag type="info">{{ pet.breed || '未知品种' }}</el-tag>
-          <el-tag type="success" v-if="pet.age">{{ pet.age }}</el-tag>
-          <el-tag type="warning">{{ genderText(pet.gender) }}</el-tag>
-          <el-tag type="danger" v-if="pet.status">{{ statusText(pet.status) }}</el-tag>
-          <el-tag type="success" effect="dark" v-if="health.healthId">
-            健康等级：{{ health.healthLevel || '待评定' }}
-          </el-tag>
+        <div class="title-row">
+          <h1>{{ pet.petName }}</h1>
+          <button
+            type="button" class="fav-star" :class="{ on: isFav }"
+            :aria-pressed="isFav" :aria-label="isFav ? '取消收藏' : '收藏'"
+            @click="toggleFav"
+          >
+            <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"/></svg>
+          </button>
         </div>
+        <div class="tags">
+          <el-tag effect="plain" type="info">{{ pet.breed || '未知品种' }}</el-tag>
+          <el-tag effect="plain" type="info" v-if="pet.age">{{ pet.age }}</el-tag>
+          <el-tag effect="plain" type="info">{{ genderText(pet.gender) }}</el-tag>
+          <el-tag effect="plain" :type="pet.status === '0' ? 'success' : 'danger'" v-if="pet.status">{{ statusText(pet.status) }}</el-tag>
+          <el-tag v-if="health.healthId" class="tag-health">健康等级：{{ health.healthLevel || '待评定' }}</el-tag>
+        </div>
+        <!-- 健康信任条：把档案证据提到首屏决策区，点击跳转完整档案 -->
+        <button type="button" class="health-strip" v-if="health.healthId" @click="jumpArchive">
+          <span class="hs-item">
+            <i class="hs-dot"></i>
+            <span class="hs-txt"><b>疫苗接种</b>{{ health.vaccineName }} {{ health.vaccineProgress }} · {{ fmtDate(health.vaccineDate) }}</span>
+          </span>
+          <span class="hs-item">
+            <i class="hs-dot"></i>
+            <span class="hs-txt"><b>体内外驱虫</b>{{ health.dewormName }} · {{ fmtDate(health.dewormDate) }}</span>
+          </span>
+          <span class="hs-item">
+            <i class="hs-dot"></i>
+            <span class="hs-txt"><b>体检结论</b>{{ health.examResult }} · {{ fmtDate(health.examDate) }}</span>
+          </span>
+          <span class="hs-more">完整档案 ↓</span>
+        </button>
         <div class="price" v-if="pet.price">
           <span class="label">售价</span>
           <span class="amount">¥ {{ pet.price }}</span>
@@ -35,42 +58,40 @@
           <p>{{ pet.description }}</p>
         </div>
         <div class="actions">
-          <el-button size="large" round :type="isFav ? 'danger' : 'default'" @click="toggleFav">
-            {{ isFav ? '已收藏' : '收藏' }}
-          </el-button>
           <el-button size="large" type="primary" round :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
             {{ pet.status === '0' ? '立即购买' : '已被订走' }}
           </el-button>
-          <el-button size="large" type="primary" plain round @click="openAppoint">立即预约</el-button>
-          <el-button size="large" round class="ai-ask" @click="askAi">问 AI</el-button>
+          <el-button size="large" round @click="openAppoint">立即预约看宠</el-button>
+          <button type="button" class="ai-link" @click="askAi">它适合我吗？问 AI ›</button>
         </div>
       </div>
     </div>
 
-    <!-- 健康与服务档案（后台维护，前台实时展示） -->
-    <div class="health-panel" v-if="pet.petId && health.healthId">
+    <!-- 健康与服务档案（后台维护，前台实时展示）：时间线表格是本页的信任主角 -->
+    <div class="health-panel" v-if="pet.petId && health.healthId" id="health-archive">
       <div class="panel-head">
         <h2>健康与服务档案</h2>
         <span class="archive">档案编号 {{ health.archiveNo }} · 体检机构：{{ health.examHospital }}</span>
       </div>
 
-      <div class="health-grid">
-        <!-- 健康筛查 -->
-        <section class="h-card">
-          <h3>健康筛查</h3>
-          <ul>
-            <li><span class="k">疫苗接种</span><span class="v">{{ health.vaccineName }}（{{ health.vaccineProgress }}）· {{ fmtDate(health.vaccineDate) }}</span></li>
-            <li><span class="k">体内外驱虫</span><span class="v">{{ health.dewormName }} · {{ fmtDate(health.dewormDate) }}</span></li>
-            <li><span class="k">体检项目</span><span class="v">{{ health.examItems }}</span></li>
-            <li><span class="k">体检结论</span><span class="v ok">{{ health.examResult }}</span></li>
-            <li><span class="k">体检日期</span><span class="v">{{ fmtDate(health.examDate) }}</span></li>
-            <li><span class="k">遗传病排查</span><span class="v">{{ health.geneticScreen }}</span></li>
-            <li v-if="health.healthNote"><span class="k">健康备注</span><span class="v">{{ health.healthNote }}</span></li>
-          </ul>
-        </section>
+      <table class="tl">
+        <thead>
+          <tr><th>日期</th><th>事项</th><th>明细</th><th>结果</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="(r, i) in timeline" :key="i">
+            <td class="tl-date">{{ r.date ? fmtDate(r.date) : '—' }}</td>
+            <td class="tl-name">{{ r.name }}</td>
+            <td class="tl-detail">{{ r.detail }}</td>
+            <td class="tl-res"><i class="dot"></i>{{ r.result }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="tl-note" v-if="health.healthNote">备注：{{ health.healthNote }}</p>
 
+      <div class="health-grid">
         <!-- 真实信息 -->
-        <section class="h-card">
+        <section class="h-sec">
           <h3>真实信息</h3>
           <ul>
             <li><span class="k">来源渠道</span><span class="v">{{ health.sourceChannel }}</span></li>
@@ -83,7 +104,7 @@
         </section>
 
         <!-- 专业养护 -->
-        <section class="h-card">
+        <section class="h-sec">
           <h3>专业养护</h3>
           <ul>
             <li><span class="k">性格特点</span><span class="v">{{ health.temperament }}</span></li>
@@ -94,7 +115,7 @@
         </section>
 
         <!-- 售后无忧 -->
-        <section class="h-card">
+        <section class="h-sec">
           <h3>售后无忧</h3>
           <ul>
             <li><span class="k">健康保障</span><span class="v">{{ health.guaranteeDays }} 天重大传染病保障</span></li>
@@ -172,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, inject, watch } from 'vue'
+import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPetInfo } from '@/api/pet/petInfo'
@@ -231,6 +252,43 @@ function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') =
 function fmtDate(d) { return d ? String(d).slice(0, 10) : '—' }
 function skillTag(s) {
   return s === '入门' ? 'success' : s === '进阶' ? 'warning' : 'danger'
+}
+
+/** 健康时间线：按日期倒序，无日期的排最后 */
+const timeline = computed(() => {
+  const h = health.value
+  if (!h.healthId) return []
+  const rows = []
+  if (h.vaccineDate || h.vaccineName) rows.push({
+    date: h.vaccineDate,
+    name: '疫苗接种',
+    detail: `${h.vaccineName || ''}（${h.vaccineProgress || '—'}）`,
+    result: h.vaccineProgress === '3/3' ? '已完成' : (h.vaccineProgress || '进行中')
+  })
+  if (h.dewormDate || h.dewormName) rows.push({
+    date: h.dewormDate,
+    name: '体内外驱虫',
+    detail: h.dewormName || '—',
+    result: '已完成'
+  })
+  if (h.examDate || h.examItems) rows.push({
+    date: h.examDate,
+    name: '体检',
+    detail: `${h.examItems || '—'}${h.examHospital ? ' · ' + h.examHospital : ''}`,
+    result: h.examResult || '—'
+  })
+  if (h.geneticScreen) rows.push({
+    date: null,
+    name: '遗传病排查',
+    detail: h.geneticScreen,
+    result: '未见异常'
+  })
+  rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+  return rows
+})
+
+function jumpArchive() {
+  document.getElementById('health-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function loadPet() {
@@ -417,7 +475,7 @@ onMounted(() => {
 .slot-empty { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-3); }
 
 .detail { max-width: var(--container-md); margin: 0 auto; padding: 32px 24px; }
-.detail-inner { display: flex; gap: 40px; background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,.06); }
+.detail-inner { display: flex; gap: 40px; background: #fff; border-radius: var(--radius-lg); padding: 32px; border: 1px solid var(--border-2); box-shadow: var(--shadow-card); }
 .left { flex: 0 0 380px;
   .big-avatar { height: 320px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 160px; overflow: hidden;
     .big-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -425,8 +483,34 @@ onMounted(() => {
   .guest-tip { margin-top: 12px; background: var(--brand-50); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 }
 .right { flex: 1;
-  h1 { font-size: 30px; color: var(--text-1); margin: 0 0 16px; }
-  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .title-row { display: flex; align-items: center; gap: 12px; margin: 0 0 16px;
+    h1 { font-size: 30px; color: var(--text-1); margin: 0; }
+    .fav-star { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%;
+      border: 1px solid var(--border-1); background: var(--bg-card); cursor: pointer;
+      display: grid; place-items: center; transition: border-color .16s, background .16s;
+      svg { width: 18px; height: 18px; stroke: var(--text-2); fill: none; stroke-width: 1.8; transition: stroke .16s, fill .16s; }
+      &:hover { border-color: var(--brand-300); background: var(--brand-50);
+        svg { stroke: var(--brand-600); } }
+      &.on { border-color: var(--brand-300); background: var(--brand-50);
+        svg { stroke: var(--brand-600); fill: var(--brand-600); } }
+    }
+  }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+    .tag-health { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600; }
+  }
+  .health-strip { display: flex; align-items: stretch; gap: 0; width: 100%; margin: 0 0 20px; padding: 12px 0;
+    border: 0; border-top: var(--rule); border-bottom: var(--rule); background: none; cursor: pointer; text-align: left; font-family: inherit;
+    &:hover .hs-more { color: var(--brand-500); }
+    &:hover .hs-txt b { color: var(--brand-700); }
+    .hs-item { display: flex; align-items: flex-start; gap: 8px; flex: 1; padding: 0 16px; border-left: var(--rule-soft);
+      &:first-child { border-left: 0; padding-left: 0; }
+      .hs-dot { flex-shrink: 0; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--success-500); box-shadow: 0 0 0 3px var(--success-50); }
+      .hs-txt { font-size: 12.5px; color: var(--text-2); line-height: 1.55; overflow-wrap: anywhere;
+        b { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; color: var(--text-3); margin-bottom: 2px; }
+      }
+    }
+    .hs-more { flex-shrink: 0; align-self: center; padding-left: 16px; border-left: var(--rule-soft); font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+  }
   .price { background: var(--price-soft); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
     .label { color: var(--text-3); font-size: 13px; margin-right: 12px; }
     .amount { color: var(--price); font-size: 28px; font-weight: 700; }
@@ -435,31 +519,44 @@ onMounted(() => {
     h3 { font-size: 16px; color: var(--text-1); margin: 0 0 8px; }
     p { color: var(--text-2); line-height: 1.8; }
   }
-  .actions { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap;
-    .ai-ask { background: linear-gradient(135deg, var(--brand-50), #fff); border-color: var(--brand-300); color: var(--brand-700); font-weight: 600;
-      &:hover { background: var(--brand-50); border-color: var(--brand-500); color: var(--brand-700); }
+  .actions { display: flex; align-items: center; gap: 16px; margin-top: 32px; flex-wrap: wrap;
+    .ai-link { border: 0; background: none; padding: 4px 0; cursor: pointer; font-family: inherit;
+      font-size: 13.5px; font-weight: 600; color: var(--text-3); transition: color .16s;
+      &:hover { color: var(--brand-700); }
     }
   }
 }
 
-/* 健康与服务档案 */
-.health-panel { background: #fff; border-radius: 16px; padding: 26px 30px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
+/* 健康与服务档案：去容器化，1px 顶线 + 分区标题直接承接；锚点定位给 sticky 头留偏移 */
+.health-panel { margin-top: 32px; padding: 26px 0 8px; border-top: var(--rule);
+  scroll-margin-top: 130px;
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
     h2 { margin: 0; font-size: 20px; color: var(--text-1); }
     .archive { color: var(--text-3); font-size: 13px; }
   }
-  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px;
-    .h-card { border: 1px solid var(--border-2); border-radius: 12px; padding: 18px 20px; background: var(--bg-page);
-      h3 { margin: 0 0 12px; font-size: 16px; color: var(--text-1); display: flex; align-items: center; gap: 8px;
-        .ico { font-size: 18px; }
-      }
+
+  /* 健康时间线：1px 分割线的表格是本面板主角 */
+  .tl { width: 100%; border-collapse: collapse; margin-bottom: 8px;
+    th { padding: 0 12px 9px 0; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; color: var(--text-3); text-align: left; border-bottom: var(--rule); white-space: nowrap; }
+    td { padding: 11px 12px 11px 0; font-size: 13px; line-height: 1.6; vertical-align: top; border-bottom: var(--rule-soft); }
+    tr:last-child td { border-bottom: none; }
+    .tl-date { width: 100px; white-space: nowrap; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .tl-name { width: 92px; white-space: nowrap; color: var(--text-1); font-weight: 600; }
+    .tl-detail { color: var(--text-2); }
+    .tl-res { width: 150px; white-space: nowrap; color: var(--success-500); font-weight: 600;
+      .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success-500); margin-right: 7px; box-shadow: 0 0 0 3px var(--success-50); }
+    }
+  }
+  .tl-note { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); }
+
+  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 8px 36px; margin-top: 22px; padding-top: 20px; border-top: var(--rule);
+    .h-sec {
+      h3 { margin: 0 0 6px; font-size: 14.5px; color: var(--text-1); }
       ul { margin: 0; padding: 0; list-style: none;
-        li { display: flex; gap: 12px; padding: 6px 0; font-size: 13px; line-height: 1.7; border-bottom: 1px dashed var(--bg-sunken);
+        li { display: flex; gap: 12px; padding: 7px 0; font-size: 13px; line-height: 1.7; border-bottom: var(--rule-soft);
           &:last-child { border-bottom: none; }
           .k { flex: 0 0 76px; color: var(--text-3); }
-          .v { flex: 1; color: var(--text-2); word-break: break-all;
-            &.ok { color: var(--success-500); font-weight: 600; }
-          }
+          .v { flex: 1; color: var(--text-2); word-break: break-all; }
         }
       }
     }
@@ -471,7 +568,7 @@ onMounted(() => {
 }
 
 /* 宠物喜好 */
-.pref-panel { background: #fff; border-radius: 16px; padding: 26px 30px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
+.pref-panel { margin-top: 32px; padding: 26px 0 8px; border-top: var(--rule);
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
     h2 { margin: 0; font-size: 20px; color: var(--text-1); }
     .archive { color: var(--text-3); font-size: 13px; }
@@ -503,16 +600,35 @@ onMounted(() => {
     }
   }
   .right {
-    h1 { font-size: 22px; margin-bottom: 12px; }
+    .title-row { margin-bottom: 12px;
+      h1 { font-size: 22px; }
+      .fav-star { width: 34px; height: 34px; }
+    }
     .price { padding: 12px 16px; margin-bottom: 14px;
       .amount { font-size: 22px; }
     }
     .actions { gap: 10px; margin-top: 20px;
-      .el-button { flex: 1 1 30%; min-width: 0; padding-left: 8px; padding-right: 8px; }
+      .el-button { flex: 1 1 40%; min-width: 0; padding-left: 8px; padding-right: 8px; }
+      .ai-link { flex: 1 1 100%; order: 3; }
     }
   }
-  .health-panel, .pref-panel { padding: 18px 14px;
+  .health-panel, .pref-panel { padding: 18px 0 0; margin-top: 24px;
     .panel-head h2 { font-size: 17px; }
+    .tl {
+      thead { display: none; }
+      tr { display: block; padding: 10px 0; border-bottom: var(--rule-soft); }
+      tr:last-child { border-bottom: none; }
+      td { display: block; padding: 0; border: 0; }
+      .tl-date { width: auto; margin-bottom: 2px; font-size: 12px; color: var(--text-3); }
+      .tl-name { display: inline; width: auto; margin-right: 8px; }
+      .tl-detail { margin: 3px 0; }
+      .tl-res { width: auto; margin-top: 3px; }
+    }
+    .health-grid { gap: 6px 0; margin-top: 16px; padding-top: 14px; }
+  }
+  .right .health-strip { flex-wrap: wrap; row-gap: 10px; padding: 10px 0;
+    .hs-item { flex: 1 1 100%; padding: 0; border-left: 0; }
+    .hs-more { margin-left: auto; padding-left: 0; border-left: 0; }
   }
 }
 </style>
