@@ -280,7 +280,6 @@ onMounted(() => {
 
 // 定高后每条必须等高：留言已并入元信息行并做单行省略，避免撑破行高
 .apt-box {
-  --box-h: 630px;
 
   .ui-row__meta { flex-wrap: nowrap; min-width: 0; }
   .meta-item--remark {

@@ -495,18 +495,14 @@
 }
 
 /* ============================================================
-   17. 定高列表：内容超出用翻页，不靠滚动条
-   —— 列表区高度固定，页脚/翻页条位置恒定，翻页时页面不跳动。
-   —— --box-h 由各页按「每页条数 × 行高」给出，保证整行完整显示。
+   17. 列表区：整页自然滚动
+   —— 不再做「定高内滚」：内层滚动容器 + overscroll-behavior: contain 会拦截滚轮、
+      阻断滚动链，鼠标悬在列表上时整页无法滚动。列表随内容自然生长，翻页条在列表末尾。
    ============================================================ */
 .ui-box { min-width: 0; }
 .ui-box__body {
-  height: var(--box-h, 580px);
-  overflow-y: auto;
-  // 行列表的负外边距（用于 hover 溢出到行外）在滚动容器里会产生横向滚动条，这里归零
+  // 行列表的负外边距（用于 hover 溢出到行外）可能造成横向溢出，这里裁掉
   overflow-x: hidden;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
 }
 .ui-box__body .ui-row { margin-left: 0; margin-right: 0; }
 .ui-box__foot {
@@ -598,8 +594,4 @@
   .ui-toolbar__end { margin-left: 0; width: 100%; }
 
   .ui-empty { padding: 56px 0; }
-
-  // 移动端不做定高：行会折成两排、高度随内容变化，固定高度只会裁掉内容。
-  // 仍然保留翻页，列表长度依然受控。
-  .ui-box__body { height: auto; max-height: 70vh; }
 }

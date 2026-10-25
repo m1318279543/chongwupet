@@ -188,5 +188,4 @@ onMounted(loadData)
 .fav-body { margin-top: 8px; min-height: 240px; }
 
 // 列表区定高：5 行 × 116px + 行内 1px 线 ≈ 583px，翻页条在列表下方独立成行
-.fav-box { --box-h: 586px; }
 </style>
