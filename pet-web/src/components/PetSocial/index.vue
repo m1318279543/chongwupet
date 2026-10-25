@@ -67,7 +67,7 @@
         <el-input
           v-model="draft"
           type="textarea"
-          :rows="3"
+          :autosize="{ minRows: 7, maxRows: 14 }"
           maxlength="500"
           show-word-limit
           :placeholder="userStore.token ? '说点什么吧…（友善交流，请勿发布广告或不当言论）' : '登录后发表评论'"
@@ -320,7 +320,8 @@ async function remove(c) {
   try {
     await delPetComment(c.commentId)
     ElMessage.success('已删除')
-    await loadComments()
+    // 删除同样影响均分与评价数，与发表后的刷新保持一致
+    await Promise.all([loadComments(), loadStat()])
   } catch (e) {
     ElMessage.error(e?.message || '删除失败')
   }

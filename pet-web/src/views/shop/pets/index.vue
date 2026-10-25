@@ -8,7 +8,7 @@
         <p class="ui-sub">每一只在售个体都有可查的健康筛查与疫苗记录，支持到店看宠。</p>
       </div>
       <div class="ui-head__aside">
-        <span class="ui-count"><b>{{ filteredPets.length }}</b>只在售</span>
+        <span class="ui-count"><b>{{ onSaleCount }}</b>只在售</span>
       </div>
     </header>
 
@@ -158,6 +158,8 @@ const basePets = computed(() => {
   return allPets.value.filter(p => (p.petName || '').includes(kw) || (p.breed || '').includes(kw))
 })
 const showResult = computed(() => !!keyword.value.trim() || activeFilter.value)
+// 头部计数：列表默认含已售个体（带「已售」角标），「N 只在售」只统计真正在售的
+const onSaleCount = computed(() => filteredPets.value.filter((p) => p.status !== '1').length)
 const displayPets = computed(() => {
   if (!activeFilter.value) return basePets.value
   return basePets.value.filter(p => p.categoryId === activeValue.value)

@@ -37,7 +37,7 @@
 
               <div class="ui-row__main">
                 <div class="ui-row__title">
-                  {{ item.petName || '宠物' }}
+                  {{ item.petName || '原宠物已下架' }}
                   <span class="ui-chip" :class="statusClass(item.status)">{{ statusText(item.status) }}</span>
                 </div>
 
@@ -124,7 +124,6 @@ import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Phone } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
-import { listPetInfo } from '@/api/pet/petInfo'
 import { listMyServiceOrders, evaluateServiceOrder } from '@/api/pet/petService'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
@@ -233,20 +232,9 @@ function cancelApt(item) {
 async function loadData() {
   loading.value = true
   try {
-    const [aptRes, petRes] = await Promise.all([
-      listMyAppointments(),
-      listPetInfo({ pageNum: 1, pageSize: 1000 }).catch(() => ({ rows: [] }))
-    ])
-    const pets = petRes.rows || []
-    const petMap = {}
-    pets.forEach(p => petMap[p.petId] = p)
-    list.value = (aptRes.data || []).map(a => ({
-      ...a,
-      petName: petMap[a.petId]?.petName,
-      // 预约表不一定带图，宠物表兜底
-      image: a.image || petMap[a.petId]?.image,
-      categoryId: petMap[a.petId]?.categoryId
-    }))
+    // /mine 接口已 join 宠物表返回 petName/image/categoryId，无需再拉全量宠物列表
+    const aptRes = await listMyAppointments()
+    list.value = aptRes.data || []
   } catch (e) {
     ElMessage.error(e?.message || '加载失败')
   } finally {
