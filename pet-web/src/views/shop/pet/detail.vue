@@ -1,5 +1,10 @@
 <template>
   <div class="detail" v-loading="loading">
+    <!-- 返回入口：从哪张卡片点进来就退回哪里 -->
+    <button type="button" class="back-row" @click="goBack">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      返回{{ backLabel }}
+    </button>
     <div class="detail-inner" v-if="pet.petId">
       <!-- 左侧大图 -->
       <div class="left">
@@ -291,6 +296,22 @@ function jumpArchive() {
   document.getElementById('health-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+/* 返回：优先回到进入来源页（卡片来源由 ?from= 带入）；
+   直接打开的 URL 没有 from 时，回应用内上一页，再兜底到在售宠物页 */
+const FROM_LABELS = {
+  '/shop/home': '首页',
+  '/shop/pets': '在售宠物',
+  '/shop/favorite': '我的收藏',
+  '/shop/match': '智能选宠'
+}
+const backLabel = computed(() => FROM_LABELS[String(route.query.from || '')] || '')
+function goBack() {
+  const from = String(route.query.from || '')
+  if (from && FROM_LABELS[from]) return router.push(from)
+  if (window.history.state && window.history.state.back) return router.back()
+  router.push('/shop/pets')
+}
+
 async function loadPet() {
   loading.value = true
   try {
@@ -474,7 +495,17 @@ onMounted(() => {
 }
 .slot-empty { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-3); }
 
-.detail { max-width: var(--container-md); margin: 0 auto; padding: 32px 24px; }
+.detail { max-width: var(--container-md); margin: 0 auto; padding: 24px 24px 32px; }
+.back-row {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 0 0 14px; padding: 6px 10px 6px 6px;
+  border: 0; background: none; cursor: pointer; font-family: inherit;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 600; color: var(--text-3);
+  transition: color .16s, background .16s;
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  &:hover { color: var(--brand-700); background: var(--brand-50); }
+}
 .detail-inner { display: flex; gap: 40px; background: #fff; border-radius: var(--radius-lg); padding: 32px; border: 1px solid var(--border-2); box-shadow: var(--shadow-card); }
 .left { flex: 0 0 380px;
   .big-avatar { height: 320px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 160px; overflow: hidden;

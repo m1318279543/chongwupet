@@ -17,7 +17,7 @@
         <nav class="nav" aria-label="主导航">
           <router-link to="/shop/home" class="nav-item" :class="{ on: homeActive }">首页</router-link>
           <router-link to="/shop/pets" class="nav-item" :class="{ on: petsActive }">在售宠物</router-link>
-          <router-link to="/shop/match" class="nav-item nav-ai">
+          <router-link to="/shop/match" class="nav-item nav-ai" :class="{ on: matchActive }">
             <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
             智能选宠
           </router-link>
@@ -208,9 +208,11 @@ const onMqlChange = (e) => {
 const isLogged = computed(() => !!userStore.token)
 const cartCount = computed(() => cartStore.totalCount)
 const avatarText = computed(() => (userStore.nickName || userStore.userName || 'U').charAt(0).toUpperCase())
-// 宠物详情页仍然算「在售宠物」这一栏；首页单独高亮
-const petsActive = computed(() => route.path === '/shop/pets' || route.path.startsWith('/shop/pet'))
-const homeActive = computed(() => route.path === '/shop/home')
+// 宠物详情页：导航高亮跟随进入来源（?from=），无来源时不挂高亮
+const detailFrom = computed(() => (route.path.startsWith('/shop/pet/') ? String(route.query.from || '') : ''))
+const petsActive = computed(() => route.path === '/shop/pets' || detailFrom.value === '/shop/pets')
+const homeActive = computed(() => route.path === '/shop/home' || detailFrom.value === '/shop/home')
+const matchActive = computed(() => route.path === '/shop/match' || detailFrom.value === '/shop/match')
 
 /* ---------- 手机端下拉菜单 ---------- */
 const menuOpen = ref(false)

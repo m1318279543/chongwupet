@@ -454,7 +454,8 @@ function reset() {
 
 /* ---------- 跳转 / 收藏 ---------- */
 function goDetail(id) {
-  router.push('/shop/pet/' + id)
+  // from 供详情页返回与导航高亮使用
+  router.push({ path: '/shop/pet/' + id, query: { from: '/shop/match' } })
 }
 function goConsult() {
   router.push('/shop/consult')

@@ -267,7 +267,8 @@ function keepGridInView() {
 }
 
 function goDetail(petId) {
-  router.push(`/shop/pet/${petId}`)
+  // from 供详情页返回与导航高亮使用
+  router.push({ path: `/shop/pet/${petId}`, query: { from: '/shop/pets' } })
 }
 
 onMounted(() => {
