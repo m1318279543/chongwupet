@@ -212,7 +212,7 @@
               </div>
 
               <div class="blk">
-                <div class="blk-h"><b>七维评分</b><span>来自 breakdown 字段</span></div>
+                <div class="blk-h"><b>七维评分</b><span>六维画像 + 全站人气，共七项</span></div>
                 <div class="dims">
                   <div
                     v-for="(v, k) in top.breakdown"
@@ -220,7 +220,8 @@
                     class="dim"
                     :class="{ low: v < 60 }"
                   >
-                    <span>{{ k }}</span><b>{{ v }}</b>
+                    <span class="dim-h"><span class="dl">{{ k }}</span><b>{{ v }}</b></span>
+                    <div class="dbar"><i :style="{ width: Math.max(4, Math.min(100, v)) + '%' }"></i></div>
                   </div>
                 </div>
               </div>
@@ -1156,28 +1157,55 @@ function preferName(id) {
 .dims {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 12px 10px;
+
+  /* 7 项在 4 列网格里末行只剩 3 项，让第 7 项跨两列补齐 */
+  .dim:nth-child(7):last-child { grid-column: span 2; }
 }
 
 .dim {
-  padding: 7px 8px;
-  background: var(--bg-page);
-  border-radius: var(--radius-sm);
+  /* 减密：去掉底色块，只留 标签+分值 一行 与 一条色带 */
+  .dim-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
 
-  span {
-    display: block;
-    font-size: 10px;
-    color: var(--text-3);
+    .dl {
+      font-size: 11.5px;
+      color: var(--text-3);
+    }
   }
 
   b {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12.5px;
+    font-weight: 600;
     color: var(--brand-700);
     font-variant-numeric: tabular-nums;
   }
 
-  &.low b { color: var(--warning-500); }
+  .dbar {
+    margin-top: 5px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg-sunken);
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 2px;
+      background: var(--brand-500);
+    }
+  }
+
+  &.low .dbar i {
+    background: var(--warning-500);
+  }
+
+  &.low b {
+    color: var(--warning-500);
+  }
 }
 
 .two {
