@@ -336,7 +336,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
 </script>
 
 <style scoped lang="scss">
-.pet-social { background: #fff; border-radius: 16px; padding: 28px 32px; box-shadow: 0 4px 20px rgba(0,0,0,.06); margin-top: 24px; }
+.pet-social { margin-top: 32px; padding: 26px 0 8px; border-top: 1px solid var(--border-1); }
 
 .like-bar { display: flex; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--border-2); flex-wrap: wrap;
   .like-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ffd6e0; background: #fff5f7; color: #e91e63;
@@ -365,7 +365,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
     .rs-right { display: flex; flex-direction: column; gap: 4px; }
     .rs-count { font-size: 12.5px; color: var(--text-3); }
   }
-  .rs-empty { display: flex; align-items: center; min-height: 60px; font-size: 13px; color: var(--text-4); }
+  .rs-empty { display: flex; align-items: center; min-height: 60px; font-size: 13px; color: var(--text-3); }
   .rs-bars { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 5px;
     .bar-row { display: flex; align-items: center; gap: 8px;
       .bar-label { width: 34px; font-size: 12px; color: var(--text-3); }
@@ -377,7 +377,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
 }
 .score-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
   .sp-label { font-size: 13px; color: var(--text-2); }
-  .sp-tip { font-size: 12px; color: var(--text-4); }
+  .sp-tip { font-size: 12px; color: var(--text-3); }
 }
 .c-score { margin: 2px 0 4px; }
 
@@ -397,11 +397,11 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
     .item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px dashed var(--border-2);
       &:last-of-type { border-bottom: none; }
       .avatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%;
-        color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        color: var(--text-1); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 16px; }
       .body { flex: 1; min-width: 0;
         .meta { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
           .name { color: var(--text-1); font-weight: 600; font-size: 14px; }
-          .time { color: var(--text-4); font-size: 12px; }
+          .time { color: var(--text-3); font-size: 12px; }
         }
         .content { color: var(--text-2); line-height: 1.7; margin: 4px 0 6px; word-break: break-all; white-space: pre-wrap; }
         .ops { display: flex; gap: 14px; align-items: center;
@@ -411,13 +411,13 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
         .replies { margin-top: 10px; background: var(--bg-page); border-radius: 10px; padding: 10px 14px;
           .reply { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #ebebeb;
             &:last-child { border-bottom: none; }
-            .r-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 700;
+            .r-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; color: var(--text-1); font-weight: 700;
               display: flex; align-items: center; justify-content: center; font-size: 13px; }
             .r-body { flex: 1; min-width: 0;
               .r-meta { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
                 .name { color: var(--text-1); font-weight: 600; font-size: 13px; }
                 .reply-to { color: var(--brand-500); font-size: 12px; }
-                .time { color: var(--text-4); font-size: 12px; }
+                .time { color: var(--text-3); font-size: 12px; }
               }
               .content { font-size: 13px; }
               .ops { gap: 12px; }
@@ -426,7 +426,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
         }
       }
     }
-    .empty { text-align: center; color: var(--text-4); padding: 28px 0;
+    .empty { text-align: center; color: var(--text-3); padding: 28px 0;
       .e-icon { font-size: 40px; display: block; margin-bottom: 8px; }
       p { margin: 0; }
     }

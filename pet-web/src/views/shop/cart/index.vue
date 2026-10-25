@@ -320,6 +320,8 @@ function checkout() {
     flex-wrap: wrap;
     gap: 10px;
     padding: 12px 0;
+    // 抬到手机端底部标签栏之上（标签栏高约 56px + 安全区）
+    bottom: calc(60px + env(safe-area-inset-bottom));
   }
   .checkout__left { gap: 14px; }
   .checkout__right { gap: 12px; margin-left: auto; }
