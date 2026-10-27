@@ -40,6 +40,9 @@ public interface IPetGoodsService
     /** 下单扣库存：库存不足抛业务异常 */
     public void deductForOrder(Long goodsId, Long skuId, Integer qty, String orderNo, String operator);
 
+    /** 下单只做库存校验不扣减（真正扣减在支付时），库存不足抛业务异常 */
+    public void checkStock(Long goodsId, Long skuId, Integer qty, String goodsName);
+
     public List<PetStockLog> selectStockLogList(PetStockLog query);
 
     public List<PetGoods> selectLowStockGoods(Integer threshold);

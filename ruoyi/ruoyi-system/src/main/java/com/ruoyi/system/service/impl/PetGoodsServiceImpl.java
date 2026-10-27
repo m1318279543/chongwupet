@@ -191,6 +191,21 @@ public class PetGoodsServiceImpl implements IPetGoodsService
     }
 
     @Override
+    public void checkStock(Long goodsId, Long skuId, Integer qty, String goodsName)
+    {
+        if (qty == null || qty < 1)
+        {
+            qty = 1;
+        }
+        PetGoodsSku sku = resolveSku(goodsId, skuId);
+        int have = sku.getStock() == null ? 0 : sku.getStock();
+        if (have < qty)
+        {
+            throw new ServiceException("「" + goodsName + "」库存不足，当前仅剩 " + have + " 件");
+        }
+    }
+
+    @Override
     public List<PetStockLog> selectStockLogList(PetStockLog query)
     {
         return petGoodsMapper.selectStockLogList(query);

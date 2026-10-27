@@ -44,12 +44,13 @@ public class PetInfoController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(PetInfo petInfo)
     {
-        // 该接口对游客开放：只有已登录的后台员工才按门店收敛
+        // 该接口对游客开放：只有已登录的门店员工才按门店收敛；
+        // 普通顾客账号 currentStoreId() 返回 -1（无员工归属），不能当作筛选条件，否则前台会查成 0 只
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof LoginUser)
         {
             Long scope = petScopeService.currentStoreId();
-            if (scope != null)
+            if (scope != null && scope > 0)
             {
                 petInfo.setStoreId(scope);
             }

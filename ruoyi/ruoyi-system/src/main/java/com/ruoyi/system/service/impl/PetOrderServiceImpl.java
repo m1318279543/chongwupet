@@ -148,8 +148,8 @@ public class PetOrderServiceImpl implements IPetOrderService
         {
             line.setOrderId(order.getOrderId());
             petOrderMapper.insertPetOrderItem(line);
-            // 下单即占用库存，不足则整单回滚
-            petGoodsService.deductForOrder(line.getGoodsId(), line.getSkuId(), line.getQty(), orderNo, userName);
+            // 下单只校验库存是否够（真正扣减在支付时），不足则整单回滚
+            petGoodsService.checkStock(line.getGoodsId(), line.getSkuId(), line.getQty(), line.getGoodsName());
         }
         order.setItems(lines);
         return order;
@@ -243,6 +243,26 @@ public class PetOrderServiceImpl implements IPetOrderService
             }
             throw new ServiceException("订单当前状态不可支付");
         }
+        // 支付成功才真正扣减商品库存（下单时只校验未扣），宠物单在下单时已置「已售」无需处理
+        List<PetOrderItem> payItems = petOrderMapper.selectItemsByOrderNo(orderNo);
+        for (PetOrderItem item : payItems)
+        {
+            if (!"1".equals(item.getItemType()) || item.getGoodsId() == null)
+            {
+                continue;
+            }
+            int qty = item.getQty() == null || item.getQty() < 1 ? 1 : item.getQty();
+            try
+            {
+                petGoodsService.changeStock(item.getGoodsId(), item.getSkuId(), "2", qty,
+                        operator, orderNo, "订单支付出库");
+            }
+            catch (ServiceException e)
+            {
+                // 库存不足：抛出后整个支付事务回滚（余额由 Controller 侧退款）
+                throw new ServiceException("「" + item.getGoodsName() + "」" + e.getMessage());
+            }
+        }
         return rows;
     }
 
@@ -264,7 +284,8 @@ public class PetOrderServiceImpl implements IPetOrderService
             throw new ServiceException("订单已完成，无法取消");
         }
         List<PetOrderItem> items = petOrderMapper.selectItemsByOrderNo(orderNo);
-        // 回补库存：退货入库并记流水
+        // 回补库存：只有已支付订单在支付时真正扣过库存，取消才回补；未支付订单下单时未扣库存
+        boolean paid = "1".equals(order.getPayStatus());
         for (PetOrderItem item : items)
         {
             // 宠物单：取消即把宠物放回「在售」，让下一个人能买
@@ -276,7 +297,7 @@ public class PetOrderServiceImpl implements IPetOrderService
                 }
                 continue;
             }
-            if (item.getGoodsId() == null)
+            if (!paid || item.getGoodsId() == null)
             {
                 continue;
             }
