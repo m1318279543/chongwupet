@@ -1,248 +1,289 @@
 <template>
   <div class="match-page">
-    <ShopHero
-      eyebrow="AI 智能选宠 · 10 道题"
-      title="找到最懂你的那位伙伴"
-      highlight="最懂你"
-      :desc="`根据你的居住空间、生活节奏、养宠经验与预算，从 ${totalPets} 只在售宠物里筛出真正适配的那几只。`"
-      narrow
-    >
-      <template #aside>
-        <div class="hero-panel">
-          <div class="hp-title">答题说明</div>
-          <dl class="hp-list">
-            <div><dt>10</dt><dd>道题 · 3 组</dd></div>
-            <div><dt>2</dt><dd>分钟完成</dd></div>
-          </dl>
-          <p class="hp-note">也可以直接用一句话描述需求，系统会自动填好问卷。</p>
+    <header class="m-head">
+      <div class="mh-inner">
+        <div class="mh-main">
+          <p class="mh-eyebrow">Smart Match</p>
+          <h1>智能选宠</h1>
+          <p class="mh-sub">10 个条件 → 六维画像 → 与在售个体逐维扣分。评分只用规则引擎与站内行为，没有黑盒。</p>
         </div>
-      </template>
-    </ShopHero>
+        <div class="mh-stats">
+          <div><b>{{ candidateCount }}</b><span>在售个体</span></div>
+          <div><b>{{ totalCount }}</b><span>道题 · 3 组</span></div>
+          <div><b>8</b><span>只上限</span></div>
+        </div>
+      </div>
+    </header>
 
-    <div class="page-body">
+    <div class="m-body">
       <!-- ================= 问卷 ================= -->
-      <section v-if="!result" class="quiz">
-        <!-- 一句话自动填答 -->
-        <div class="ai-fill">
-          <div class="af-head">
-            <span class="af-badge">AI 自动填答</span>
-            <h2>懒得答 10 道题？说一句话就行</h2>
-            <p>描述你的居住环境、作息、预算和偏好，系统会自动识别并填好问卷。</p>
+      <div v-show="!result && !loading" class="wz">
+        <aside class="side">
+          <div class="panel">
+            <div class="panel-h">
+              <b>你的画像</b><span>{{ doneCount }} / {{ totalCount }}</span>
+            </div>
+            <div class="pf">
+              <div v-for="r in profileRows" :key="r.label">
+                <span>{{ r.label }}</span>
+                <b :class="{ none: !r.filled }">{{ r.filled ? r.value : '未选' }}</b>
+              </div>
+            </div>
+            <div class="pbar"><i :style="{ width: progress + '%' }"></i></div>
           </div>
-          <div class="af-row">
-            <el-input
-              v-model="aiText"
-              size="large"
-              clearable
-              maxlength="120"
-              placeholder="例如：我住小户型，上班忙，预算 3000，想养只安静好照顾的猫"
-              @keyup.enter="aiFill"
-            />
-            <el-button type="primary" size="large" round :loading="aiFilling" @click="aiFill">
-              {{ aiFilling ? '解析中' : '智能填答' }}
-            </el-button>
-          </div>
+          <p class="side-note">画像与后端 Profile 一一对应：空间 / 运动 / 经验 / 陪伴 / 噪音 / 预算。</p>
+        </aside>
 
-          <p v-if="aiHint" class="af-hint">
-            <el-icon><CircleCheck /></el-icon>{{ aiHint }}
-            <button v-if="allDone" type="button" class="af-go" @click="submit">直接看结果</button>
-          </p>
-
-          <div class="af-examples">
-            <span class="af-ex-label">试试</span>
+        <section class="main">
+          <div class="stepnav">
             <button
-              v-for="t in AI_EXAMPLES"
-              :key="t"
+              v-for="(g, i) in STEPS"
+              :key="g.key"
               type="button"
-              class="af-ex"
-              @click="useExample(t)"
-            >{{ t }}</button>
-          </div>
-        </div>
-
-        <!-- 问卷主体：一页看全，随时改 -->
-        <div class="quiz-card">
-          <div class="qz-top">
-            <div class="qz-meta">
-              <b>选宠问卷</b>
-              <span>{{ doneCount }} / {{ totalCount }} 已答</span>
-            </div>
-            <div class="qz-bar"><i :style="{ width: progress + '%' }"></i></div>
-          </div>
-
-          <section v-for="(g, gi) in STEPS" :key="g.key" class="group">
-            <header class="g-head">
-              <span class="g-no">{{ pad(gi + 1) }}</span>
-              <div class="g-text">
-                <b>{{ g.title }}</b>
-                <span>{{ g.sub }}</span>
-              </div>
-              <span class="g-done" :class="{ full: groupDone(g) === g.questions.length }">
-                {{ groupDone(g) }}/{{ g.questions.length }}
-              </span>
-            </header>
-
-            <div v-for="q in g.questions" :key="q.key" class="q">
-              <div class="q-head">
-                <span class="q-title">{{ q.title }}</span>
-                <span class="q-hint">{{ q.hint }}</span>
-              </div>
-              <div class="q-opts">
-                <button
-                  v-for="o in q.options"
-                  :key="o.value"
-                  type="button"
-                  class="opt"
-                  :class="{ on: answers[q.key] === o.value }"
-                  @click="answers[q.key] = o.value"
-                >
-                  <span class="opt-main">
-                    {{ o.label }}
-                    <el-icon v-if="answers[q.key] === o.value" class="opt-check"><Select /></el-icon>
-                  </span>
-                  <span v-if="o.desc" class="opt-sub">{{ o.desc }}</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <footer class="qz-foot">
-            <span class="qz-tip" :class="{ done: allDone }">
-              {{ allDone ? '已全部作答，可以开始匹配' : `还有 ${totalCount - doneCount} 题未选择` }}
-            </span>
-            <el-button
-              type="primary"
-              size="large"
-              round
-              :loading="loading"
-              :disabled="!allDone"
-              @click="submit"
+              :class="{ on: step === i, done: groupAll(g) }"
+              @click="step = i"
             >
-              {{ loading ? '分析中' : '开始智能匹配' }}
-            </el-button>
-          </footer>
-        </div>
-      </section>
+              <b>{{ pad(i + 1) }}</b><span>{{ g.title }}</span>
+            </button>
+          </div>
+
+          <div class="card qcard">
+            <div class="qgroup-h">
+              <b>{{ curGroup.title }}</b><span>{{ curGroup.questions.length }} 题</span>
+            </div>
+
+            <div class="q-body">
+              <div v-for="q in curGroup.questions" :key="q.key" class="q">
+                <div class="qt">
+                  <i>Q{{ qIndex[q.key] }}</i>{{ q.title }}
+                  <span v-if="q.hint">{{ q.hint }}</span>
+                </div>
+                <div class="opts">
+                  <button
+                    v-for="o in q.options"
+                    :key="o.value"
+                    type="button"
+                    class="opt"
+                    :class="{ on: answers[q.key] === o.value }"
+                    @click="answers[q.key] = o.value"
+                  >
+                    <b>{{ o.label }}</b>
+                    <em v-if="o.desc">{{ o.desc }}</em>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="qfoot">
+            <span class="tip">{{ curLeft ? `这一步还有 ${curLeft} 题未选` : '这一步已完成' }}</span>
+            <button type="button" class="btn btn--ghost" :disabled="step === 0" @click="step--">上一步</button>
+            <button type="button" class="btn btn--solid" @click="next">
+              {{ step === STEPS.length - 1 ? '生成匹配结果' : '下一步' }}
+            </button>
+          </div>
+        </section>
+      </div>
 
       <!-- ================= 分析中 ================= -->
-      <section v-if="loading" class="analyzing">
-        <div class="scan-ring"></div>
-        <h3>正在分析你的生活方式</h3>
+      <div v-if="loading" class="analyzing">
+        <div class="spin"></div>
+        <h3>正在比对在售个体</h3>
         <p>{{ analyzeText }}</p>
-      </section>
+      </div>
 
       <!-- ================= 结果 ================= -->
-      <section v-if="result && !loading" class="result">
-        <div class="result-head">
-          <div class="rh-text">
-            <span class="rh-eyebrow">匹配结果</span>
-            <h2>{{ result.summary }}</h2>
-            <p class="rh-algo">
-              {{ result.algorithm }}
-              <span v-if="result.hasHistory" class="on">已结合你的收藏 / 预约行为</span>
-              <span v-else>登录后可结合历史喜好进一步优化</span>
-            </p>
-          </div>
-          <el-button round @click="restart">重新测评</el-button>
-        </div>
+      <div v-if="result && !loading" class="result">
+        <!-- 无结果：按 diagnosis.rootCause 分三态 -->
+        <template v-if="!recommendations.length">
+          <div class="card empty">
+            <div class="ico">!</div>
 
-        <!-- 无结果 -->
-        <div v-if="!result.recommendations.length" class="empty-result">
-          <el-icon class="er-ico"><Search /></el-icon>
-          <h3>暂时没有符合条件的宠物</h3>
-          <p class="er-tips" v-if="result.diagnosis && result.diagnosis.tips && result.diagnosis.tips.length">
-            <span v-for="(t, i) in result.diagnosis.tips" :key="i">{{ t }}</span>
-          </p>
-          <p v-else>可以适当放宽预算或宠物类型偏好后再试一次。</p>
-          <p class="er-stat" v-if="result.diagnosis && result.diagnosis.total">
-            本次共比对了 {{ result.diagnosis.total }} 只在售宠物
-            <em v-if="result.diagnosis.byBudget">，其中 {{ result.diagnosis.byBudget }} 只超出预算</em>
-            <em v-if="result.diagnosis.byPrefer">，{{ result.diagnosis.byPrefer }} 只类型不符</em>
-          </p>
-          <el-button type="primary" round @click="restart">重新填写</el-button>
-        </div>
+            <template v-if="diag && diag.rootCause === 'prefer'">
+              <h3>「{{ preferName(diag.prefer) }}」目前没有在售个体</h3>
+              <p class="cause">
+                {{ diag.total }} 只在售个体里，有 <span class="num">{{ diag.byPrefer }}</span> 只被类型条件排除，剩下 0 只。
+                换一个类型就能看到推荐。
+              </p>
+              <div class="acts">
+                <button type="button" class="btn btn--solid" @click="loosenType">改成「不限」重算</button>
+              </div>
+            </template>
+
+            <template v-else-if="diag && diag.rootCause === 'kids'">
+              <h3>有小孩的前提下没有可选个体</h3>
+              <p class="cause">
+                类型筛选后剩 {{ diag.total - diag.byPrefer }} 只，其中
+                <span class="num">{{ diag.byKids }}</span> 只没有标注「适合儿童」。
+                建议联系客服了解性情温和的个体。
+              </p>
+              <div class="acts">
+                <button type="button" class="btn btn--line" @click="goConsult">联系客服</button>
+              </div>
+            </template>
+
+            <template v-else>
+              <h3>预算内没有可选个体</h3>
+              <p class="cause">
+                符合其他条件的个体最低价约
+                <span class="num">¥{{ fmt(diag && diag.lowestPrice) }}</span>，
+                高于你的购宠预算 ¥{{ fmt(answers.budget) }}。
+                <template v-if="diag && diag.byPrefer">你偏好的类型里没有更便宜的选择。</template>
+              </p>
+              <div class="acts">
+                <button
+                  v-if="diag && diag.lowestPrice"
+                  type="button"
+                  class="btn btn--solid"
+                  @click="raiseBudget"
+                >上调预算到 ¥{{ fmt(nextBudget) }}</button>
+                <button type="button" class="btn btn--line" @click="goConsult">联系客服</button>
+              </div>
+            </template>
+          </div>
+          <p class="foot-note">本次测评已记录，会作为选品参考。</p>
+        </template>
 
         <template v-else>
-          <!-- 最佳匹配 -->
-          <div class="top-pick">
-            <div class="tp-image" @click="goDetail(top.petId)">
+          <div class="card summary">
+            <p>{{ result.summary }}</p>
+            <p class="sub">
+              共比对 {{ result.candidateCount }} 只在售个体 ·
+              <template v-if="result.hasHistory">
+                已登录，协同过滤生效（内容 72% + 相似用户 16% + 人气 12%）
+              </template>
+              <template v-else>
+                游客模式，不含协同过滤（内容 84% + 人气 16%）
+              </template>
+            </p>
+          </div>
+
+          <div class="top card">
+            <div class="top-img">
               <img v-if="isImg(top.image)" :src="top.image" :alt="top.petName" />
-              <div v-else class="tp-holder"><span>{{ top.categoryName || '暂无图片' }}</span></div>
-              <span class="tp-crown">最佳匹配</span>
+              <span v-else class="ph">{{ top.categoryName }} · 暂无实拍图</span>
+              <span class="rk">TOP 1</span>
             </div>
 
-            <div class="tp-main">
-              <div class="tp-head">
-                <div class="tp-id">
-                  <span class="tp-cat">{{ top.categoryName }} · {{ top.breed || '—' }}</span>
-                  <h3>{{ top.petName }}</h3>
+            <div class="top-main">
+              <div class="tp-row">
+                <div class="tp-title">
+                  <h3>
+                    {{ top.petName }}
+                    <span v-if="top.breed" class="ui-chip">{{ top.breed }}</span>
+                  </h3>
+                  <div class="tp-info">
+                    {{ top.categoryName }}<template v-if="top.age"> · {{ top.age }}</template>
+                    <template v-if="top.gender !== undefined"> · {{ genderText(top.gender) }}</template>
+                  </div>
                   <div class="tp-price">
-                    ¥{{ formatPrice(top.price) }}
-                    <em>月均养护约 ¥{{ Math.round(top.monthlyCost) }}</em>
+                    ¥{{ fmt(top.price) }}<em>月均 ¥{{ fmt(top.monthlyCost) }}</em>
                   </div>
                 </div>
-                <div class="score-ring" :style="ringStyle(top.score)">
-                  <div class="ring-inner">
-                    <strong>{{ top.score }}</strong>
-                    <span>匹配度</span>
+                <div class="tp-score">
+                  <b>{{ top.score }}<i>%</i></b>
+                  <span>{{ top.matchLevel }}</span>
+                </div>
+              </div>
+
+              <div class="blk">
+                <div class="blk-h"><b>匹配度是这么算的</b><span>权重合计 100%</span></div>
+
+                <div class="srow">
+                  <span class="n">内容契合</span>
+                  <div class="bar"><i :style="{ width: (top.contentScore || 0) + '%' }"></i></div>
+                  <span class="v">{{ top.contentScore }}</span>
+                  <span class="w">{{ result.hasHistory ? 72 : 84 }}%</span>
+                </div>
+
+                <div class="srow" :class="{ muted: !result.hasHistory }">
+                  <span class="n">相似用户</span>
+                  <div class="bar"><i :style="{ width: (top.cfScore || 0) + '%' }"></i></div>
+                  <span class="v">{{ result.hasHistory ? top.cfScore : '—' }}</span>
+                  <span class="w">{{ result.hasHistory ? 16 : 0 }}%</span>
+                </div>
+
+                <div class="srow">
+                  <span class="n">全站人气</span>
+                  <div class="bar"><i :style="{ width: (top.popularityScore || 0) + '%' }"></i></div>
+                  <span class="v">{{ top.popularityScore }}</span>
+                  <span class="w">{{ result.hasHistory ? 12 : 16 }}%</span>
+                </div>
+              </div>
+
+              <div class="blk">
+                <div class="blk-h"><b>七维评分</b><span>六维画像 + 全站人气，共七项</span></div>
+                <div class="dims">
+                  <div
+                    v-for="(v, k) in top.breakdown"
+                    :key="k"
+                    class="dim"
+                    :class="{ low: v < 60 }"
+                  >
+                    <span class="dim-h"><span class="dl">{{ k }}</span><b>{{ v }}</b></span>
+                    <div class="dbar"><i :style="{ width: Math.max(4, Math.min(100, v)) + '%' }"></i></div>
                   </div>
                 </div>
               </div>
 
-              <div class="dims">
-                <div v-for="(v, k) in top.breakdown" :key="k" class="dim">
-                  <span class="dim-name">{{ k }}</span>
-                  <div class="dim-bar"><i :style="{ width: v + '%', background: dimColor(v) }"></i></div>
-                  <span class="dim-val">{{ v }}</span>
+              <div class="two">
+                <div class="tagbox good">
+                  <b>适合你</b>
+                  <div class="tags">
+                    <span v-for="r in top.reasons || []" :key="r" class="tag">{{ r }}</span>
+                    <span v-if="!(top.reasons || []).length" class="tag">综合维度接近画像</span>
+                  </div>
+                </div>
+                <div class="tagbox warn">
+                  <b>要注意</b>
+                  <div class="tags">
+                    <span v-for="c in top.cautions || []" :key="c" class="tag w">{{ c }}</span>
+                    <span v-if="!(top.cautions || []).length" class="tag">暂无硬性风险项</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="reason-block">
-                <span class="rb-title">为什么推荐它</span>
-                <div class="reasons">
-                  <span v-for="r in top.reasons || []" :key="r" class="reason">{{ r }}</span>
-                  <span v-if="!(top.reasons || []).length" class="reason">综合维度最接近你的画像</span>
-                </div>
-              </div>
-
-              <div v-if="(top.traits || []).length || (top.cautions || []).length" class="tp-tags">
-                <span v-for="t in top.traits || []" :key="t" class="tag">{{ t }}</span>
-                <span v-for="c in top.cautions || []" :key="c" class="tag caution">注意：{{ c }}</span>
-              </div>
-
-              <div class="tp-actions">
-                <el-button type="primary" size="large" round @click="goDetail(top.petId)">查看详情</el-button>
-                <el-button size="large" round @click="goDetail(top.petId)">预约看宠</el-button>
+              <div class="tp-act">
+                <button type="button" class="btn btn--solid" @click="goDetail(top.petId)">查看详情</button>
+                <button type="button" class="btn btn--line" @click="fav(top)">收藏</button>
+                <span class="act-note">收藏会进入协同过滤，影响下次推荐</span>
               </div>
             </div>
           </div>
 
-          <!-- 其他推荐 -->
           <template v-if="rest.length">
-            <SectionHead title="其他高匹配推荐" :desc="`按匹配度排序，共 ${rest.length} 只`" />
-            <div class="cards">
-              <PetMiniCard
+            <div class="rethead">
+              <h2>其余 {{ rest.length }} 只（上限 8 只）</h2>
+              <span>按综合分降序</span>
+            </div>
+            <div class="rlist">
+              <div
                 v-for="p in rest"
                 :key="p.petId"
-                :to="'/shop/pet/' + p.petId"
-                :image="isImg(p.image) ? p.image : ''"
-                :placeholder="p.categoryName"
-                :name="p.petName"
-                :sub="p.breed && p.breed !== p.petName ? p.breed : ''"
-                :meta="p.categoryName"
-                :price="p.price"
-                :corner="p.score + '%'"
+                class="rrow"
+                @click="goDetail(p.petId)"
               >
-                <p class="card-reason">{{ (p.reasons && p.reasons[0]) || '综合维度匹配' }}</p>
-              </PetMiniCard>
+                <span class="no">{{ pad(p.rank) }}</span>
+                <span class="nm">
+                  <b>{{ p.petName }}</b>
+                  <span>{{ p.categoryName }} · {{ p.matchLevel }}</span>
+                </span>
+                <span class="why">{{ (p.reasons && p.reasons[0]) || '综合维度匹配' }}</span>
+                <span class="pr">¥{{ fmt(p.price) }}</span>
+                <span class="sc">{{ p.score }}%</span>
+                <span class="go">查看 ›</span>
+              </div>
             </div>
+            <p class="foot-note">
+              游客无协同过滤，因此「相似用户」一栏为 —。登录后同一套答案的排序会变。
+            </p>
           </template>
 
-          <p class="foot-note">
-            匹配结果由后端算法实时计算：六维画像打分占 72%~84%，相似用户行为占 12%~16%，全站人气占 12%~16%。
-          </p>
+          <div class="redo">
+            <button type="button" class="btn btn--line" @click="reset">重新测评</button>
+          </div>
         </template>
-      </section>
+      </div>
     </div>
   </div>
 </template>
@@ -252,18 +293,17 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { recommendPet } from '@/api/pet/petMatch'
-import { aiParse } from '@/api/pet/petAi'
-import ShopHero from '@/components/shop/ShopHero.vue'
-import SectionHead from '@/components/shop/SectionHead.vue'
-import PetMiniCard from '@/components/shop/PetMiniCard.vue'
-import { STEPS, AI_EXAMPLES, ANALYZE_TEXTS } from './matchData'
+import { addPetFavorite } from '@/api/pet/petFavorite'
+import { useUserStore } from '@/store/modules/user'
+import { STEPS } from './matchData'
 
 const router = useRouter()
+const userStore = useUserStore()
 
-const totalPets = ref(96)
 const loading = ref(false)
 const result = ref(null)
-const analyzeText = ref('正在读取你的居住空间与生活节奏…')
+const step = ref(0)
+const analyzeText = ref('计算空间 / 运动 / 照料 / 经验 / 噪音 五维扣分…')
 
 const answers = reactive({
   home: '',
@@ -278,67 +318,95 @@ const answers = reactive({
   prefer: ''
 })
 
+/* ---------- 进度 ---------- */
 const totalCount = computed(() => STEPS.reduce((n, s) => n + s.questions.length, 0))
 const doneCount = computed(() => Object.keys(answers).filter((k) => answers[k]).length)
-const allDone = computed(() => STEPS.every((s) => s.questions.every((q) => !!answers[q.key])))
 const progress = computed(() => Math.round((doneCount.value / totalCount.value) * 100))
-const top = computed(() => (result.value?.recommendations?.[0] || {}))
-const rest = computed(() => (result.value?.recommendations || []).slice(1))
+const allDone = computed(() => STEPS.every((s) => s.questions.every((q) => !!answers[q.key])))
 
-function groupDone(g) {
-  return g.questions.filter((q) => !!answers[q.key]).length
-}
-function pad(n) {
-  return String(n).padStart(2, '0')
-}
+const curGroup = computed(() => STEPS[step.value])
+const curLeft = computed(
+  () => curGroup.value.questions.filter((q) => !answers[q.key]).length
+)
 
-/* ---------- AI 一句话自动填答 ---------- */
-const aiText = ref('')
-const aiFilling = ref(false)
-const aiHint = ref('')
-
-function useExample(t) {
-  aiText.value = t
-  aiFill()
-}
-
-async function aiFill() {
-  const text = aiText.value.trim()
-  if (!text) {
-    ElMessage.warning('先用一句话说说你的情况')
-    return
+const qIndex = computed(() => {
+  const m = {}
+  let n = 0
+  for (const g of STEPS) {
+    for (const q of g.questions) {
+      n++
+      m[q.key] = n
+    }
   }
-  aiFilling.value = true
-  aiHint.value = ''
-  try {
-    const res = await aiParse(text)
-    const data = (res && res.data) || {}
-    const a = data.answers || {}
-    let filled = 0
-    Object.keys(answers).forEach((k) => {
-      const v = a[k]
-      if (v !== undefined && v !== null && String(v) !== '') {
-        answers[k] = String(v)
-        filled++
-      }
-    })
-    const how = data.source === 'ai' ? '大模型解析' : '本地规则解析'
-    aiHint.value = `已识别「${data.summary || '你的需求'}」，自动填好 ${filled}/${totalCount.value} 项 · ${how}`
-  } catch (e) {
-    ElMessage.error('解析失败，请重试或手动答题')
-  } finally {
-    aiFilling.value = false
-  }
+  return m
+})
+
+function groupAll(g) {
+  return g.questions.every((q) => !!answers[q.key])
 }
+
+/* ---------- 画像（与后端 Profile.of 同口径） ---------- */
+const profile = computed(() => {
+  const a = answers
+  return {
+    space: a.home === 'small' ? 1 : a.home === 'house' ? 3 : 2,
+    activity: a.activity === 'low' ? 1 : a.activity === 'high' ? 3 : 2,
+    experience: a.experience === 'none' ? 1 : a.experience === 'pro' ? 3 : 2,
+    time: a.time === 'lt1' ? 1 : a.time === 'gt3' ? 3 : 2,
+    noiseTol: a.noise === 'low' ? 1 : a.noise === 'high' ? 3 : 2
+  }
+})
+
+const profileRows = computed(() => {
+  const a = answers
+  const p = profile.value
+  return [
+    { label: '居住空间', filled: !!a.home, value: ['小户型', '普通住宅', '大房子'][p.space - 1] },
+    { label: '活动量', filled: !!a.activity, value: ['宅家', '偶尔运动', '每天运动'][p.activity - 1] },
+    { label: '每日陪伴', filled: !!a.time, value: ['< 1 小时', '1 ~ 3 小时', '3 小时以上'][p.time - 1] },
+    { label: '养宠经验', filled: !!a.experience, value: ['第一次', '养过 1-2 只', '多年'][p.experience - 1] },
+    { label: '噪音容忍', filled: !!a.noise, value: ['不能接受', '一般', '无所谓'][p.noiseTol - 1] },
+    { label: '购宠预算', filled: !!a.budget, value: budgetText(a.budget) },
+    { label: '月均养护', filled: !!a.monthly, value: budgetText(a.monthly) }
+  ]
+})
+
+function budgetText(v) {
+  const n = Number(v)
+  return !v || n >= 99999 ? '不限' : `¥${n.toLocaleString('zh-CN')}`
+}
+
+/* ---------- 结果 ---------- */
+const recommendations = computed(() => result.value?.recommendations || [])
+const top = computed(() => recommendations.value[0] || {})
+const rest = computed(() => recommendations.value.slice(1))
+const diag = computed(() => result.value?.diagnosis || null)
+const candidateCount = computed(() => result.value?.candidateCount ?? '—')
+const nextBudget = computed(() => {
+  const low = diag.value?.lowestPrice
+  if (!low) return ''
+  return Math.ceil(low / 1000) * 1000
+})
 
 /* ---------- 提交 ---------- */
-function startAnalyzeText() {
-  let i = 0
-  analyzeText.value = ANALYZE_TEXTS[0]
-  return setInterval(() => {
-    i = (i + 1) % ANALYZE_TEXTS.length
-    analyzeText.value = ANALYZE_TEXTS[i]
-  }, 900)
+const ANALYZE_TEXTS = [
+  '计算空间 / 运动 / 照料 / 经验 / 噪音 五维扣分…',
+  '叠加购宠与月均预算的软性约束…',
+  '计算协同过滤与全站人气权重…',
+  '按综合分排序，取前 8 只…'
+]
+
+function next() {
+  if (curLeft.value) {
+    ElMessage.warning(`这一步还有 ${curLeft.value} 题没选`)
+    return
+  }
+  if (step.value < STEPS.length - 1) {
+    step.value++
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
+  submit()
 }
 
 async function submit() {
@@ -348,15 +416,15 @@ async function submit() {
   }
   loading.value = true
   result.value = null
-  const timer = startAnalyzeText()
+  let i = 0
+  const timer = setInterval(() => {
+    i = (i + 1) % ANALYZE_TEXTS.length
+    analyzeText.value = ANALYZE_TEXTS[i]
+  }, 480)
+
   try {
     const res = await recommendPet({ ...answers })
-    const data = res.data || {}
-    result.value = data
-    if (data.candidateCount) totalPets.value = data.candidateCount
-    if (!data.recommendations || !data.recommendations.length) {
-      ElMessage.info('暂时没有符合条件的宠物，试着放宽条件')
-    }
+    result.value = res.data || {}
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
     ElMessage.error('匹配失败，请稍后重试')
@@ -366,37 +434,62 @@ async function submit() {
   }
 }
 
-function restart() {
+function loosenType() {
+  answers.prefer = 'any'
+  submit()
+}
+
+function raiseBudget() {
+  if (!nextBudget.value) return
+  answers.budget = String(nextBudget.value)
+  submit()
+}
+
+function reset() {
   result.value = null
+  step.value = 0
   Object.keys(answers).forEach((k) => (answers[k] = ''))
-  aiHint.value = ''
-  aiText.value = ''
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+/* ---------- 跳转 / 收藏 ---------- */
 function goDetail(id) {
-  router.push('/shop/pet/' + id)
+  // from 供详情页返回与导航高亮使用
+  router.push({ path: '/shop/pet/' + id, query: { from: '/shop/match' } })
+}
+function goConsult() {
+  router.push('/shop/consult')
 }
 
-function formatPrice(p) {
-  return Number(p || 0).toLocaleString('zh-CN')
-}
-
-function isImg(s) {
-  return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0)
-}
-
-function ringStyle(score) {
-  const pct = Math.max(0, Math.min(100, Number(score) || 0))
-  return {
-    background: `conic-gradient(var(--brand-600) 0% ${pct}%, var(--brand-100) ${pct}% 100%)`
+async function fav(pet) {
+  if (!userStore.token) {
+    ElMessage.info('请先登录后再收藏')
+    return
+  }
+  try {
+    await addPetFavorite({ petId: pet.petId, userId: userStore.userId })
+    ElMessage.success('收藏成功，会影响下次推荐的协同得分')
+  } catch (e) {
+    ElMessage.error('收藏失败，请稍后重试')
   }
 }
 
-function dimColor(v) {
-  if (v >= 80) return 'var(--brand-500)'
-  if (v >= 60) return 'var(--warning-500)'
-  return 'var(--danger-500)'
+/* ---------- 展示工具 ---------- */
+function pad(n) {
+  return String(n).padStart(2, '0')
+}
+function fmt(v) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toLocaleString('zh-CN') : '—'
+}
+function isImg(s) {
+  return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0)
+}
+function genderText(g) {
+  return String(g) === '0' ? '公' : String(g) === '1' ? '母' : '未知'
+}
+function preferName(id) {
+  return { 1: '猫科', 2: '犬科', 3: '兔科', 4: '啮齿', 5: '鸟类', 6: '水族', 7: '爬行' }[id] || '所选类型'
 }
 </script>
 
@@ -404,204 +497,162 @@ function dimColor(v) {
 .match-page {
   background: var(--bg-page);
   min-height: 100%;
-  padding-bottom: 64px;
+  padding-bottom: 56px;
+
+  button { font-family: inherit; }
 }
 
-.page-body {
-  position: relative;
-  z-index: 2;
-  max-width: var(--container-md);
-  margin: -28px auto 0;
-  padding: 0 24px;
-}
-
-/* ---------- Hero 右侧说明卡 ---------- */
-.hero-panel {
-  padding: 20px 22px;
+/* ---------- 页头 ---------- */
+.m-head {
   background: var(--bg-card);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border-1);
 }
 
-.hp-title {
-  font-size: 13px;
+.mh-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 24px 24px 20px;
+}
+
+.mh-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.mh-eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.mh-main h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--text-1);
 }
 
-.hp-list {
-  display: flex;
-  gap: 28px;
-  margin: 14px 0 0;
-
-  div { min-width: 0; }
-
-  dt {
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    color: var(--brand-700);
-    font-variant-numeric: tabular-nums;
-  }
-  dd {
-    margin: 4px 0 0;
-    font-size: 12.5px;
-    color: var(--text-3);
-  }
-}
-
-.hp-note {
-  margin: 16px 0 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--border-2);
-  font-size: 12.5px;
+.mh-sub {
+  margin: 7px 0 0;
+  max-width: 46em;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--text-3);
 }
 
-/* ---------- 一句话填答 ---------- */
-.ai-fill {
-  padding: 20px 22px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
+.mh-stats {
+  display: flex;
+  gap: 22px;
+  flex-shrink: 0;
 
-.af-head {
-  h2 {
-    margin: 8px 0 4px;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--text-1);
+  div { text-align: right; }
+
+  b {
+    display: block;
+    font-size: 19px;
+    font-weight: 650;
+    line-height: 1.2;
+    color: var(--brand-700);
+    font-variant-numeric: tabular-nums;
   }
-  p {
-    margin: 0 0 14px;
-    font-size: 13px;
-    line-height: 1.7;
+
+  span {
+    font-size: 10.5px;
     color: var(--text-3);
   }
 }
 
-.af-badge {
-  display: inline-block;
-  padding: 3px 9px;
-  background: var(--brand-50);
-  border: 1px solid var(--brand-100);
-  border-radius: var(--radius-xs);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--brand-700);
+/* ---------- 主体 ---------- */
+.m-body {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 16px 24px 0;
 }
 
-.af-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-
-  :deep(.el-input) { flex: 1; }
+/* ---------- 问卷布局 ---------- */
+.wz {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding-bottom: 40px;
 }
 
-.af-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 12px 0 0;
-  padding: 8px 12px;
-  background: var(--success-50);
-  border-radius: var(--radius-sm);
-  font-size: 12.5px;
-  color: var(--success-500);
-
-  .el-icon { font-size: 14px; }
+.side {
+  position: sticky;
+  top: 72px;
 }
 
-.af-go {
-  margin-left: auto;
-  padding: 0;
-  background: none;
-  border: 0;
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--brand-700);
-  cursor: pointer;
-
-  &:hover { text-decoration: underline; }
-}
-
-.af-examples {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.af-ex-label {
-  font-size: 11.5px;
-  color: var(--text-3);
-}
-
-.af-ex {
-  padding: 5px 10px;
-  background: var(--bg-page);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-pill);
-  font-family: inherit;
-  font-size: 12px;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: border-color 0.16s, color 0.16s, background 0.16s;
-
-  &:hover {
-    border-color: var(--brand-300);
-    background: var(--brand-50);
-    color: var(--brand-700);
-  }
-}
-
-/* ---------- 问卷卡 ---------- */
-.quiz-card {
-  margin-top: 16px;
-  padding: 22px 24px 0;
+.panel {
+  padding: 14px 15px;
   background: var(--bg-card);
   border: 1px solid var(--border-1);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
-.qz-top {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-2);
-}
-
-.qz-meta {
+.panel-h {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  flex-shrink: 0;
+  justify-content: space-between;
+  margin-bottom: 2px;
 
   b {
-    font-size: 15px;
+    font-size: 12.5px;
     font-weight: 700;
     color: var(--text-1);
   }
+
   span {
-    font-size: 12px;
+    font-size: 10.5px;
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
   }
 }
 
-.qz-bar {
-  flex: 1;
-  height: 5px;
+.pf {
+  > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--border-2);
+
+    &:last-child { border-bottom: 0; }
+  }
+
+  span {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  b {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-1);
+    text-align: right;
+
+    &.none {
+      font-weight: 400;
+      color: var(--text-4);
+    }
+  }
+}
+
+.pbar {
+  height: 4px;
+  margin-top: 12px;
   background: var(--bg-sunken);
   border-radius: var(--radius-pill);
   overflow: hidden;
@@ -611,116 +662,160 @@ function dimColor(v) {
     height: 100%;
     border-radius: var(--radius-pill);
     background: var(--brand-600);
-    transition: width 0.3s ease;
+    transition: width 0.3s;
   }
 }
 
-/* ---------- 分组 ---------- */
-.group {
-  padding: 20px 0 8px;
-
-  & + .group { border-top: 1px solid var(--border-2); }
+.side-note {
+  margin: 11px 0 0;
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--text-4);
 }
 
-.g-head {
+.main { min-width: 0; }
+
+.stepnav {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: 4px;
+  margin-bottom: 12px;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-1);
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: 0.15s;
+
+    b {
+      font-family: var(--font-num);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-4);
+    }
+
+    &.done {
+      border-color: var(--brand-200);
+      background: var(--brand-50);
+      color: var(--brand-700);
+
+      b { color: var(--brand-600); }
+    }
+
+    &.on {
+      border-color: var(--brand-600);
+      box-shadow: inset 0 0 0 1px var(--brand-600);
+      color: var(--brand-800);
+      font-weight: 600;
+
+      b { color: var(--brand-700); }
+    }
+  }
 }
 
-.g-no {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--brand-50);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--brand-700);
-  font-variant-numeric: tabular-nums;
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
-.g-text {
+.qcard { padding: 20px 22px 8px; }
+
+.qgroup-h {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  min-width: 0;
+  gap: 9px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-2);
 
   b {
     font-size: 14.5px;
     font-weight: 700;
     color: var(--text-1);
   }
+
   span {
-    font-size: 12.5px;
+    font-size: 11px;
     color: var(--text-3);
   }
 }
 
-.g-done {
-  margin-left: auto;
-  flex-shrink: 0;
-  padding: 2px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-page);
-  font-size: 11.5px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-
-  &.full {
-    background: var(--brand-50);
-    color: var(--brand-700);
-  }
+/* 定高：切换步骤时页面不跳动 */
+.q-body {
+  height: 404px;
+  padding-right: 2px;
+  overflow-y: auto;
 }
 
-/* ---------- 单题 ---------- */
 .q {
-  padding: 16px 0 4px 36px;
+  padding: 15px 0 6px;
 
   & + .q { border-top: 1px dashed var(--border-2); }
 }
 
-.q-head {
+.qt {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 10px;
-  margin-bottom: 10px;
-}
-
-.q-title {
-  font-size: 14px;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-1);
+
+  i {
+    font-style: normal;
+    font-family: var(--font-num);
+    font-size: 10px;
+    color: var(--text-4);
+  }
+
+  span {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-3);
+  }
 }
 
-.q-hint {
-  font-size: 12px;
-  color: var(--text-3);
-}
-
-.q-opts {
+.opts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 7px;
 }
 
 .opt {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 9px 12px;
+  gap: 1px;
+  padding: 10px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-md);
-  font-family: inherit;
+  border-radius: var(--radius-sm);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
+  transition: 0.14s;
+
+  b {
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text-1);
+  }
+
+  em {
+    font-style: normal;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--text-3);
+  }
 
   &:hover {
     border-color: var(--brand-300);
@@ -731,76 +826,93 @@ function dimColor(v) {
     border-color: var(--brand-600);
     background: var(--brand-50);
     box-shadow: inset 0 0 0 1px var(--brand-600);
+
+    b { color: var(--brand-800); }
   }
 }
 
-.opt-main {
+.qfoot {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.45;
-  color: var(--text-1);
-}
+  gap: 10px;
+  margin-top: 10px;
 
-.opt-check {
-  font-size: 12px;
-  color: var(--brand-600);
-}
-
-.opt-sub {
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--text-3);
-}
-
-/* ---------- 底部操作 ---------- */
-.qz-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 18px -24px 0;
-  padding: 14px 24px;
-  border-top: 1px solid var(--border-2);
-  background: var(--bg-page);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-}
-
-.qz-tip {
-  font-size: 12.5px;
-  color: var(--text-3);
-
-  &.done { color: var(--brand-700); font-weight: 600; }
-}
-
-/* ---------- 分析中 ---------- */
-.analyzing {
-  padding: 80px 20px;
-  text-align: center;
-
-  h3 {
-    margin: 0 0 8px;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--text-1);
-  }
-  p {
-    margin: 0;
-    font-size: 13px;
+  .tip {
+    margin-right: auto;
+    font-size: 11px;
     color: var(--text-3);
   }
 }
 
-.scan-ring {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 22px;
-  border-radius: 50%;
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.16s;
+
+  &--solid {
+    background: var(--brand-600);
+    color: #fff;
+
+    &:hover { background: var(--brand-700); }
+  }
+
+  &--line {
+    background: var(--bg-card);
+    border-color: var(--border-1);
+    color: var(--text-1);
+
+    &:hover {
+      border-color: var(--brand-300);
+      color: var(--brand-700);
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: var(--text-2);
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* ---------- 分析中 ---------- */
+.analyzing {
+  padding: 66px 20px;
+  text-align: center;
+
+  h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+}
+
+.spin {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 18px;
   border: 3px solid var(--brand-100);
   border-top-color: var(--brand-600);
+  border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
 
@@ -809,62 +921,41 @@ function dimColor(v) {
 }
 
 /* ---------- 结果 ---------- */
-.result-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-  padding: 20px 22px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+.result { padding-bottom: 24px; }
+
+.summary {
+  padding: 16px 18px;
+  margin-bottom: 12px;
+
+  p {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-1);
+  }
+
+  .sub {
+    margin-top: 5px;
+    font-size: 11.5px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--text-3);
+  }
 }
 
-.rh-eyebrow {
-  display: inline-block;
-  padding: 3px 9px;
-  background: var(--brand-50);
-  border-radius: var(--radius-xs);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--brand-700);
-}
-
-.rh-text h2 {
-  margin: 10px 0 6px;
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: var(--text-1);
-}
-
-.rh-algo {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--text-3);
-
-  .on { color: var(--success-500); }
-}
-
-.top-pick {
+.top {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  margin-top: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
+  grid-template-columns: 300px minmax(0, 1fr);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
 }
 
-.tp-image {
+.top-img {
   position: relative;
-  min-height: 340px;
-  background: var(--bg-sunken);
-  cursor: pointer;
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  background: linear-gradient(150deg, var(--brand-100), var(--bg-sunken) 62%, #dbe7e1);
 
   img {
     width: 100%;
@@ -872,346 +963,534 @@ function dimColor(v) {
     object-fit: cover;
     display: block;
   }
-}
 
-// 数据库里部分宠物没有实拍图（image 存的是分类 emoji），降级为分类名占位
-.tp-holder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  span {
-    padding: 8px 16px;
+  .ph {
+    padding: 6px 12px;
     background: var(--bg-card);
     border: 1px solid var(--border-1);
     border-radius: var(--radius-pill);
-    font-size: 13px;
-    color: var(--text-3);
+    font-size: 11.5px;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--brand-700);
+  }
+
+  .rk {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    padding: 3px 9px;
+    background: var(--brand-600);
+    border-radius: var(--radius-pill);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #fff;
   }
 }
 
-.tp-crown {
-  position: absolute;
-  left: 14px;
-  top: 14px;
-  padding: 5px 11px;
-  background: var(--brand-600);
-  border-radius: var(--radius-pill);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.tp-main {
+.top-main {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 26px;
+  gap: 13px;
   min-width: 0;
+  padding: 20px 22px;
 }
 
-.tp-head {
+.tp-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 14px;
 }
 
-.tp-id { min-width: 0; }
+.tp-title {
+  min-width: 0;
 
-.tp-cat {
-  font-size: 12px;
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0 0 4px;
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+
+  :deep(.ui-chip) {
+    height: 19px;
+    font-size: 10.5px;
+  }
+}
+
+.tp-info {
+  font-size: 11.5px;
   color: var(--text-3);
 }
 
-.tp-id h3 {
-  margin: 4px 0 8px;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-1);
-}
-
 .tp-price {
-  font-size: 22px;
+  margin-top: 6px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--price);
   font-variant-numeric: tabular-nums;
 
   em {
-    margin-left: 8px;
+    margin-left: 7px;
     font-style: normal;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 400;
     color: var(--text-3);
   }
 }
 
-.score-ring {
-  display: grid;
-  place-items: center;
-  width: 86px;
-  height: 86px;
+.tp-score {
   flex-shrink: 0;
-  border-radius: 50%;
-}
+  text-align: right;
 
-.ring-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 68px;
-  height: 68px;
-  background: var(--bg-card);
-  border-radius: 50%;
-
-  strong {
-    font-size: 22px;
+  b {
+    display: block;
+    font-size: 29px;
     font-weight: 700;
     line-height: 1;
+    letter-spacing: -0.02em;
     color: var(--brand-700);
     font-variant-numeric: tabular-nums;
+
+    i {
+      margin-left: 2px;
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-3);
+    }
   }
+
   span {
-    margin-top: 2px;
+    display: inline-block;
+    margin-top: 5px;
+    padding: 2px 7px;
+    background: var(--brand-50);
+    border: 1px solid var(--brand-100);
+    border-radius: var(--radius-xs);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--brand-700);
+  }
+}
+
+.blk {
+  padding: 11px 13px;
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
+}
+
+.blk-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+
+  b {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  span {
+    font-size: 10px;
+    color: var(--text-4);
+  }
+}
+
+.srow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+
+  .n {
+    width: 58px;
+    flex-shrink: 0;
     font-size: 10.5px;
     color: var(--text-3);
+  }
+
+  .bar {
+    flex: 1;
+    height: 5px;
+    background: var(--bg-sunken);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: var(--radius-pill);
+      background: var(--brand-500);
+      transition: width 0.7s ease;
+    }
+  }
+
+  .v {
+    width: 26px;
+    text-align: right;
+    font-size: 10.5px;
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .w {
+    width: 38px;
+    text-align: right;
+    font-size: 10px;
+    color: var(--text-4);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.muted {
+    .n, .v { color: var(--text-4); }
+
+    .bar i { background: var(--border-1); }
   }
 }
 
 .dims {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px 22px;
-  padding: 13px 16px;
-  background: var(--bg-page);
-  border-radius: var(--radius-md);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 10px;
+
+  /* 7 项在 4 列网格里末行只剩 3 项，让第 7 项跨两列补齐 */
+  .dim:nth-child(7):last-child { grid-column: span 2; }
 }
 
 .dim {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
+  /* 减密：去掉底色块，只留 标签+分值 一行 与 一条色带 */
+  .dim-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
 
-.dim-name {
-  flex-shrink: 0;
-  width: 42px;
-  font-size: 12px;
-  color: var(--text-3);
-}
-
-.dim-bar {
-  flex: 1;
-  height: 6px;
-  background: var(--bg-sunken);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-
-  i {
-    display: block;
-    height: 100%;
-    border-radius: var(--radius-pill);
+    .dl {
+      font-size: 11.5px;
+      color: var(--text-3);
+    }
   }
-}
 
-.dim-val {
-  width: 24px;
-  flex-shrink: 0;
-  text-align: right;
-  font-size: 11.5px;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-
-.reason-block {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-
-  .rb-title {
+  b {
     font-size: 12.5px;
     font-weight: 600;
-    color: var(--text-1);
+    color: var(--brand-700);
+    font-variant-numeric: tabular-nums;
   }
-}
 
-.reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+  .dbar {
+    margin-top: 5px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg-sunken);
+    overflow: hidden;
 
-.reason {
-  padding: 3px 9px;
-  background: var(--success-50);
-  border: 1px solid var(--success-100);
-  border-radius: var(--radius-xs);
-  font-size: 12px;
-  color: var(--success-500);
-}
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 2px;
+      background: var(--brand-500);
+    }
+  }
 
-.tp-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+  &.low .dbar i {
+    background: var(--warning-500);
+  }
 
-.tag {
-  padding: 3px 9px;
-  background: var(--bg-page);
-  border-radius: var(--radius-xs);
-  font-size: 12px;
-  color: var(--text-2);
-
-  &.caution {
-    background: var(--warning-50);
+  &.low b {
     color: var(--warning-500);
   }
 }
 
-.tp-actions {
-  display: flex;
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.tagbox {
+  b {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  &.good b { color: var(--success-500); }
+  &.warn b { color: var(--warning-500); }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag {
+  padding: 3px 7px;
+  background: var(--success-50);
+  border: 1px solid var(--success-100);
+  border-radius: var(--radius-xs);
+  font-size: 10.5px;
+  color: var(--success-500);
+
+  &.w {
+    background: var(--warning-50);
+    border-color: var(--warning-100);
+    color: var(--warning-500);
+  }
+}
+
+.tp-act {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: auto;
   padding-top: 2px;
+
+  .act-note {
+    font-size: 10.5px;
+    color: var(--text-4);
+  }
 }
 
-.more-title {
-  margin: 28px 0 14px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-1);
-}
+/* ---------- 其余推荐 ---------- */
+.rethead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 24px 0 10px;
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
-  gap: 14px;
-}
-
-.card-reason {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--success-500);
-}
-
-/* ---------- 空结果 ---------- */
-.empty-result {
-  margin-top: 16px;
-  padding: 56px 24px;
-  text-align: center;
-  background: var(--bg-card);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-
-  h3 {
-    margin: 14px 0 8px;
-    font-size: 16px;
+  h2 {
+    margin: 0;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-1);
   }
-  p {
-    margin: 0 0 8px;
-    font-size: 13px;
+
+  span {
+    font-size: 11px;
     color: var(--text-3);
   }
 }
 
-.er-ico {
-  font-size: 30px;
-  color: var(--text-4);
+.rlist {
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
-.er-tips {
+.rrow {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 460px;
-  margin: 0 auto 8px;
-  line-height: 1.7;
-  color: var(--text-2);
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-2);
+  cursor: pointer;
+
+  &:last-child { border-bottom: 0; }
+  &:hover { background: var(--brand-50); }
+
+  .no {
+    width: 18px;
+    flex-shrink: 0;
+    font-family: var(--font-num);
+    font-size: 10.5px;
+    color: var(--text-4);
+  }
+
+  .nm {
+    min-width: 150px;
+
+    b {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    span {
+      font-size: 10.5px;
+      color: var(--text-3);
+    }
+  }
+
+  .why {
+    flex: 1;
+    min-width: 0;
+    font-size: 10.5px;
+    color: var(--success-500);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pr {
+    width: 76px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--price);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sc {
+    width: 54px;
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--brand-700);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .go {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--brand-600);
+  }
 }
 
-.er-stat {
-  margin-bottom: 22px;
-  font-size: 12px;
-  color: var(--text-3);
+.rlist,
+.q-body {
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-thumb {
+    background: #d3ddd7;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-track { background: transparent; }
+}
 
-  em {
-    font-style: normal;
+/* ---------- 空结果 ---------- */
+.empty {
+  padding: 26px;
+  text-align: center;
+
+  .ico {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 12px;
+    background: var(--warning-50);
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 700;
     color: var(--warning-500);
+  }
+
+  h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+
+  .cause {
+    max-width: 520px;
+    margin: 0 auto 14px;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--text-2);
+  }
+
+  .num {
+    font-weight: 700;
+    color: var(--warning-500);
+  }
+
+  .acts {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
 
 .foot-note {
-  margin-top: 24px;
+  margin: 20px 0 0;
   text-align: center;
-  font-size: 12px;
-  line-height: 1.75;
+  font-size: 10.5px;
+  line-height: 1.7;
   color: var(--text-3);
+}
+
+.redo {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
 }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
-  .top-pick { grid-template-columns: minmax(0, 1fr); }
+  .wz { grid-template-columns: minmax(0, 1fr); }
 
-  .tp-image {
-    min-height: 0;
-    aspect-ratio: 16 / 10;
-    max-height: min(240px, 30vh);
+  .side { position: static; }
+
+  .pf {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
   }
 
-  .dims { grid-template-columns: minmax(0, 1fr); }
+  .side-note, .pbar { display: none; }
+
+  .top { grid-template-columns: minmax(0, 1fr); }
+
+  .top-img {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    max-height: 220px;
+  }
+
+  .dims { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .q-body { height: 360px; }
 }
 
 @media (max-width: 768px) {
-  .page-body {
-    margin-top: -20px;
-    padding: 0 16px;
+  .mh-inner { padding: 20px 16px 16px; }
+  .mh-main h1 { font-size: 22px; }
+  .mh-stats { display: none; }
+
+  .m-body { padding: 14px 16px 0; }
+
+  .stepnav button {
+    justify-content: center;
+
+    span { display: none; }
   }
 
-  .ai-fill { padding: 16px; }
+  .qcard { padding: 16px 15px 8px; }
+  .q-body { height: 320px; }
+  .opts { grid-template-columns: 1fr 1fr; }
 
-  .af-row {
-    flex-direction: column;
-    align-items: stretch;
+  .two { grid-template-columns: 1fr; }
+  .dims { grid-template-columns: 1fr 1fr; }
 
-    :deep(.el-button) { width: 100%; }
+  .top-main { padding: 18px 15px; }
+  .tp-title h3 { font-size: 19px; }
+
+  .tp-act {
+    .btn { flex: 1; }
+    .act-note { display: none; }
   }
 
-  .quiz-card {
-    padding: 18px 16px 0;
+  .rrow {
+    .why { display: none; }
+    .nm { flex: 1; min-width: 0; }
+    .pr { width: auto; }
+    .sc { width: auto; }
+    .go { display: none; }
   }
-
-  .qz-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .q { padding-left: 0; }
-
-  .q-opts { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }
-
-  .qz-foot {
-    margin: 16px -16px 0;
-    padding: 12px 16px;
-
-    :deep(.el-button) { width: 100%; }
-  }
-
-  .tp-main { padding: 18px 16px; }
-  .tp-id h3 { font-size: 21px; }
-
-  .tp-actions {
-    :deep(.el-button) { flex: 1; margin: 0; }
-  }
-
-  .result-head { padding: 16px; }
 }
 </style>

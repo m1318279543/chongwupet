@@ -63,13 +63,13 @@ public class PetHealthController extends BaseController
     }
 
     /**
-     * 前台：在售宠物的健康档案汇总（服务页用）
+     * 前台：在售宠物的健康档案汇总（服务页用）——仅在售且档案挂得上宠物
      */
     @GetMapping("/onsale")
-    public AjaxResult onSaleList(PetHealth petHealth)
+    public AjaxResult onSaleList()
     {
         startPage();
-        List<PetHealth> list = petHealthService.selectPetHealthList(petHealth);
+        List<PetHealth> list = petHealthService.selectOnSaleHealthList();
         TableDataInfo info = getDataTable(list);
         return success(info);
     }

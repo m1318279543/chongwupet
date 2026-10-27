@@ -16,6 +16,11 @@ public interface IPetHealthService
     public List<PetHealth> selectPetHealthList(PetHealth petHealth);
 
     /**
+     * 在售宠物档案列表（前台服务页：仅在售 + 档案必须挂得上宠物）
+     */
+    public List<PetHealth> selectOnSaleHealthList();
+
+    /**
      * 按宠物ID查询档案（前台展示）
      */
     public PetHealth selectPetHealthByPetId(Long petId);

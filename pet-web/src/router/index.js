@@ -27,9 +27,7 @@ const routes = [
       { path: 'like', component: () => import('@/views/admin/like/index.vue'), meta: { title: '点赞管理', perm: 'pet:like:list', icon: 'Pointer' } },
       { path: 'comment', component: () => import('@/views/admin/comment/index.vue'), meta: { title: '评论管理', perm: 'pet:comment:manage', icon: 'ChatLineRound' } },
       { path: 'preference', component: () => import('@/views/admin/preference/index.vue'), meta: { title: '宠物喜好', perm: 'pet:preference:list', icon: 'IceCream' } },
-      { path: 'issue', component: () => import('@/views/admin/issue/index.vue'), meta: { title: '健康百科', perm: 'pet:issue:list', icon: 'FirstAidKit' } },
       { path: 'consult', component: () => import('@/views/admin/consult/index.vue'), meta: { title: '客服管理', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
-      { path: 'doctor', component: () => import('@/views/admin/doctor/index.vue'), meta: { title: '医生咨询记录', perm: 'pet:doctor:list', icon: 'FirstAidKit' } },
       { path: 'cancel', component: () => import('@/views/admin/cancel/index.vue'), meta: { title: '取消记录', perm: 'pet:cancel:list', icon: 'CircleClose' } },
       { path: 'match', component: () => import('@/views/admin/match/index.vue'), meta: { title: '智能匹配记录', perm: 'pet:match:list', icon: 'MagicStick' } },
       { path: 'health', component: () => import('@/views/admin/health/index.vue'), meta: { title: '健康档案', perm: 'pet:health:list', icon: 'Histogram' } },
@@ -49,20 +47,13 @@ const routes = [
     component: () => import('@/layouts/shop/index.vue'),
     redirect: '/shop/home',
     children: [
-      { path: 'home', component: () => import('@/views/shop/home/index.vue'), meta: { title: '宠物首页' } },
-      { path: 'match', component: () => import('@/views/shop/match/index.vue'), meta: { title: 'AI 智能选宠', perm: 'pet:match:list', icon: 'MagicStick' } },
+      { path: 'home', component: () => import('@/views/shop/home/index.vue'), meta: { title: '首页' } },
+      // 宠物售卖页：完整在售列表 + 品类快筛（首页只放精选，这里放全部）
+      { path: 'pets', component: () => import('@/views/shop/pets/index.vue'), meta: { title: '在售宠物' } },
+      { path: 'match', component: () => import('@/views/shop/match/index.vue'), meta: { title: '智能选宠', perm: 'pet:match:list', icon: 'MagicStick' } },
       { path: 'pet/:id', component: () => import('@/views/shop/pet/detail.vue'), meta: { title: '宠物详情' } },
       { path: 'favorite', component: () => import('@/views/shop/favorite/index.vue'), meta: { title: '我的收藏', perm: 'pet:favorite:list', icon: 'Star' } },
       { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '我的预约', perm: 'pet:appointment:list', icon: 'Calendar' } },
-      // 服务保障：单页总览（健康筛查 / 真实信息 / 专业养护 / 售后无忧用锚点区分），
-      // 旧的四条子路径全部重定向到对应锚点，老链接不断
-      { path: 'service', component: () => import('@/views/shop/service/index.vue'), meta: { title: '服务保障' } },
-      { path: 'service/health', redirect: '/shop/service#health' },
-      { path: 'service/origin', redirect: '/shop/service#origin' },
-      { path: 'service/care', redirect: '/shop/service#care' },
-      { path: 'service/after', redirect: '/shop/service#after' },
-      // 宠物医生智能问答
-      { path: 'doctor', component: () => import('@/views/shop/doctor/index.vue'), meta: { title: '宠物医生', perm: 'pet:doctor:list', icon: 'FirstAidKit' } },
       // 联系客服 / 我的咨询
       { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
       // 宠物粮专区（覆盖全部 7 类宠物）
@@ -92,11 +83,10 @@ const router = createRouter({
 
 // 路由守卫：登录态 + 用户信息加载
 // 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约（页面内提示登录）
-const guestList = ['/shop/home', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/doctor', '/shop/order', '/shop/consult']
+const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/order', '/shop/consult']
 function isGuestAllowed(path) {
   if (guestList.includes(path)) return true
   if (path.startsWith('/shop/pet/')) return true  // 宠物详情页游客可看
-  if (path === '/shop/service' || path.startsWith('/shop/service/')) return true  // 服务保障页游客可看
   if (path === '/shop/food' || path.startsWith('/shop/food/')) return true  // 宠物粮页游客可看
   if (path === '/shop/cart' || path.startsWith('/shop/cart/')) return true  // 购物车页游客可看
   return false
@@ -129,6 +119,7 @@ router.beforeEach(async (to, from, next) => {
   // 未登录（只看当前区域的 token，前台登录不会影响后台，反之亦然）
   if (!userStore.token) {
     if (isGuestAllowed(to.path)) return next()
+    if (!needAdmin) ElMessage.warning('请先登录后再访问该页面')
     return next(needAdmin ? '/admin/login' : '/shop/home')
   }
 
@@ -140,6 +131,7 @@ router.beforeEach(async (to, from, next) => {
       // token 失效：只清当前区域的登录态，另一端账号不受影响
       userStore.clearSession()
       if (isGuestAllowed(to.path)) return next()
+      if (!needAdmin) ElMessage.warning('登录已过期，请重新登录')
       return next(needAdmin ? '/admin/login' : '/shop/home')
     }
   }

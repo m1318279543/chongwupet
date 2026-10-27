@@ -1,64 +1,100 @@
 <template>
-  <div class="consult">
-    <div class="consult-inner">
-      <h1>💬 联系客服</h1>
-      <p class="sub">遇到问题？留下您的问题，客服会在后台尽快回复，您可在此查看回复。</p>
+  <div class="ui-page ui-page--sm">
+    <header class="ui-head">
+      <div class="ui-head__main">
+        <p class="ui-eyebrow">Support</p>
+        <h1 class="ui-title">联系客服</h1>
+        <p class="ui-sub">留下问题，客服会在后台回复，回复内容直接显示在下方记录里。</p>
+      </div>
+      <div class="ui-head__aside" v-if="isLogged">
+        <span class="ui-count"><b>{{ myList.length }}</b>条咨询</span>
+      </div>
+    </header>
 
-      <!-- 未登录引导 -->
-      <el-result v-if="!isLogged" icon="warning" title="请先登录" sub-title="登录后即可向客服咨询并查看回复">
-        <template #extra>
-          <el-button type="primary" round @click="openAuth('login')">去登录</el-button>
-        </template>
-      </el-result>
-
-      <!-- 已登录：提交 + 我的咨询 -->
-      <template v-else>
-        <el-card shadow="never" class="form-card">
-          <template #header><span>✍️ 提交咨询</span></template>
-          <el-form :model="form" label-width="80px">
-            <el-form-item label="联系方式" prop="contact">
-              <el-input v-model="form.contact" placeholder="手机号 / 微信，方便客服联系（选填）" style="max-width: 320px" />
-            </el-form-item>
-            <el-form-item label="咨询内容" prop="question">
-              <el-input v-model="form.question" type="textarea" :rows="4" maxlength="500" show-word-limit placeholder="请描述您想咨询的问题，例如：想了解金毛幼犬的喂养注意事项" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" :loading="submitting" @click="submit">提交咨询</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-
-        <el-card shadow="never" class="list-card">
-          <template #header><span>📋 我的咨询（{{ myList.length }}）</span></template>
-          <div v-loading="loading">
-            <div class="consult-item" v-for="c in myList" :key="c.consultId">
-              <div class="q">
-                <span class="tag">问</span>
-                <div>
-                  <div class="q-text">{{ c.question }}</div>
-                  <div class="q-time">{{ fmt(c.createTime) }}</div>
-                </div>
-                <el-tag size="small" :type="c.status === '1' ? 'success' : 'info'" effect="light">
-                  {{ c.status === '1' ? '已回复' : '待回复' }}
-                </el-tag>
-              </div>
-              <div class="a" v-if="c.reply">
-                <span class="tag ans">答</span>
-                <div>
-                  <div class="a-text">{{ c.reply }}</div>
-                  <div class="a-time" v-if="c.replyBy">—— {{ c.replyBy }} · {{ fmt(c.replyTime) }}</div>
-                </div>
-              </div>
-              <div class="a pending" v-else>
-                <span class="tag ans">答</span>
-                <div class="a-text muted">客服正在处理中，请耐心等待～</div>
-              </div>
-            </div>
-            <el-empty v-if="!loading && !myList.length" description="暂无咨询，快来提问吧" />
-          </div>
-        </el-card>
-      </template>
+    <!-- 未登录 -->
+    <div class="ui-empty" v-if="!isLogged">
+      <p class="ui-empty__title">登录后即可咨询</p>
+      <p class="ui-empty__desc">咨询记录与回复都绑定在账号上，登录后可随时回看。</p>
+      <div class="ui-empty__act">
+        <button type="button" class="ui-btn ui-btn--solid" @click="openAuth('login')">去登录</button>
+      </div>
     </div>
+
+    <template v-else>
+      <!-- 提交区：两个字段平铺，字段之间只有留白与 1px 底线 -->
+      <section class="ask">
+        <div class="ui-sec__head">
+          <h2 class="ui-sec__title">提交咨询</h2>
+          <span class="ui-sec__hint">工作时间内会尽快回复</span>
+        </div>
+
+        <div class="ui-form">
+          <label class="ui-field">
+            <span class="ui-label">联系方式</span>
+            <el-input v-model="form.contact" placeholder="手机号 / 微信（选填，方便客服联系你）" />
+          </label>
+          <label class="ui-field">
+            <span class="ui-label">咨询内容 <em>*</em></span>
+            <el-input
+              v-model="form.question"
+              type="textarea"
+              :rows="4"
+              maxlength="500"
+              show-word-limit
+              placeholder="请描述你想咨询的问题，例如：想了解金毛幼犬的喂养注意事项"
+            />
+          </label>
+        </div>
+
+        <div class="ask__actions">
+          <button type="button" class="ui-btn ui-btn--solid" :disabled="submitting" @click="submit">
+            {{ submitting ? '提交中…' : '提交咨询' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- 记录区：一问一答成组，组与组之间用 1px 线切分 -->
+      <section class="mine">
+        <div class="ui-sec__head">
+          <h2 class="ui-sec__title">我的咨询</h2>
+          <span class="ui-sec__hint">{{ myList.length }} 条记录</span>
+        </div>
+
+        <div v-loading="loading">
+          <ul class="ui-list" v-if="myList.length">
+            <li class="ui-row qa" v-for="c in myList" :key="c.consultId">
+              <div class="qa__body">
+                <!-- 提问行 -->
+                <div class="qa__line">
+                  <span class="qa__tag">问</span>
+                  <p class="qa__text">{{ c.question }}</p>
+                  <span class="ui-chip" :class="c.status === '1' ? 'ui-chip--ok' : 'ui-chip--warn'">
+                    {{ c.status === '1' ? '已回复' : '待回复' }}
+                  </span>
+                </div>
+                <p class="qa__time">{{ fmt(c.createTime) }}</p>
+
+                <!-- 回复行：左侧竖线表示从属关系 -->
+                <div class="qa__answer">
+                  <span class="qa__tag qa__tag--ans">答</span>
+                  <div class="qa__ans-body">
+                    <p class="qa__text" :class="{ 'qa__text--muted': !answered(c) }">
+                      {{ answered(c) ? c.reply : '客服正在处理中，请耐心等待。' }}
+                    </p>
+                    <p class="qa__by" v-if="c.replyBy">—— {{ c.replyBy }} · {{ fmt(c.replyTime) }}</p>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+
+          <div class="ui-empty" v-else-if="!loading">
+            <p class="ui-empty__title">还没有咨询记录</p>
+            <p class="ui-empty__desc">在上面填写问题提交后，客服的回复会出现在这里。</p>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
@@ -78,6 +114,8 @@ const loading = ref(false)
 const myList = ref([])
 
 function fmt(d) { return d ? String(d).replace('T', ' ').slice(0, 19) : '—' }
+// 以状态为准：偶有「有回复内容但状态仍是待回复」的数据，避免出现「待回复」下面写着答复
+function answered(c) { return c.status === '1' && !!c.reply }
 
 async function submit() {
   if (!form.question.trim()) {
@@ -116,24 +154,78 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.consult { background: var(--bg-page); padding: 28px 16px; }
-.consult-inner { max-width: var(--container-sm); margin: 0 auto;
-  h1 { font-size: 22px; color: var(--text-1); margin: 0 0 6px; }
-  .sub { color: var(--text-3); font-size: 13px; margin: 0 0 20px; }
+// 页头 / 表单组 / 行列表 / 空态来自 .ui-* 基元；本页只写「一问一答」的层级关系。
+
+.ask { padding-top: 24px; }
+.ask__actions {
+  margin-top: 20px;
 }
-.form-card, .list-card { margin-bottom: 18px; border-radius: 14px; }
-.consult-item { border: 1px solid var(--border-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: var(--bg-page);
-  .q { display: flex; align-items: flex-start; gap: 10px;
-    .tag { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-500); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
-    .tag.ans { background: var(--success-500); }
-    .q-text { font-size: 14px; color: var(--text-1); line-height: 1.6; }
-    .q-time { font-size: 12px; color: var(--text-4); margin-top: 2px; }
-  }
-  .a { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-2);
-    .a-text { font-size: 14px; color: var(--text-2); line-height: 1.7;
-      &.muted { color: var(--text-4); }
-    }
-    .a-time { font-size: 12px; color: var(--text-4); margin-top: 2px; }
-  }
+
+.mine { padding-top: 34px; }
+
+.qa {
+  padding: 18px 12px;
+  align-items: flex-start;
+}
+.qa__body { flex: 1; min-width: 0; }
+
+// 提问行：问 / 正文 / 状态，三者一行；窄屏状态换行
+.qa__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.qa__tag {
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--brand-700);
+  text-align: center;
+}
+.qa__tag--ans { color: var(--success-500); }
+.qa__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+}
+.qa__text--muted { color: var(--text-3); }
+// 答复正文比提问轻一档，形成「问题在前、回复在后」的阅读顺序
+.qa__answer .qa__text { color: var(--text-2); }
+.qa__answer .qa__text--muted { color: var(--text-3); }
+.qa__time {
+  margin: 4px 0 0 28px;
+  font-size: 12px;
+  color: var(--text-4);
+  font-variant-numeric: tabular-nums;
+}
+
+// 回答块：与提问同构，但用左侧竖线 + 缩进表示「回复依附于这个问题」
+.qa__answer {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 0 0 0;
+  border-top: 1px solid var(--border-2);
+}
+.qa__ans-body { flex: 1; min-width: 0; }
+.qa__by {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+@media (max-width: 768px) {
+  .qa { padding: 16px 8px; }
+  .qa__line { flex-wrap: wrap; }
+  .qa__line .ui-chip { margin-left: 28px; }
+  .qa__text { font-size: 13.5px; }
+  .qa__time { margin-left: 28px; }
 }
 </style>

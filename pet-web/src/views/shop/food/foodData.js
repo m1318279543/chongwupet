@@ -1,16 +1,17 @@
-// 宠物粮专区数据（前端静态，覆盖网站内全部 7 类宠物）
+// 宠物粮专区兜底数据（接口不可用时整页退回此静态目录）
+// FOOD_CATEGORIES 只承担展示元数据（名称/配色），类目清单本身随商品接口（pet_goods.cat）派生；
 // 每类 2 款主推粮；image 统一放 public/images/food/
 // 字段：id 唯一标识 / cat 所属分类 / fid 后端评论/点赞业务ID(1001-1014) / name 名称 / spec 规格 / price 价格 / stage 适用阶段 / desc 简介
 //      tags 卖点 / nutrition 营养指标 / feeding 喂食建议 / storage 储存方式
 
 export const FOOD_CATEGORIES = [
-  { id: 'cat', name: '猫咪', emoji: '🐱', color: '#1f7a63' },
-  { id: 'dog', name: '狗狗', emoji: '🐶', color: '#5b8def' },
-  { id: 'rabbit', name: '兔子', emoji: '🐰', color: '#a8d5a2' },
-  { id: 'hamster', name: '仓鼠', emoji: '🐹', color: '#e6b980' },
-  { id: 'bird', name: '鸟类', emoji: '🐦', color: '#7ec8c8' },
-  { id: 'fish', name: '水族', emoji: '🐠', color: '#4db6c4' },
-  { id: 'reptile', name: '爬行宠物', emoji: '🦎', color: '#8d9b6a' }
+  { id: 'cat', name: '猫咪', color: '#1f7a63' },
+  { id: 'dog', name: '狗狗', color: '#5b8def' },
+  { id: 'rabbit', name: '兔子', color: '#a8d5a2' },
+  { id: 'hamster', name: '仓鼠', color: '#e6b980' },
+  { id: 'bird', name: '鸟类', color: '#7ec8c8' },
+  { id: 'fish', name: '水族', color: '#4db6c4' },
+  { id: 'reptile', name: '爬行宠物', color: '#8d9b6a' }
 ]
 
 // 每款：id 唯一标识 / fid 后端业务ID / name 名称 / spec 规格 / price 价格 / stage 适用阶段 / desc 简介 / image 配图

@@ -111,10 +111,6 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.GET, "/pet/health/**").permitAll()
                     // 宠物喜好：游客可读，后台维护需权限
                     .requestMatchers(HttpMethod.GET, "/pet/preference/**").permitAll()
-                    // 宠物常见健康问题（健康百科/疑难杂症）：游客可读，后台维护需权限
-                    .requestMatchers(HttpMethod.GET, "/pet/issue/**").permitAll()
-                    // 宠物医生智能问答：公开
-                    .requestMatchers(HttpMethod.GET, "/pet/issue/doctor/**").permitAll()
                     // 预约时段查询：游客可看（提交预约仍需登录）
                     .requestMatchers(HttpMethod.GET, "/pet/appointment/slots").permitAll()
                     // 商品与宠物粮：游客可浏览列表与详情（下单仍需登录）

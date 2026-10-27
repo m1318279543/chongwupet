@@ -1,59 +1,109 @@
 <template>
-  <div class="my-apt">
-    <div class="page-head">
-      <h1>📅 我的预约</h1>
-      <p>查看你的预约进度，商家会及时处理</p>
-    </div>
-    <div class="guest-alert" v-if="!userStore.token">
-      <span>👀 您正在以游客身份浏览，</span>
-      <el-button type="primary" link @click="openAuth('login')">登录</el-button>
-      <span>后可查看和管理自己的预约</span>
-    </div>
-    <div class="content" v-loading="loading">
-      <div v-if="list.length === 0 && !loading" class="empty">
-        <span class="icon">📭</span>
-        <p>还没有预约记录</p>
-        <el-button type="primary" round @click="$router.push('/shop/home')">去预约</el-button>
+  <div class="ui-page ui-page--md">
+    <!-- 页面头 -->
+    <header class="ui-head">
+      <div class="ui-head__main">
+        <p class="ui-eyebrow">Appointments</p>
+        <h1 class="ui-title">我的预约</h1>
+        <p class="ui-sub">预约进度与门店工单在这里同步，接单后以工单状态为准。</p>
       </div>
-      <div class="timeline" v-else>
-        <div class="apt-item" v-for="item in list" :key="item.appointmentId">
-          <div class="apt-avatar" :style="{ background: petGradient(item.petId) }">
-            <img v-if="isImage(item.image)" :src="item.image" :alt="item.petName" class="apt-photo" loading="lazy" />
-            <span v-else>{{ petEmoji(item.categoryId) }}</span>
-          </div>
-          <div class="apt-body">
-            <div class="apt-top">
-              <span class="pet-name">{{ item.petName || '宠物' }}</span>
-              <div class="apt-ops">
-                <el-tag :type="statusType(item.status)" size="small">{{ statusText(item.status) }}</el-tag>
-                <el-button
-                  v-if="canCancel(item.status)"
-                  type="danger" link size="small"
-                  :loading="cancelingId === item.appointmentId"
-                  @click="cancelApt(item)"
-                >取消预约</el-button>
-              </div>
-            </div>
-            <div class="apt-meta">
-              <span class="meta-item"><el-icon><Calendar /></el-icon> {{ fmtTime(item.appointmentDate) }}</span>
-              <span class="meta-item"><el-icon><Phone /></el-icon> {{ item.contactPhone }}</span>
-            </div>
-            <div class="apt-remark" v-if="item.remark">留言：{{ item.remark }}</div>
+      <div class="ui-head__aside">
+        <span class="ui-count"><b>{{ list.length }}</b>条预约</span>
+      </div>
+    </header>
 
-            <!-- 服务工单：预约被门店接单后才算真正排上，进度看这里 -->
-            <div class="svc" v-if="svcOf(item)">
-              <span class="svc-no">工单 {{ svcOf(item).serviceNo }}</span>
-              <el-tag size="small" :type="svcType(svcOf(item).status)">{{ svcText(svcOf(item).status) }}</el-tag>
-              <span class="svc-staff" v-if="svcOf(item).staffName">执行：{{ svcOf(item).staffName }}</span>
-              <el-button v-if="svcOf(item).status === '3' && !svcOf(item).score" link type="primary" size="small" @click="openEval(svcOf(item))">评价服务</el-button>
-              <span class="svc-score" v-if="svcOf(item).score">已评 {{ svcOf(item).score }} 分</span>
-            </div>
-          </div>
+    <!-- 游客提示：一条左色线，不做提示卡 -->
+    <p v-if="!userStore.token" class="apt-note">
+      当前为游客浏览，
+      <button type="button" class="ui-linkbtn" @click="openAuth('login')">登录</button>
+      后可查看和管理自己的预约。
+    </p>
+
+    <section class="apt-body" v-loading="loading">
+      <!-- 定高列表：每页 5 条（单行 126px），超出靠底部翻页 -->
+      <div class="ui-box apt-box" v-if="list.length">
+        <div class="ui-box__body">
+          <ul class="ui-list">
+            <li v-for="item in pagedList" :key="item.appointmentId" class="ui-row">
+              <div class="ui-thumb">
+                <img
+                  v-if="isImage(item.image)"
+                  :src="item.image"
+                  :alt="item.petName"
+                  loading="lazy"
+                />
+                <span v-else class="ui-thumb__ph">暂无图</span>
+              </div>
+
+              <div class="ui-row__main">
+                <div class="ui-row__title">
+                  {{ item.petName || '原宠物已下架' }}
+                  <span class="ui-chip" :class="statusClass(item.status)">{{ statusText(item.status) }}</span>
+                </div>
+
+                <div class="ui-row__meta">
+                  <span class="meta-item"><el-icon><Calendar /></el-icon>{{ fmtTime(item.appointmentDate) }}</span>
+                  <span class="meta-item"><el-icon><Phone /></el-icon>{{ item.contactPhone }}</span>
+                  <!-- 留言并入元信息行：既保留信息，又不让某一条把行高撑破 -->
+                  <span class="meta-item meta-item--remark" v-if="item.remark" :title="item.remark">
+                    留言：{{ item.remark }}
+                  </span>
+                </div>
+
+                <!-- 服务工单：左侧竖线 + 缩进表示「依附于这条预约」的下级信息 -->
+                <div class="svc" v-if="svcOf(item)">
+                  <span class="svc__no">工单 {{ svcOf(item).serviceNo }}</span>
+                  <span class="ui-chip" :class="svcClass(svcOf(item).status)">{{ svcText(svcOf(item).status) }}</span>
+                  <span class="svc__staff" v-if="svcOf(item).staffName">执行 · {{ svcOf(item).staffName }}</span>
+                  <button
+                    v-if="svcOf(item).status === '3' && !svcOf(item).score"
+                    type="button"
+                    class="ui-linkbtn"
+                    @click="openEval(svcOf(item))"
+                  >评价服务</button>
+                  <span class="svc__score" v-if="svcOf(item).score">已评 {{ svcOf(item).score }} 分</span>
+                </div>
+              </div>
+
+              <div class="ui-row__end">
+                <button
+                  v-if="canCancel(item.status)"
+                  type="button"
+                  class="ui-linkbtn ui-linkbtn--danger"
+                  :disabled="cancelingId === item.appointmentId"
+                  @click="cancelApt(item)"
+                >{{ cancelingId === item.appointmentId ? '取消中…' : '取消预约' }}</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 翻页条：位置固定，翻页时页脚不动 -->
+        <div class="ui-box__foot">
+          <span class="ui-box__count">第 {{ rangeStart }}–{{ rangeEnd }} 条 / 共 {{ list.length }} 条</span>
+          <Pagination
+            v-if="list.length > PAGE_SIZE"
+            :total="list.length"
+            v-model:page="page"
+            :limit="PAGE_SIZE"
+            :page-sizes="[PAGE_SIZE]"
+            :background="false"
+            layout="prev, pager, next"
+            :auto-scroll="false"
+          />
         </div>
       </div>
-    </div>
 
-    <!-- 服务评价 -->
+      <div v-else-if="!loading" class="ui-empty">
+        <p class="ui-empty__title">还没有预约记录</p>
+        <p class="ui-empty__desc">在宠物档案页提交预约后，进度会出现在这里。</p>
+        <div class="ui-empty__act">
+          <button type="button" class="ui-btn ui-btn--line" @click="$router.push('/shop/home')">去看宠物</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 服务评价（弹窗内部属于允许使用「面」的例外） -->
     <el-dialog v-model="evalOpen" title="评价本次服务" width="420px" append-to-body>
       <div class="eval-box">
         <p class="eval-title">{{ evalRow.itemName }}</p>
@@ -70,13 +120,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, inject } from 'vue'
+import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Phone } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
-import { listPetInfo } from '@/api/pet/petInfo'
 import { listMyServiceOrders, evaluateServiceOrder } from '@/api/pet/petService'
 import { useUserStore } from '@/store/modules/user'
+import Pagination from '@/components/Pagination/index.vue'
 
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
@@ -89,9 +139,23 @@ const evalRow = ref({})
 const evalSubmitting = ref(false)
 const evalForm = reactive({ score: 5, comment: '' })
 
+// 定高列表分页：每页 5 条（单行 126px，5 行铺满 630px 的列表区）
+const PAGE_SIZE = 5
+const page = ref(1)
+const pagedList = computed(() => list.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+const rangeStart = computed(() => (list.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
+const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, list.value.length))
+watch(() => list.value.length, (len) => {
+  if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
+})
+
 function svcOf(item) { return serviceMap.value[item.appointmentId] }
 function svcText(s) { return { 0: '待接单', 1: '已接单', 2: '服务中', 3: '已完成', 4: '已取消', 5: '爽约' }[s] || '' }
-function svcType(s) { return { 0: 'warning', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger' }[s] || 'info' }
+
+// 状态用 1px 描边小标签表达，不用实心色块；语义靠色相区分
+function statusText(s) { return ['待处理', '已确认', '已完成', '已取消'][s] || '未知' }
+function statusClass(s) { return { 0: 'ui-chip--warn', 1: 'ui-chip--brand', 2: 'ui-chip--ok' }[s] || '' }
+function svcClass(s) { return { 0: 'ui-chip--warn', 1: 'ui-chip--brand', 2: 'ui-chip--brand', 3: 'ui-chip--ok', 5: 'ui-chip--danger' }[s] || '' }
 
 function openEval(row) {
   evalRow.value = row
@@ -128,20 +192,12 @@ async function loadService() {
   }
 }
 
-const emojiPool = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🐟', '🦎']
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
-function petEmoji(c) { return emojiPool[(c || 0) % emojiPool.length] }
-function petGradient(id) {
-  const colors = [['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0']]
-  return `linear-gradient(135deg, ${colors[(id||0)%colors.length][0]}, ${colors[(id||0)%colors.length][1]})`
-}
 function fmtTime(v) {
   if (!v) return '—'
   const str = String(v).replace('T', ' ')
   return str.slice(5, 16)
 }
-function statusText(s) { return ['待处理', '已确认', '已完成', '已取消'][s] || '未知' }
-function statusType(s) { return ['warning', 'primary', 'success', 'info'][s] || 'info' }
 // 仅「待处理 / 已确认」可取消
 function canCancel(s) { return s === '0' || s === '1' }
 
@@ -176,18 +232,9 @@ function cancelApt(item) {
 async function loadData() {
   loading.value = true
   try {
-    const [aptRes, petRes] = await Promise.all([
-      listMyAppointments(),
-      listPetInfo({ pageNum: 1, pageSize: 1000 }).catch(() => ({ rows: [] }))
-    ])
-    const pets = petRes.rows || []
-    const petMap = {}
-    pets.forEach(p => petMap[p.petId] = p)
-    list.value = (aptRes.data || []).map(a => ({
-      ...a,
-      petName: petMap[a.petId]?.petName,
-      categoryId: petMap[a.petId]?.categoryId
-    }))
+    // /mine 接口已 join 宠物表返回 petName/image/categoryId，无需再拉全量宠物列表
+    const aptRes = await listMyAppointments()
+    list.value = aptRes.data || []
   } catch (e) {
     ElMessage.error(e?.message || '加载失败')
   } finally {
@@ -202,37 +249,66 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.eval-box { .eval-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-1); } }
+// 骨架（页头/行列表/状态标签/空态）全部来自 .ui-* 基元，
+// 这里只处理「留言」和「工单」两处从属信息的分层。
 
-.my-apt { max-width: var(--container-md); margin: 0 auto; padding: 32px 24px; }
-.guest-alert { background: var(--brand-50); border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; font-size: 14px; color: var(--brand-800); display: flex; align-items: center; gap: 4px; }
-.page-head { margin-bottom: 24px;
-  h1 { font-size: 26px; color: var(--text-1); margin: 0 0 4px; }
-  p { color: var(--text-3); margin: 0; }
+.apt-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 22px 0 0;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--brand-300);
+  font-size: 13.5px;
+  color: var(--text-2);
 }
-.empty { text-align: center; padding: 80px 0; color: var(--text-4);
-  .icon { font-size: 56px; display: block; margin-bottom: 12px; }
+
+.apt-body { margin-top: 8px; min-height: 240px; }
+
+// 定高后每条必须等高：留言已并入元信息行并做单行省略，避免撑破行高
+.apt-box {
+
+  .ui-row__meta { flex-wrap: nowrap; min-width: 0; }
+  .meta-item--remark {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
-.timeline { display: flex; flex-direction: column; gap: 16px; }
-.apt-item {
-  background: #fff; border-radius: 12px; padding: 20px; display: flex; gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
-  .apt-avatar { flex: 0 0 64px; width: 64px; height: 64px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; overflow: hidden;
-    .apt-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
-  }
-  .apt-body { flex: 1; }
-  .apt-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
-    .pet-name { font-size: 18px; font-weight: 600; color: var(--text-1); }
-    .apt-ops { display: flex; align-items: center; gap: 12px; }
-  }
-  .apt-meta { display: flex; gap: 20px; color: var(--text-2); font-size: 14px;
-    .meta-item { display: flex; align-items: center; gap: 4px; }
-  }
-  .svc { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-1); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    .svc-no { font-size: 12px; color: var(--text-3); }
-    .svc-staff { font-size: 12px; color: var(--text-2); }
-    .svc-score { font-size: 12px; color: var(--warning-500); }
-  }
-  .apt-remark { margin-top: 8px; color: var(--text-3); font-size: 13px; background: var(--bg-page); padding: 8px 12px; border-radius: 6px; }
+
+// 元信息里的小图标：只做扫描辅助，颜色压到最弱
+.ui-row__meta .meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-3);
+  .el-icon { font-size: 13px; color: var(--text-4); }
+}
+
+// 工单：依附于预约的下级信息 —— 缩进 + 左侧竖线，不用第二个框
+.svc {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  padding: 10px 0 2px 12px;
+  border-left: 2px solid var(--brand-200);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.svc__no { font-variant-numeric: tabular-nums; color: var(--text-2); }
+.svc__staff { color: var(--text-3); }
+.svc__score { color: var(--warning-500); }
+
+.eval-box {
+  .eval-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-1); }
+}
+
+@media (max-width: 768px) {
+  .ui-row__end { justify-content: flex-end; }
+  .svc { gap: 4px 10px; }
 }
 </style>

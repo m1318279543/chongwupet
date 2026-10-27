@@ -1,13 +1,20 @@
 <template>
-  <div class="food-page">
-    <section class="hero">
-      <h1>🍚 宠物粮 · 科学喂养每一餐</h1>
-      <p>覆盖店内全部 7 类宠物，从主粮到营养补充，按品类挑对口好粮</p>
-    </section>
+  <div class="ui-page ui-page--lg food-page">
+    <!-- 页面头：与其他前台页同一套 ui-head 语言，1px 线收口 -->
+    <header class="ui-head">
+      <div class="ui-head__main">
+        <p class="ui-eyebrow">Pet Food</p>
+        <h1 class="ui-title">宠物粮 · 科学喂养每一餐</h1>
+        <p class="ui-sub">覆盖店内全部宠物品类，从主粮到营养补充，按品类挑对口好粮</p>
+      </div>
+      <div class="ui-head__aside">
+        <span class="ui-count"><b>{{ filtered.length }}</b>款在售</span>
+      </div>
+    </header>
 
-    <nav class="cat-tabs">
-      <!-- 选中态统一走品牌行动色，分类色只留作小圆点，避免 7 种颜色抢主色 -->
-      <button v-for="c in FOOD_CATEGORIES" :key="c.id"
+    <nav class="cat-tabs" aria-label="按品类筛选">
+      <!-- 类目随商品接口派生（foodData 只提供名称/配色元数据），后台上下架新品类前台自动跟随 -->
+      <button v-for="c in categories" :key="c.id"
         class="cat-tab" :class="{ active: active === c.id }"
         @click="active = c.id">
         <i class="dot" :style="{ background: c.color }"></i>{{ c.name }}
@@ -15,31 +22,30 @@
     </nav>
 
     <section class="grid">
-      <div class="card" v-for="(p, i) in filtered" :key="i" @click="openDetail(p)">
+      <article class="card" v-for="(p, i) in filtered" :key="i" @click="openDetail(p)">
         <div class="thumb">
           <img :src="p.image" :alt="p.name" loading="lazy" />
-          <span class="view-mask">查看详情 ›</span>
         </div>
         <div class="body">
           <div class="name">{{ p.name }}</div>
           <div class="meta">
             <span class="spec">{{ p.spec }}</span>
-            <el-tag size="small" type="success" effect="plain">{{ p.stage }}</el-tag>
             <el-tag v-if="p.stock !== undefined" size="small" :type="p.stock > 10 ? 'info' : (p.stock > 0 ? 'warning' : 'danger')" effect="plain">
               {{ p.stock > 0 ? '库存 ' + p.stock : '暂时缺货' }}
             </el-tag>
           </div>
           <div class="desc">{{ p.desc }}</div>
           <div class="price-row">
-            <span class="rating-tag" v-if="foodRating(p.fid)">⭐ {{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
+            <span class="rating-tag" v-if="foodRating(p.fid)"><el-icon><Star /></el-icon>{{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
             <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
+            <span class="go">详情<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
           </div>
         </div>
-      </div>
+      </article>
     </section>
 
     <section class="tip">
-      <h3>💡 换粮小贴士</h3>
+      <h3>换粮小贴士</h3>
       <p>
         新粮请按「7 日过渡法」逐步替换旧粮（旧 75% → 50% → 25% → 全换新），观察排便与食欲，减少肠胃应激。
         具体喂量参考包装建议并结合宠物体型调整；水族、爬行类请配合对应温控与水质管理。
@@ -71,8 +77,8 @@
             <li><span class="k">储存方式</span><span class="v">{{ detail.storage }}</span></li>
           </ul>
           <div class="detail-actions">
-            <el-button type="warning" size="large" round :disabled="detail && detail.stock === 0" @click="addToCart(detail)">
-              {{ detail && detail.stock === 0 ? '暂时缺货' : '🛒 加入购物车' }}
+            <el-button type="primary" size="large" round :disabled="detail && detail.stock === 0" @click="addToCart(detail)">
+              {{ detail && detail.stock === 0 ? '暂时缺货' : '加入购物车' }}
             </el-button>
             <span class="stock-hint" v-if="detail">
               {{ detail.stock > 0 ? '现货 ' + detail.stock + ' 件' : '补货中，可先咨询客服' }}
@@ -90,14 +96,13 @@
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
 import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
-import { onMounted } from 'vue'
 
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
@@ -143,6 +148,24 @@ async function loadGoods() {
 
 const filtered = computed(() => goodsList.value.filter(p => p.cat === active.value))
 
+// 类目清单：随商品数据派生（按 FOOD_CATEGORIES 元数据顺序排，出现新 cat 值则追加在末尾）
+const CAT_META = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.id, c]))
+const categories = computed(() => {
+  const seen = []
+  for (const p of goodsList.value) {
+    if (p.cat && !seen.includes(p.cat)) seen.push(p.cat)
+  }
+  // 元数据顺序优先，未知类目兜底追加
+  const ordered = [
+    ...FOOD_CATEGORIES.filter(c => seen.includes(c.id)),
+    ...seen.filter(id => !CAT_META[id]).map(id => ({ id, name: id, color: '#9aa79f' }))
+  ]
+  return ordered
+})
+watch(categories, (list) => {
+  if (list.length && !list.some(c => c.id === active.value)) active.value = list[0].id
+})
+
 // 详情弹窗
 // 评分角标：fid -> {avg,count}
 const ratingMap = ref({})
@@ -165,7 +188,7 @@ onMounted(() => {
 
 const detailVisible = ref(false)
 const detail = ref(null)
-const currentCat = computed(() => FOOD_CATEGORIES.find(c => c.id === detail.value?.cat) || {})
+const currentCat = computed(() => categories.value.find(c => c.id === detail.value?.cat) || {})
 function openDetail(p) {
   detail.value = p
   detailVisible.value = true
@@ -185,57 +208,55 @@ function addToCart(p) {
 <style scoped lang="scss">
 .stock-hint { margin-left: 12px; font-size: 12px; color: var(--text-3); }
 
-.food-page { max-width: var(--container-lg); margin: 0 auto; padding: 24px; }
-.hero {
-  text-align: center; padding: 36px 16px;
-  background: linear-gradient(135deg, var(--brand-50), var(--brand-100));
-  border-radius: 16px; margin-bottom: 24px;
-  h1 { font-size: 28px; color: var(--brand-500); margin: 0 0 8px; }
-  p { color: var(--text-3); margin: 0; font-size: 15px; }
-}
-.cat-tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 28px; }
+.food-page { padding-top: 40px; }
+/* 页头复用 ui-head（自带 1px 收口线），这里只控制筛选行与列表的间距 */
+.cat-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 24px; }
 .cat-tab {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 18px; border: 1px solid var(--border-1); background: #fff;
-  border-radius: 999px; cursor: pointer; font-size: 15px; color: var(--text-2);
-  transition: all .2s;
+  height: 36px; padding: 0 15px; border: 1px solid var(--border-1); background: var(--bg-card);
+  border-radius: var(--radius-pill); cursor: pointer; font-size: 13.5px; color: var(--text-2);
+  font-family: inherit; transition: all .16s;
   .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  &:hover { border-color: var(--brand-300); color: var(--brand-700); }
+  &:hover { border-color: var(--brand-200); color: var(--brand-700); background: var(--brand-50); }
   &.active { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600;
     .dot { background: rgba(255, 255, 255, .75) !important; } }
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; }
+
+/* 网格：与首页宠物卡同一套扁平语言——无卡壳，靠图片圆角与 hover 细描边 */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 26px 20px; }
 .card {
-  background: #fff; border-radius: 14px; overflow: hidden; cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, .06);
-  transition: transform .2s, box-shadow .2s;
-  &:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0, 0, 0, .1); }
+  background: none; border: 0; cursor: pointer; text-align: left;
+  &:hover .thumb { box-shadow: 0 0 0 1px var(--brand-200); }
   .thumb {
-    position: relative; height: 200px; background: var(--bg-page);
-    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    position: relative; height: 200px; background: var(--bg-sunken);
+    border-radius: var(--radius-md); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow .2s;
     img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
-    &:hover img { transform: scale(1.06); }
-    .view-mask {
-      position: absolute; right: 10px; bottom: 10px;
-      background: rgb(var(--brand-500-rgb) / .92); color: #fff;
-      font-size: 12px; padding: 4px 10px; border-radius: 12px;
-      opacity: 0; transform: translateY(6px); transition: all .2s;
-    }
-    &:hover .view-mask { opacity: 1; transform: translateY(0); }
+    &:hover img { transform: scale(1.05); }
   }
-  .body { padding: 16px; }
-  .name { font-size: 16px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; }
-  .meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .body { padding: 12px 2px 0; }
+  .name { font-size: 15.5px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+  .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .spec { font-size: 13px; color: var(--text-3); }
   .desc { font-size: 13px; color: var(--text-2); line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
-  .price { color: var(--brand-500); font-size: 20px; font-weight: 700;
-    .unit { font-size: 12px; color: var(--text-4); font-weight: 400; margin-left: 2px; }
+  .price-row { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: var(--rule-soft); }
+  .price { color: var(--price); font-size: 19px; font-weight: 700; margin-left: auto;
+    .unit { font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 2px; }
+  }
+  .go { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 600;
+    color: var(--text-3); transition: color .16s;
+    svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .card:hover & { color: var(--brand-700); }
   }
 }
+.rating-tag { font-size: 12px; color: var(--brand-700); background: var(--brand-50); border-radius: var(--radius-pill);
+  padding: 2px 8px; white-space: nowrap; }
+
+/* 换粮贴士：去底色面板，改 1px 顶线 + 标题承接 */
 .tip {
-  margin-top: 32px; padding: 20px 24px;
-  background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 12px;
-  h3 { margin: 0 0 8px; color: var(--brand-500); font-size: 16px; }
+  margin-top: 48px; padding-top: 24px; border-top: var(--rule);
+  h3 { margin: 0 0 8px; color: var(--text-1); font-size: 16px; }
   p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.7; }
 }
 
@@ -244,29 +265,29 @@ function addToCart(p) {
   :deep(.el-dialog__body) { padding: 0; }
   .food-detail-scroll { max-height: 86vh; overflow-y: auto; }
   .food-social { padding: 0 18px 20px;
-    :deep(.pet-social) { margin-top: 0; border-radius: 12px; padding: 22px 22px; }
+    :deep(.pet-social) { margin-top: 0; }
   }
   .detail { display: flex; gap: 0; min-height: 360px;
     .detail-left { width: 320px; flex-shrink: 0; background: var(--bg-page);
       img { width: 100%; height: 100%; max-height: 420px; object-fit: cover; display: block; }
     }
     .detail-right { flex: 1; padding: 24px 28px; }
-    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--brand-500);
-      background: var(--brand-50); padding: 3px 12px; border-radius: 12px; margin-bottom: 12px;
+    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--brand-700);
+      background: var(--brand-50); padding: 3px 12px; border-radius: var(--radius-pill); margin-bottom: 12px;
       .emoji { font-size: 16px; }
     }
     .detail-name { font-size: 22px; color: var(--text-1); margin: 0 0 10px; }
-    .detail-price { color: var(--brand-500); font-size: 26px; font-weight: 700; margin-bottom: 12px;
-      .unit { font-size: 13px; color: var(--text-4); font-weight: 400; margin-left: 3px; }
+    .detail-price { color: var(--price); font-size: 26px; font-weight: 700; margin-bottom: 12px;
+      .unit { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 3px; }
     }
     .detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
     .detail-list { list-style: none; margin: 0 0 20px; padding: 0;
-      li { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 14px;
+      li { display: flex; gap: 14px; padding: 10px 0; border-bottom: var(--rule-soft); font-size: 14px;
         .k { color: var(--text-3); width: 76px; flex-shrink: 0; }
         .v { color: var(--text-1); line-height: 1.6; flex: 1; }
       }
     }
-    .detail-actions { display: flex; gap: 14px; flex-wrap: wrap;
+    .detail-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
       .el-button { flex: 1; min-width: 140px; font-weight: 600; }
     }
   }
@@ -276,33 +297,27 @@ function addToCart(p) {
     .detail-left { width: 100%; img { max-height: min(240px, 30vh); } }
   }
 
-  /* 手机端：单列大图改为两列小卡，图片等比例缩小（1:1），一屏可见多款 */
-  .food-page { padding: 16px 12px; }
-  .hero { padding: 22px 12px; margin-bottom: 16px;
-    h1 { font-size: 20px; margin-bottom: 6px; }
-    p { font-size: 13px; }
-  }
-  .cat-tabs { gap: 8px; margin-bottom: 16px; }
-  .cat-tab { padding: 6px 12px; font-size: 13px;
-    .emoji { font-size: 15px; }
-  }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .card { border-radius: 10px;
-    .thumb { height: auto; aspect-ratio: 1 / 1; }
-    .body { padding: 10px 10px 12px; }
+  /* 手机端：两列小卡，图片等比（1:1），一屏可见多款 */
+  .food-page { padding: 24px 12px 60px; }
+  .cat-tabs { gap: 8px; margin: 18px 0 16px; }
+  .cat-tab { height: 32px; padding: 0 12px; font-size: 13px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 10px; }
+  .card {
+    .thumb { height: auto; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
+    .body { padding: 9px 1px 0; }
     .name { font-size: 13px; margin-bottom: 4px; }
     .meta { margin-bottom: 4px;
       .spec { font-size: 12px; }
     }
     .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
-    .price-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.rating-tag { font-size: 12px; color: var(--brand-700); background: var(--brand-50); border-radius: 10px;
-  padding: 2px 8px; white-space: nowrap; }
-.price { font-size: 15px;
+    .price-row { gap: 6px; padding-top: 8px; }
+  .rating-tag { font-size: 11px; padding: 1px 6px; }
+  .price { font-size: 15px;
       .unit { font-size: 11px; }
     }
+  .go { display: none; }
   }
-  .tip { padding: 14px 16px; margin-top: 20px;
+  .tip { margin-top: 32px; padding-top: 18px;
     h3 { font-size: 14px; }
     p { font-size: 13px; }
   }

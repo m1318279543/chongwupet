@@ -12,7 +12,7 @@
           进入管理后台
         </el-button>
       </div>
-      <p class="nf-known">常用入口：<a @click="router.push('/shop/match')">AI 选宠</a> · <a @click="router.push('/shop/food')">宠物粮</a> · <a @click="router.push('/shop/order')">我的订单</a></p>
+      <p class="nf-known">常用入口：<a @click="router.push('/shop/match')">智能选宠</a> · <a @click="router.push('/shop/food')">宠物粮</a> · <a @click="router.push('/shop/order')">我的订单</a></p>
     </div>
   </div>
 </template>

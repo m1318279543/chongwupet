@@ -19,7 +19,7 @@ import com.ruoyi.system.service.IPetDashboardService;
  * 数据看板统计 Service 实现
  *
  * 设计要点：
- * 1. 所有数据来自业务表实时聚合（pet_appointment / pet_cart / pet_consult / pet_doctor_consult ...），
+ * 1. 所有数据来自业务表实时聚合（pet_appointment / pet_cart / pet_consult ...），
  *    前端不保存任何历史快照，切换时间范围即重新查询真实历史数据；
  * 2. 按天补零，保证趋势折线在无数据日期上连续；
  * 3. 一次请求返回看板全部区块，减少公网隧道下的往返次数。
@@ -90,7 +90,6 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         long orders = num(cur.get("orders")).longValue();
         double revenue = round(num(cur.get("revenue")).doubleValue(), 2);
         long consults = num(cur.get("consults")).longValue();
-        long doctorConsults = num(cur.get("doctorConsults")).longValue();
         long favorites = num(cur.get("favorites")).longValue();
         long comments = num(cur.get("comments")).longValue();
         long likes = num(cur.get("likes")).longValue();
@@ -102,7 +101,6 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         o.put("orders", orders);
         o.put("revenue", revenue);
         o.put("consults", consults);
-        o.put("doctorConsults", doctorConsults);
         o.put("favorites", favorites);
         o.put("comments", comments);
         o.put("likes", likes);
@@ -157,7 +155,6 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         List<Double> revenue = new ArrayList<>();
         List<Long> cancelledOrders = new ArrayList<>();
         List<Long> consults = new ArrayList<>();
-        List<Long> doctorConsults = new ArrayList<>();
         List<Long> favorites = new ArrayList<>();
         List<Long> comments = new ArrayList<>();
         List<Long> likes = new ArrayList<>();
@@ -173,7 +170,6 @@ public class PetDashboardServiceImpl implements IPetDashboardService
             revenue.add(row == null ? 0D : round(num(row.get("revenue")).doubleValue(), 2));
             cancelledOrders.add(row == null ? 0L : num(row.get("cancelledOrders")).longValue());
             consults.add(row == null ? 0L : num(row.get("consults")).longValue());
-            doctorConsults.add(row == null ? 0L : num(row.get("doctorConsults")).longValue());
             favorites.add(row == null ? 0L : num(row.get("favorites")).longValue());
             comments.add(row == null ? 0L : num(row.get("comments")).longValue());
             likes.add(row == null ? 0L : num(row.get("likes")).longValue());
@@ -187,7 +183,6 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         t.put("revenue", revenue);
         t.put("cancelledOrders", cancelledOrders);
         t.put("consults", consults);
-        t.put("doctorConsults", doctorConsults);
         t.put("favorites", favorites);
         t.put("comments", comments);
         t.put("likes", likes);

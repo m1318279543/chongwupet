@@ -1,0 +1,597 @@
+// ============================================================
+// 极简排版基元层 flat.scss
+// ------------------------------------------------------------
+// 为什么需要这一层：
+//   全站有 20+ 个功能页，如果每个页面自己写边框 / 字号 / 间距，
+//   「不用卡片」就会退化成 20 套互不一致的排版。这里把分割内容
+//   的四种手段收敛成可复用基元：
+//     1) 1px 分割线（--rule / --rule-soft）
+//     2) 留白（--gap-*）
+//     3) 字号与字重层级（.ui-title / .ui-sec__title / .ui-label）
+//     4) 对齐与栅格（Flex 一维 / Grid 二维）
+//
+// 约束：
+//   * 本文件只新增 .ui-* 类名，不覆盖任何既有类，也不改 Element Plus，
+//     所以尚未重构的页面（如「在售宠物」首页）完全不受影响。
+//   * 圆角硬上限 --r-3 = 8px；本层不定义任何 box-shadow。
+//   * 唯一允许「面」的例外是 .ui-panel（Modal 内部 / 必须物理隔离的
+//     复杂操作组件），且只用 1px 描边。
+// ============================================================
+
+:root {
+  // ---- 圆角：3 档封顶 8px ----
+  --r-1: 4px; // 标签、角标
+  --r-2: 6px; // 输入框、按钮、缩略图
+  --r-3: 8px; // 唯一允许的面板圆角（硬上限）
+
+  // ---- 分割线：全站只有两种 ----
+  --rule: 1px solid var(--border-1); // 区块级（章节、表头）
+  --rule-soft: 1px solid var(--border-2); // 行级（列表行、表格行）
+
+  // ---- 斑马纹 / 悬停底：用极浅底色划分区块，替代悬浮卡片 ----
+  --zebra: #f9faf9;
+  --row-hover: #f6f9f7;
+
+  // ---- 垂直节奏 ----
+  --gap-1: 6px;
+  --gap-2: 12px;
+  --gap-3: 20px;
+  --gap-4: 32px;
+  --gap-5: 48px;
+}
+
+/* ============================================================
+   1. 页面骨架
+   ============================================================ */
+.ui-page {
+  width: 100%;
+  max-width: var(--container-lg);
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.ui-page--md { max-width: var(--container-md); }
+.ui-page--sm { max-width: var(--container-sm); }
+
+/* ============================================================
+   2. 页面头：标题在左、统计/操作在右，靠一条 1px 线收口
+   ============================================================ */
+.ui-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: var(--rule);
+}
+.ui-head__main { min-width: 0; }
+.ui-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.ui-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  color: var(--text-1);
+}
+.ui-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-3);
+}
+// 右侧数字：靠字重与字号区分，不靠色块
+.ui-head__aside {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+.ui-count {
+  font-size: 12.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.ui-count b {
+  margin-right: 3px;
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   3. 区块：标题 + 一条细线，绝不套壳
+   ============================================================ */
+.ui-sec { padding-top: 36px; }
+.ui-sec__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: var(--rule);
+}
+.ui-sec__title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: .01em;
+  color: var(--text-1);
+}
+.ui-sec__hint {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.ui-sec__aside {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ============================================================
+   4. 行列表：流式阅读 / 条目清单的主引擎
+   <ul class="ui-list"><li class="ui-row">…</li></ul>
+   ============================================================ */
+.ui-list { list-style: none; margin: 0; padding: 0; }
+.ui-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 12px;
+  margin: 0 -12px;
+  border-bottom: var(--rule-soft);
+  transition: background-color .16s ease;
+}
+.ui-row:last-child { border-bottom: 0; }
+.ui-row--link { cursor: pointer; }
+.ui-row--link:hover,
+.ui-row--link:focus-visible { background: var(--row-hover); }
+.ui-row__main { flex: 1; min-width: 0; }
+.ui-row__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+.ui-row__meta {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-size: 12.5px;
+  color: var(--text-3);
+  line-height: 1.6;
+}
+// 元信息之间的「·」分隔，比一排小标签安静
+.ui-row__meta > span + span::before {
+  content: '·';
+  margin: 0 8px;
+  color: var(--text-4);
+}
+.ui-row__end {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.ui-row__ops {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+// 价格列固定宽度 + 右对齐，保证右侧操作按钮在整列里竖直对齐
+.ui-row__price {
+  min-width: 92px;
+  text-align: right;
+}
+
+/* ============================================================
+   5. 原生表格：结构化多字段数据的首选
+   ============================================================ */
+.ui-table-wrap { width: 100%; overflow-x: auto; }
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+.ui-table th {
+  padding: 0 12px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-3);
+  white-space: nowrap;
+  border-bottom: var(--rule);
+}
+.ui-table td {
+  padding: 14px 12px;
+  color: var(--text-1);
+  vertical-align: middle;
+  border-bottom: var(--rule-soft);
+}
+.ui-table tbody tr:last-child td { border-bottom: 0; }
+.ui-table tbody tr:nth-child(even) { background: var(--zebra); }
+.ui-table tbody tr:hover { background: var(--row-hover); }
+.ui-table .align-right { text-align: right; }
+.ui-table .align-center { text-align: center; }
+
+/* ============================================================
+   6. 定义列表：详情 / 档案类字段展示（替代「信息卡片」）
+   ============================================================ */
+.ui-kv {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: baseline;
+  margin: 0;
+}
+.ui-kv dt,
+.ui-kv dd {
+  padding: 13px 0;
+  border-bottom: var(--rule-soft);
+}
+.ui-kv dt {
+  font-size: 13px;
+  color: var(--text-3);
+}
+.ui-kv dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.ui-kv--wide { grid-template-columns: 168px minmax(0, 1fr); }
+
+/* ============================================================
+   7. 表单组：字段之间靠留白 + 底边线，不给单个输入框套壳
+   ============================================================ */
+.ui-form { display: grid; gap: 0; }
+.ui-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 32px;
+}
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: var(--rule-soft);
+}
+.ui-field--inline {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 24px;
+}
+.ui-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.ui-label em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--danger-500);
+}
+.ui-help {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* ============================================================
+   8. 工具栏：一排等高清查条件，底部一条线
+   ============================================================ */
+.ui-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 0;
+  border-bottom: var(--rule);
+}
+.ui-toolbar__end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* ============================================================
+   9. 数字条：关键指标横排，用竖细线切分（替代一排统计卡片）
+   ============================================================ */
+.ui-stats {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: var(--rule);
+  border-bottom: var(--rule);
+}
+.ui-stat {
+  flex: 1 1 0;
+  min-width: 118px;
+  padding: 18px 20px;
+  border-left: var(--rule-soft);
+}
+.ui-stat:first-child { padding-left: 0; border-left: 0; }
+.ui-stat__label {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.ui-stat__value {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+.ui-stat__unit {
+  margin-left: 3px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+/* ============================================================
+   10. 操作：文本链 / 实心按钮 / 描边按钮（按钮不是「容器」，不受卡片禁令影响）
+   ============================================================ */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: var(--r-2);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+}
+.ui-btn--solid { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+.ui-btn--solid:hover { background: var(--brand-700); border-color: var(--brand-700); }
+.ui-btn--solid[disabled] { background: var(--border-1); border-color: var(--border-1); color: var(--text-4); cursor: not-allowed; }
+.ui-btn--line { border-color: var(--text-1); color: var(--text-1); }
+.ui-btn--line:hover { background: var(--text-1); color: #fff; }
+.ui-btn--sm { height: 34px; padding: 0 14px; font-size: 13px; }
+
+.ui-linkbtn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--brand-700);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.ui-linkbtn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ui-linkbtn--muted { color: var(--text-3); }
+.ui-linkbtn--muted:hover { color: var(--text-1); }
+.ui-linkbtn--danger:hover { color: var(--danger-500); }
+.ui-linkbtn[disabled] { color: var(--text-4); cursor: not-allowed; text-decoration: none; }
+
+/* ============================================================
+   11. 轻量标签：1px 描边 + 4px 圆角，不用实心色块
+   ============================================================ */
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-1);
+  background: #fff;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.ui-chip--brand { border-color: var(--brand-200); background: var(--brand-50); color: var(--brand-700); }
+.ui-chip--warn { border-color: var(--warning-100); background: var(--warning-50); color: var(--warning-500); }
+.ui-chip--danger { border-color: var(--danger-100); background: var(--danger-50); color: var(--danger-500); }
+.ui-chip--ok { border-color: var(--success-100); background: var(--success-50); color: var(--success-500); }
+
+/* ============================================================
+   12. 价格 / 数字
+   ============================================================ */
+.ui-price {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--price);
+  white-space: nowrap;
+}
+.ui-price small { font-size: 12px; font-weight: 500; }
+.ui-num { font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   13. 缩略图：统一 72–96px，1px 描边，无阴影
+   ============================================================ */
+.ui-thumb {
+  flex-shrink: 0;
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: var(--rule);
+  border-radius: var(--r-2);
+  background: var(--bg-sunken);
+}
+.ui-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ui-thumb__ph {
+  font-size: 12px;
+  color: var(--text-4);
+}
+.ui-thumb--lg { width: 104px; height: 104px; }
+
+/* ============================================================
+   14. 空态：居中文案 + 一个主操作，不做插图卡片
+   ============================================================ */
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 80px 0;
+  text-align: center;
+}
+.ui-empty__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.ui-empty__desc {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text-3);
+  max-width: 32em;
+}
+.ui-empty__act { margin-top: 12px; }
+
+/* ============================================================
+   15. 例外：唯一允许出现的「面」
+   —— 只用于弹窗内部，或必须与周围隔离的复杂操作组件
+   ============================================================ */
+.ui-panel {
+  border: var(--rule);
+  border-radius: var(--r-3);
+  background: var(--bg-card);
+}
+
+/* ============================================================
+   17. 列表区：整页自然滚动
+   —— 不再做「定高内滚」：内层滚动容器 + overscroll-behavior: contain 会拦截滚轮、
+      阻断滚动链，鼠标悬在列表上时整页无法滚动。列表随内容自然生长，翻页条在列表末尾。
+   ============================================================ */
+.ui-box { min-width: 0; }
+.ui-box__body {
+  // 行列表的负外边距（用于 hover 溢出到行外）可能造成横向溢出，这里裁掉
+  overflow-x: hidden;
+}
+.ui-box__body .ui-row { margin-left: 0; margin-right: 0; }
+.ui-box__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: var(--rule);
+}
+.ui-box__count {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+// 翻页组件默认自带白底，放进定高列表里会露出白条。
+// 选择器多一层 .ui-box 是为了压过组件内 scoped 的 .pagination-container[data-v-*]
+.ui-box .ui-box__foot .pagination-container { background: transparent; }
+
+// 翻页器去壳：不用方块按钮，当前页只靠字重与文字色区分
+.ui-box__foot {
+  .el-pager li {
+    min-width: 26px;
+    background: transparent;
+    border-radius: var(--r-1);
+    color: var(--text-3);
+    font-weight: 500;
+  }
+  .el-pager li.is-active {
+    background: transparent;
+    color: var(--text-1);
+    font-weight: 650;
+  }
+  .btn-prev,
+  .btn-next {
+    background: transparent;
+    color: var(--text-2);
+  }
+  .btn-prev:disabled,
+  .btn-next:disabled { color: var(--text-4); background: transparent; }
+}
+
+/* 通用小工具 */
+.ui-rule { height: 0; margin: 0; border: 0; border-top: var(--rule); }
+.ui-mt-1 { margin-top: var(--gap-1); }
+.ui-mt-2 { margin-top: var(--gap-2); }
+.ui-mt-3 { margin-top: var(--gap-3); }
+.ui-mt-4 { margin-top: var(--gap-4); }
+.ui-nowrap { white-space: nowrap; }
+.ui-muted { color: var(--text-3); }
+
+/* ============================================================
+   16. 响应式：断点只用 768 一档（其余交给 Grid 自适应）
+   ============================================================ */
+@media (max-width: 768px) {
+  .ui-page { padding: 24px 14px 56px; }
+  .ui-head { flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+  .ui-title { font-size: 21px; }
+  .ui-sub { font-size: 13px; }
+  .ui-head__aside { width: 100%; gap: 14px; }
+
+  .ui-sec { padding-top: 28px; }
+
+  // 行列表在窄屏改为竖排：主信息占满，价格与操作另起一行
+  // 顶对齐很关键：条目可能有多行（标题/元信息/下级信息），缩略图垂直居中会看起来错位
+  .ui-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 8px;
+    margin: 0 -8px;
+  }
+  .ui-thumb { margin-top: 2px; }
+  .ui-row__end { width: 100%; justify-content: space-between; gap: 12px; }
+  .ui-row__price { min-width: 0; text-align: left; }
+  .ui-thumb { width: 64px; height: 64px; }
+  .ui-thumb--lg { width: 76px; height: 76px; }
+
+  .ui-grid { grid-template-columns: 1fr; }
+  .ui-field--inline { grid-template-columns: 1fr; align-items: start; }
+  .ui-kv { grid-template-columns: 104px minmax(0, 1fr); }
+
+  .ui-stats { flex-wrap: nowrap; overflow-x: auto; }
+  .ui-stat { min-width: 104px; padding: 14px 14px; }
+  .ui-stat__value { font-size: 20px; }
+
+  .ui-toolbar { gap: 10px; }
+  .ui-toolbar__end { margin-left: 0; width: 100%; }
+
+  .ui-empty { padding: 56px 0; }
+}

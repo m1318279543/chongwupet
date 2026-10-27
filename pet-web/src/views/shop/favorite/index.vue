@@ -1,58 +1,105 @@
 <template>
-  <div class="my-fav">
-    <div class="page-head">
-      <h1>❤️ 我的收藏</h1>
-      <p>你收藏的宠物，随时来看它们</p>
-    </div>
-    <div class="guest-alert" v-if="!userStore.token">
-      <span>👀 您正在以游客身份浏览，</span>
-      <el-button type="primary" link @click="openAuth('login')">登录</el-button>
-      <span>后可查看和管理自己的收藏</span>
-    </div>
-    <div class="content" v-loading="loading">
-      <div v-if="list.length === 0 && !loading" class="empty">
-        <span class="icon">🤍</span>
-        <p>还没有收藏任何宠物</p>
-        <el-button type="primary" round @click="$router.push('/shop/home')">去逛逛</el-button>
+  <div class="ui-page ui-page--md">
+    <!-- 页面头：标题左、计数右，靠一条 1px 线收口 -->
+    <header class="ui-head">
+      <div class="ui-head__main">
+        <p class="ui-eyebrow">Collection</p>
+        <h1 class="ui-title">我的收藏</h1>
+        <p class="ui-sub">收藏的宠物集中在这里，点任意一行查看完整档案。</p>
       </div>
-      <div class="grid" v-else>
-        <div class="card" v-for="item in list" :key="item.favoriteId" @click="goDetail(item.petId)">
-          <div class="avatar" :style="{ background: petGradient(item.petId) }">
-            <img
-              v-if="isImage(item.image)"
-              :src="item.image"
-              :alt="item.petName"
-              class="avatar-photo"
-              loading="lazy"
-              @error="onImgError(item)"
-            />
-            <span v-else>{{ petEmoji(item.categoryId) }}</span>
-          </div>
-          <div class="info">
-            <div class="name">{{ item.petName || '宠物' }}</div>
-            <div class="tags">
-              <el-tag size="small" type="info">{{ item.breed || '未知品种' }}</el-tag>
-              <el-tag size="small" type="success" v-if="item.age">{{ item.age }}岁</el-tag>
-            </div>
-            <div class="price" v-if="item.price">¥ {{ item.price }}</div>
-          </div>
-          <div class="ops">
-            <el-button size="small" type="primary" round @click.stop="goDetail(item.petId)">查看</el-button>
-            <el-button size="small" type="danger" round plain @click.stop="removeFav(item.favoriteId)">取消收藏</el-button>
-          </div>
+      <div class="ui-head__aside">
+        <span class="ui-count"><b>{{ list.length }}</b>只已收藏</span>
+      </div>
+    </header>
+
+    <!-- 游客提示：只留一条左侧色线，不做提示卡片 -->
+    <p v-if="!userStore.token" class="fav-note">
+      当前为游客浏览，
+      <button type="button" class="ui-linkbtn" @click="openAuth('login')">登录</button>
+      后可管理自己的收藏。
+    </p>
+
+    <section class="fav-body" v-loading="loading">
+      <!-- 定高列表：每页 5 条（5 × 116px ≈ 583px），超出靠底部翻页 -->
+      <div class="ui-box fav-box" v-if="list.length">
+        <div class="ui-box__body">
+          <ul class="ui-list">
+            <li
+              v-for="item in pagedList"
+              :key="item.favoriteId"
+              class="ui-row ui-row--link"
+              @click="goDetail(item.petId)"
+            >
+              <div class="ui-thumb">
+                <img
+                  v-if="isImage(item.image)"
+                  :src="item.image"
+                  :alt="item.petName"
+                  loading="lazy"
+                  @error="onImgError(item)"
+                />
+                <span v-else class="ui-thumb__ph">暂无图</span>
+              </div>
+
+              <div class="ui-row__main">
+                <div class="ui-row__title">{{ item.petName || '宠物' }}</div>
+                <div class="ui-row__meta">
+                  <span>{{ item.breed || '品种待补' }}</span>
+                  <span v-if="item.age">{{ item.age }}</span>
+                </div>
+              </div>
+
+              <div class="ui-row__end">
+                <span class="ui-price ui-row__price" v-if="item.price"><small>¥</small>{{ item.price }}</span>
+                <div class="ui-row__ops">
+                  <button type="button" class="ui-linkbtn" @click.stop="goDetail(item.petId)">
+                    查看档案<span aria-hidden="true">→</span>
+                  </button>
+                  <button type="button" class="ui-linkbtn ui-linkbtn--danger" @click.stop="removeFav(item.favoriteId)">
+                    取消收藏
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 翻页条：位置固定，翻页时页脚不动 -->
+        <div class="ui-box__foot">
+          <span class="ui-box__count">第 {{ rangeStart }}–{{ rangeEnd }} 条 / 共 {{ list.length }} 条</span>
+          <Pagination
+            v-if="list.length > PAGE_SIZE"
+            :total="list.length"
+            v-model:page="page"
+            :limit="PAGE_SIZE"
+            :page-sizes="[PAGE_SIZE]"
+            :background="false"
+            layout="prev, pager, next"
+            :auto-scroll="false"
+          />
         </div>
       </div>
-    </div>
+
+      <!-- 空态：纯文案 + 一个主操作，不画插图、不套卡片 -->
+      <div v-else-if="!loading" class="ui-empty">
+        <p class="ui-empty__title">还没有收藏任何宠物</p>
+        <p class="ui-empty__desc">在宠物档案页点「收藏」，这里就会留下记录。</p>
+        <div class="ui-empty__act">
+          <button type="button" class="ui-btn ui-btn--line" @click="$router.push('/shop/home')">去挑一只</button>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { listPetInfo } from '@/api/pet/petInfo'
 import { useUserStore } from '@/store/modules/user'
+import Pagination from '@/components/Pagination/index.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -60,15 +107,20 @@ const openAuth = inject('openAuth', () => {})
 const loading = ref(false)
 const list = ref([])
 
-const emojiPool = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🐟', '🦎']
-function petEmoji(c) { return emojiPool[(c || 0) % emojiPool.length] }
+// 定高列表分页：每页 5 条（单行 116px，5 行正好铺满 583px 的列表区）
+const PAGE_SIZE = 5
+const page = ref(1)
+const pagedList = computed(() => list.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+const rangeStart = computed(() => (list.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
+const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, list.value.length))
+// 收藏被取消后总数可能少于当前页起点，回到第一页避免空白页
+watch(() => list.value.length, (len) => {
+  if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
+})
+
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
-// 图片 404 / 加载失败时回退成 emoji，避免出现破图
+// 图片 404 / 加载失败时回退成占位文案，避免出现破图
 function onImgError(item) { item.image = '' }
-function petGradient(id) {
-  const colors = [['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0']]
-  return `linear-gradient(135deg, ${colors[(id||0)%colors.length][0]}, ${colors[(id||0)%colors.length][1]})`
-}
 
 async function loadData() {
   loading.value = true
@@ -89,10 +141,8 @@ async function loadData() {
       breed: petMap[f.petId]?.breed,
       age: petMap[f.petId]?.age,
       price: petMap[f.petId]?.price,
-      // 之前漏了 image，收藏卡片只能显示 emoji 占位：收藏接口本身会联表返回 image，
-      // 宠物表兜底再取一次，两个来源任意一个有值都能显示图片
-      image: f.image || petMap[f.petId]?.image,
-      categoryId: f.categoryId || petMap[f.petId]?.categoryId
+      // 收藏接口本身会联表返回 image，宠物表兜底再取一次
+      image: f.image || petMap[f.petId]?.image
     })).filter(item => item.petName)  // 只展示仍存在的宠物
   } catch (e) {
     ElMessage.error(e?.message || '加载失败')
@@ -102,7 +152,8 @@ async function loadData() {
 }
 
 function goDetail(petId) {
-  router.push(`/shop/pet/${petId}`)
+  // from 供详情页返回与导航高亮使用
+  router.push({ path: `/shop/pet/${petId}`, query: { from: '/shop/favorite' } })
 }
 
 function removeFav(favoriteId) {
@@ -117,44 +168,24 @@ onMounted(loadData)
 </script>
 
 <style scoped lang="scss">
-.my-fav { max-width: var(--container-lg); margin: 0 auto; padding: 32px 24px; }
-.guest-alert { background: var(--brand-50); border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; font-size: 14px; color: var(--brand-800); display: flex; align-items: center; gap: 4px; }
-.page-head { margin-bottom: 24px;
-  h1 { font-size: 26px; color: var(--text-1); margin: 0 0 4px; }
-  p { color: var(--text-3); margin: 0; }
-}
-.empty { text-align: center; padding: 80px 0; color: var(--text-4);
-  .icon { font-size: 56px; display: block; margin-bottom: 12px; }
-}
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 20px; }
-.card { background: #fff; border-radius: 12px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.06); transition: all .25s;
-  &:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-  .avatar { height: 140px; display: flex; align-items: center; justify-content: center; font-size: 64px; overflow: hidden;
-    .avatar-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
-  }
-  .info { padding: 14px 16px; }
-  .name { font-size: 17px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; }
-  .tags { display: flex; gap: 6px; margin-bottom: 6px; }
-  .price { color: var(--danger-500); font-weight: 700; }
-  .ops { padding: 0 16px 16px; display: flex; gap: 8px; }
+// 注意：页面骨架、行列表、缩略图、空态全部来自 styles/flat.scss 的 .ui-* 基元，
+// 这里只写本页特有的两处：游客提示的内缩，和空态里的一个描边按钮。
+
+// 游客提示：左侧 2px 色线替代整块浅底提示卡
+.fav-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 22px 0 0;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--brand-300);
+  font-size: 13.5px;
+  color: var(--text-2);
 }
 
-/* 手机端：两列小卡 + 图片等比（宽高 1:1），不再一张图占一屏 */
-@media (max-width: 768px) {
-  .my-fav { padding: 20px 12px; }
-  .page-head { margin-bottom: 16px;
-    h1 { font-size: 20px; }
-    p { font-size: 13px; }
-  }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .card {
-    .avatar { height: auto; aspect-ratio: 1 / 1; max-height: min(180px, 30vh); font-size: 44px; }
-    .info { padding: 10px 12px; }
-    .name { font-size: 14px; margin-bottom: 6px; }
-    .price { font-size: 14px; }
-    .ops { padding: 0 12px 12px; gap: 6px; flex-wrap: wrap;
-      :deep(.el-button) { margin-left: 0; padding: 5px 10px; font-size: 12px; }
-    }
-  }
-}
+// 数据未回来时给加载遮罩留出高度，避免布局跳动
+.fav-body { margin-top: 8px; min-height: 240px; }
+
+// 列表区定高：5 行 × 116px + 行内 1px 线 ≈ 583px，翻页条在列表下方独立成行
 </style>

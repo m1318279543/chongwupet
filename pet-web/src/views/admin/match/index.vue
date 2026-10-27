@@ -97,7 +97,7 @@
         </div>
 
         <div class="d-block">
-          <div class="d-title">📝 问卷画像</div>
+          <div class="d-title">问卷画像</div>
           <div class="d-answers">
             <div v-for="item in answerPairs(current.answers)" :key="item.key" class="d-answer">
               <span class="a-key">{{ item.label }}</span>
@@ -108,7 +108,7 @@
 
         <!-- 无匹配：展示归因诊断，便于选品/定价 -->
         <div v-if="current.matchStatus === '1'" class="d-block">
-          <div class="d-title">🔍 未匹配诊断</div>
+          <div class="d-title">未匹配诊断</div>
           <div class="diag-grid">
             <div class="diag-cell"><span>在售候选</span><b>{{ diagOf(current.diagnosis).total || 0 }}</b></div>
             <div class="diag-cell"><span>类型不符</span><b>{{ diagOf(current.diagnosis).byPrefer || 0 }}</b></div>
@@ -123,7 +123,7 @@
         </div>
 
         <div v-else class="d-block">
-          <div class="d-title">🎯 推荐结果（Top 5）</div>
+          <div class="d-title">推荐结果（Top 5）</div>
           <div v-for="(p, i) in topList(current.resultDetail)" :key="i" class="top-item">
             <span class="rank" :class="{ first: i === 0 }">{{ i + 1 }}</span>
             <span class="t-name">{{ p.petName }}</span>

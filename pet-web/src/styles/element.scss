@@ -42,3 +42,21 @@
   --el-link-text-color: var(--brand-700);
   --el-link-hover-text-color: var(--brand-700);
 }
+
+// ============================================================
+// 对比度补丁（AA）：Element Plus plain 标签的默认文字色偏浅，
+// 12px 小字在浅底上只有 2.2–3.1:1。统一换成 tokens.scss 里
+// 按白底 4.5:1 校准过的语义色。
+// ============================================================
+.el-tag.el-tag--plain {
+  &.el-tag--info { --el-tag-text-color: var(--text-2); }
+  &.el-tag--success { --el-tag-text-color: var(--success-500); }
+  &.el-tag--warning { --el-tag-text-color: var(--warning-500); }
+  &.el-tag--danger { --el-tag-text-color: var(--danger-500); }
+}
+
+// 输入框字数统计（0/500）：默认 #a8abb2 只有 3.1:1
+.el-input .el-input__count,
+.el-input__count, .el-input__count-inner {
+  color: var(--text-3);
+}

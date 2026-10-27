@@ -28,6 +28,12 @@ public class PetHealthServiceImpl implements IPetHealthService
     }
 
     @Override
+    public List<PetHealth> selectOnSaleHealthList()
+    {
+        return petHealthMapper.selectOnSaleHealthList();
+    }
+
+    @Override
     public PetHealth selectPetHealthByPetId(Long petId)
     {
         return petHealthMapper.selectPetHealthByPetId(petId);

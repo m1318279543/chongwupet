@@ -3,7 +3,7 @@
     <!-- 点赞区 -->
     <div class="like-bar">
       <button class="like-btn" :class="{ liked: liked, bounce: bouncing }" @click="toggleLike">
-        <span class="icon">{{ liked ? '❤️' : '🤍' }}</span>
+        <span class="icon"><el-icon><StarFilled v-if="liked" /><Star v-else /></el-icon></span>
         <span class="txt">{{ liked ? '已点赞' : '点赞' }}</span>
         <span class="num">{{ likeCount }}</span>
       </button>
@@ -29,7 +29,7 @@
           <span class="rs-count">{{ stat.commentCount || 0 }} 条评价</span>
         </div>
       </div>
-      <div class="rs-bars">
+      <div class="rs-bars" v-if="Number(stat.commentCount) > 0">
         <div class="bar-row" v-for="n in [5, 4, 3, 2, 1]" :key="n">
           <span class="bar-label">{{ n }} 星</span>
           <div class="bar-track">
@@ -38,6 +38,7 @@
           <span class="bar-num">{{ dist(n) }}</span>
         </div>
       </div>
+      <div class="rs-empty" v-else>还没有评价，来发表第一条吧</div>
     </div>
 
     <!-- 评论区 -->
@@ -66,7 +67,7 @@
         <el-input
           v-model="draft"
           type="textarea"
-          :rows="3"
+          :autosize="{ minRows: 7, maxRows: 14 }"
           maxlength="500"
           show-word-limit
           :placeholder="userStore.token ? '说点什么吧…（友善交流，请勿发布广告或不当言论）' : '登录后发表评论'"
@@ -121,7 +122,7 @@
         </div>
 
         <div class="empty" v-if="!loading && commentTree.length === 0">
-          <span class="e-icon">💬</span>
+          <span class="e-icon"><el-icon><ChatDotRound /></el-icon></span>
           <p>暂无评论，快来抢沙发～</p>
         </div>
         <div class="more" v-if="hasMore">
@@ -319,7 +320,8 @@ async function remove(c) {
   try {
     await delPetComment(c.commentId)
     ElMessage.success('已删除')
-    await loadComments()
+    // 删除同样影响均分与评价数，与发表后的刷新保持一致
+    await Promise.all([loadComments(), loadStat()])
   } catch (e) {
     ElMessage.error(e?.message || '删除失败')
   }
@@ -335,7 +337,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
 </script>
 
 <style scoped lang="scss">
-.pet-social { background: #fff; border-radius: 16px; padding: 28px 32px; box-shadow: 0 4px 20px rgba(0,0,0,.06); margin-top: 24px; }
+.pet-social { margin-top: 32px; padding: 26px 0 8px; border-top: 1px solid var(--border-1); }
 
 .like-bar { display: flex; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--border-2); flex-wrap: wrap;
   .like-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ffd6e0; background: #fff5f7; color: #e91e63;
@@ -364,6 +366,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
     .rs-right { display: flex; flex-direction: column; gap: 4px; }
     .rs-count { font-size: 12.5px; color: var(--text-3); }
   }
+  .rs-empty { display: flex; align-items: center; min-height: 60px; font-size: 13px; color: var(--text-3); }
   .rs-bars { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 5px;
     .bar-row { display: flex; align-items: center; gap: 8px;
       .bar-label { width: 34px; font-size: 12px; color: var(--text-3); }
@@ -375,7 +378,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
 }
 .score-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
   .sp-label { font-size: 13px; color: var(--text-2); }
-  .sp-tip { font-size: 12px; color: var(--text-4); }
+  .sp-tip { font-size: 12px; color: var(--text-3); }
 }
 .c-score { margin: 2px 0 4px; }
 
@@ -395,11 +398,11 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
     .item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px dashed var(--border-2);
       &:last-of-type { border-bottom: none; }
       .avatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%;
-        color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        color: var(--text-1); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 16px; }
       .body { flex: 1; min-width: 0;
         .meta { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
           .name { color: var(--text-1); font-weight: 600; font-size: 14px; }
-          .time { color: var(--text-4); font-size: 12px; }
+          .time { color: var(--text-3); font-size: 12px; }
         }
         .content { color: var(--text-2); line-height: 1.7; margin: 4px 0 6px; word-break: break-all; white-space: pre-wrap; }
         .ops { display: flex; gap: 14px; align-items: center;
@@ -409,13 +412,13 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
         .replies { margin-top: 10px; background: var(--bg-page); border-radius: 10px; padding: 10px 14px;
           .reply { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #ebebeb;
             &:last-child { border-bottom: none; }
-            .r-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 700;
+            .r-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; color: var(--text-1); font-weight: 700;
               display: flex; align-items: center; justify-content: center; font-size: 13px; }
             .r-body { flex: 1; min-width: 0;
               .r-meta { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
                 .name { color: var(--text-1); font-weight: 600; font-size: 13px; }
                 .reply-to { color: var(--brand-500); font-size: 12px; }
-                .time { color: var(--text-4); font-size: 12px; }
+                .time { color: var(--text-3); font-size: 12px; }
               }
               .content { font-size: 13px; }
               .ops { gap: 12px; }
@@ -424,7 +427,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
         }
       }
     }
-    .empty { text-align: center; color: var(--text-4); padding: 28px 0;
+    .empty { text-align: center; color: var(--text-3); padding: 28px 0;
       .e-icon { font-size: 40px; display: block; margin-bottom: 8px; }
       p { margin: 0; }
     }

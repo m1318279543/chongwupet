@@ -5,7 +5,7 @@
 
     <div class="login-card">
       <div class="brand">
-        <div class="logo">🐾</div>
+        <div class="logo">宠</div>
         <div class="brand-text">
           <h1>宠物之家 · 管理后台</h1>
           <p>仅限管理员与店长账号登录，前台用户请从商城首页进入</p>
