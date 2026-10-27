@@ -2,7 +2,8 @@
 # 构建两个前端生产包 + 预压缩（公网隧道下必须用生产包，dev 模式会慢几十倍）
 set -eu
 ROOT="D:/Undergraduate_courses/qiyekaifa/chongwupet"
-NODE="C:/Users/asus/.workbuddy/binaries/node/versions/22.22.2-2/node.exe"
+NODE="C:/Users/asus/.workbuddy/binaries/node/versions/22.22.2-6/node.exe"
+[ -x "$NODE" ] || NODE="$(command -v node)"
 
 # 先挪走旧产物（vite --emptyOutDir / rmtree 会触发批量删除保护，改成移入系统临时目录）
 if [ -d "$ROOT/pet-web/dist-new" ]; then

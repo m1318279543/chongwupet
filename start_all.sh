@@ -7,7 +7,8 @@
 set -u
 ROOT="D:/Undergraduate_courses/qiyekaifa/chongwupet"
 JAVA="D:/Undergraduate_courses/jdk-17/jdk-17.0.20.1+1/bin/java.exe"
-NODE="C:/Users/asus/.workbuddy/binaries/node/versions/22.22.2-2/node.exe"
+NODE="C:/Users/asus/.workbuddy/binaries/node/versions/22.22.2-6/node.exe"
+[ -x "$NODE" ] || NODE="$(command -v node)"
 cd "$ROOT"
 
 wait_port () { # $1=port $2=seconds
@@ -55,7 +56,7 @@ cd "$ROOT"
 [ -d pet-web/dist-new ] || { echo "缺少 pet-web/dist-new，请先执行 bash build_web.sh"; exit 1; }
 
 if up 82; then echo "  :82 已在运行，跳过"; else
-"$NODE" static-server.mjs --port 82 --root ./pet-web/dist-new \
+MSYS_NO_PATHCONV=1 "$NODE" static-server.mjs --port 82 --root ./pet-web/dist-new \
   --api /dev-api=http://localhost:8081 > /tmp/petstatic-82.log 2>&1 &
 echo "frontend(82) launching..."
 wait_port 82 20
@@ -63,7 +64,7 @@ fi
 
 # 3b) 后台独立入口 83：访问 / 直接 302 到 /admin
 if up 83; then echo "  :83 已在运行，跳过"; else
-"$NODE" static-server.mjs --port 83 --root ./pet-web/dist-new \
+MSYS_NO_PATHCONV=1 "$NODE" static-server.mjs --port 83 --root ./pet-web/dist-new \
   --api /dev-api=http://localhost:8081 --redirect /=/admin > /tmp/petstatic-83.log 2>&1 &
 echo "admin-entry(83) launching..."
 wait_port 83 20
