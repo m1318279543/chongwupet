@@ -57,6 +57,13 @@ public class PetOrderServiceImpl implements IPetOrderService
     @Autowired
     private PetInfoMapper petInfoMapper;
 
+    @Autowired
+    private com.ruoyi.system.service.IPetNotificationService petNotificationService;
+
+    /** 订单支付有效期（分钟），默认 30 分钟 */
+    @org.springframework.beans.factory.annotation.Value("${pet.order.expire-minutes:30}")
+    private int expireMinutes;
+
     @Override
     public List<PetOrder> selectPetOrderList(PetOrder order)
     {
@@ -232,6 +239,15 @@ public class PetOrderServiceImpl implements IPetOrderService
         {
             throw new ServiceException("订单已取消，无法支付");
         }
+        // 超时拦截：超过有效期仍未支付的订单不允许再支付（即使定时任务还没扫到它）
+        if ("0".equals(order.getStatus()) && "0".equals(order.getPayStatus()) && order.getCreateTime() != null)
+        {
+            long elapsed = System.currentTimeMillis() - order.getCreateTime().getTime();
+            if (elapsed > expireMinutes * 60_000L)
+            {
+                throw new ServiceException("订单已超时（超过" + expireMinutes + "分钟未支付），请重新下单");
+            }
+        }
         int rows = petOrderMapper.payOrder(orderNo, StringUtils.isBlank(payMethod) ? "alipay" : payMethod);
         if (rows == 0)
         {
@@ -384,6 +400,30 @@ public class PetOrderServiceImpl implements IPetOrderService
     private int number(Object v)
     {
         return v == null ? 0 : ((Number) v).intValue();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int expireUnpaidOrders()
+    {
+        List<PetOrder> expired = petOrderMapper.selectExpiredUnpaid(expireMinutes);
+        int count = 0;
+        for (PetOrder order : expired)
+        {
+            // 二次确认，避免与用户支付/取消并发时误取消
+            PetOrder latest = petOrderMapper.selectPetOrderByNo(order.getOrderNo());
+            if (latest == null || !"0".equals(latest.getStatus()) || !"0".equals(latest.getPayStatus()))
+            {
+                continue;
+            }
+            cancelOrder(order.getOrderNo(), "超时未支付，系统自动取消", "system");
+            petNotificationService.push(latest.getUserId(), latest.getUserName(), "order",
+                    "订单已超时关闭",
+                    "订单 " + order.getOrderNo() + " 超过" + expireMinutes + "分钟未支付，已自动取消。商品仍在售，欢迎重新下单。",
+                    latest.getOrderId());
+            count++;
+        }
+        return count;
     }
 
     /** 列表带上明细，前端一单多品不用二次请求 */

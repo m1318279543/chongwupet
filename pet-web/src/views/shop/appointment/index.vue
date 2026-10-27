@@ -19,6 +19,25 @@
       后可查看和管理自己的预约。
     </p>
 
+    <!-- 门店服务项目：后台维护、前台实时展示，点「去预约」带项目去宠物档案页 -->
+    <section class="svc-price" v-if="serviceItems.length">
+      <h3 class="svc-price__title">门店服务项目</h3>
+      <div class="svc-price__grid">
+        <div class="svc-item" v-for="it in serviceItems" :key="it.itemId">
+          <div class="svc-item__head">
+            <span class="svc-item__name">{{ it.itemName }}</span>
+            <span class="svc-item__type">{{ typeText(it.itemType) }}</span>
+          </div>
+          <p class="svc-item__desc" v-if="it.remark">{{ it.remark }}</p>
+          <div class="svc-item__foot">
+            <span class="svc-item__price">{{ Number(it.price) > 0 ? '¥' + it.price : '免费' }}</span>
+            <span class="svc-item__dur" v-if="it.duration">约 {{ it.duration }} 分钟</span>
+            <button type="button" class="ui-linkbtn" @click="goBookService(it)">去预约</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="apt-body" v-loading="loading">
       <!-- 定高列表：每页 5 条（单行 126px），超出靠底部翻页 -->
       <div class="ui-box apt-box" v-if="list.length">
@@ -123,15 +142,33 @@
 import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Phone } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
-import { listMyServiceOrders, evaluateServiceOrder } from '@/api/pet/petService'
+import { listMyServiceOrders, evaluateServiceOrder, serviceItemOptions } from '@/api/pet/petService'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
 
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
 const loading = ref(false)
+const router = useRouter()
 const list = ref([])
+
+// 门店服务项目（后台「服务项目」维护，上下架实时生效）
+const serviceItems = ref([])
+const TYPE_TEXT = { groom: '洗护', beauty: '美容', reception: '接待', medical: '医疗', board: '寄养', other: '其他' }
+function typeText(t) { return TYPE_TEXT[t] || t || '服务' }
+async function loadServiceItems() {
+  try {
+    const res = await serviceItemOptions()
+    serviceItems.value = res.data || []
+  } catch (e) { /* 接口不可用时不摆空壳 */ }
+}
+function goBookService(it) {
+  // 预约挂在宠物档案下：先去挑一只宠物，档案页预约表单会自动带上该项目
+  ElMessage.info(`已选择「${it.itemName}」，挑一只宠物后在其档案页提交预约`)
+  router.push({ path: '/shop/pets', query: { service: it.itemName } })
+}
 const cancelingId = ref(null)
 const serviceMap = ref({})
 const evalOpen = ref(false)
@@ -245,6 +282,7 @@ async function loadData() {
 onMounted(() => {
   loadData()
   loadService()
+  loadServiceItems()
 })
 </script>
 
@@ -312,3 +350,20 @@ onMounted(() => {
   .svc { gap: 4px 10px; }
 }
 </style>
+
+/* 门店服务项目价目区：与预约列表同宽，扁平卡片 + 1px 线 */
+.svc-price { margin-top: 26px; }
+.svc-price__title { margin: 0 0 12px; font-size: 15px; font-weight: 700; color: var(--text-1); }
+.svc-price__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.svc-item {
+  border: 1px solid var(--border-1); border-radius: var(--radius-md); background: var(--bg-card);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.svc-item__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.svc-item__name { font-weight: 600; font-size: 13.5px; color: var(--text-1); }
+.svc-item__type { flex-shrink: 0; font-size: 11px; color: var(--brand-700); background: var(--brand-50); border-radius: 999px; padding: 1px 8px; }
+.svc-item__desc { margin: 0; font-size: 12px; color: var(--text-3); line-height: 1.5; }
+.svc-item__foot { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.svc-item__price { font-weight: 700; color: var(--brand-700); }
+.svc-item__dur { font-size: 12px; color: var(--text-3); }
+.svc-item__foot .ui-linkbtn { margin-left: auto; }

@@ -12,6 +12,11 @@ import com.ruoyi.system.domain.PetOrder;
  */
 public interface IPetOrderService
 {
+    /**
+     * 取消超时未支付订单（下单超过 30 分钟未支付自动取消），返回取消笔数
+     */
+    public int expireUnpaidOrders();
+
     public List<PetOrder> selectPetOrderList(PetOrder order);
 
     /** 订单详情（含明细） */

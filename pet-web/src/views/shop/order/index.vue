@@ -57,7 +57,8 @@
             </div>
             <div class="order__act">
               <span class="order__time">{{ g.createTime }}</span>
-              <button v-if="g.unpaid" type="button" class="ui-btn ui-btn--solid ui-btn--sm" @click="openCashier(g)">去支付</button>
+              <span v-if="g.unpaid" class="order__expire" :class="{ 'is-expired': expireLeft(g) <= 0 }">{{ expireText(g) }}</span>
+              <button v-if="g.unpaid" type="button" class="ui-btn ui-btn--solid ui-btn--sm" :disabled="expireLeft(g) <= 0" @click="openCashier(g)">去支付</button>
               <button
                 v-if="canRefund(g)"
                 type="button"
@@ -155,9 +156,10 @@
         </div>
         <div class="cashier-actions">
           <button type="button" class="ui-btn ui-btn--line" @click="cashierOpen = false" :disabled="paying">暂不支付</button>
-          <button type="button" class="ui-btn ui-btn--solid" :disabled="paying" @click="doPay">
-            立即支付<span v-if="countdown > 0">（{{ countdown }}s）</span>
+          <button type="button" class="ui-btn ui-btn--solid" :disabled="paying || countdown <= 0" @click="doPay">
+            {{ countdown > 0 ? '立即支付 · 剩余 ' + mmss : '已超时' }}
           </button>
+          <span v-if="countdown <= 0" class="cashier-expired">订单已超时（30 分钟未支付），请重新下单</span>
         </div>
       </div>
 
@@ -210,6 +212,10 @@ let countdownTimer = null
 const walletBalance = ref(null)
 const recharging = ref(false)
 const currentTotal = computed(() => (current.value ? current.value.total : 0))
+const mmss = computed(() => {
+  const left = countdown.value
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+})
 const balanceShort = computed(() => walletBalance.value != null && walletBalance.value + 1e-9 < currentTotal.value)
 
 function money(v) {
@@ -265,6 +271,7 @@ const methods = [
 // 订单头 + 明细直接来自 /pet/order/mine，不再前端拼单号
 const groups = computed(() => rows.value.map((o) => ({
   orderNo: o.orderNo,
+  createdAt: o.createTime,
   items: o.items || [],
   canceled: o.status === '3',
   unpaid: o.payStatus === '0' && o.status === '0',
@@ -321,22 +328,47 @@ watch(() => shownGroups.value.length, (len) => {
   if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
 })
 
+// 订单支付有效期 30 分钟（与后端 pet.order.expire-minutes 一致）
+const EXPIRE_MS = 30 * 60 * 1000
+const nowTick = ref(Date.now())
+setInterval(() => { nowTick.value = Date.now() }, 30_000)
+
+function createdMs(g) {
+  if (!g.createdAt) return Date.now()
+  return new Date(String(g.createdAt).replace('T', ' ').replace(/-/g, '/')).getTime()
+}
+
+// 距支付截止剩余秒数；非待支付状态不计时
+function expireLeft(g) {
+  if (!g.unpaid) return Infinity
+  return Math.max(0, Math.round((createdMs(g) + EXPIRE_MS - nowTick.value) / 1000))
+}
+
+function expireText(g) {
+  const left = expireLeft(g)
+  if (left <= 0) return '已超时'
+  const m = Math.floor(left / 60), sec = left % 60
+  return `剩余 ${m}:${String(sec).padStart(2, '0')}`
+}
+
 function openCashier(g) {
   current.value = g
   paySuccess.value = false
   payMethod.value = 'alipay'
   cashierOpen.value = true
   loadWallet()
-  countdown.value = 15 * 60
+  startCountdown(g)
+}
+
+function startCountdown(g) {
   if (countdownTimer) clearInterval(countdownTimer)
-  countdownTimer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(countdownTimer)
-      cashierOpen.value = false
-      ElMessage.info('支付超时，订单已回到待支付状态')
-    }
-  }, 1000)
+  const created = createdMs(g)
+  const tick = () => {
+    countdown.value = Math.max(0, Math.round((created + EXPIRE_MS - Date.now()) / 1000))
+    if (countdown.value <= 0 && countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+  }
+  tick()
+  countdownTimer = setInterval(tick, 1000)
 }
 
 function legacyTip() {
@@ -349,6 +381,10 @@ function legacyTip() {
 
 async function doPay() {
   if (!current.value || paying.value) return
+  if (countdown.value <= 0) {
+    ElMessage.warning('订单已超时（30 分钟未支付），请重新下单')
+    return
+  }
   if (!current.value.orderNo) {
     paying.value = false
     legacyTip()
@@ -568,6 +604,12 @@ onBeforeUnmount(() => {
   gap: 16px;
   flex-wrap: wrap;
 }
+.order__expire {
+  font-size: 12px; font-weight: 600; color: var(--warn-600, #b45309);
+  font-variant-numeric: tabular-nums;
+  &.is-expired { color: var(--danger-600, #dc2626); }
+}
+.cashier-expired { font-size: 12.5px; color: var(--danger-600, #dc2626); font-weight: 600; }
 .order__time {
   font-size: 12.5px;
   color: var(--text-3);

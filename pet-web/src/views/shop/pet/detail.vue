@@ -168,6 +168,13 @@
             <el-option v-for="s in stores" :key="s.storeId" :label="s.storeName" :value="s.storeId" />
           </el-select>
         </el-form-item>
+        <el-form-item label="服务项目">
+          <el-select v-model="appointForm.serviceItem" clearable placeholder="选择服务项目（可选）" style="width:100%">
+            <el-option v-for="it in serviceItems" :key="it.itemId"
+              :label="it.itemName + (Number(it.price) > 0 ? '（¥' + it.price + (it.duration ? ' · ' + it.duration + '分钟' : '') + '）' : '')"
+              :value="it.itemName" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="到店日期" prop="date">
           <el-date-picker v-model="appointForm.date" type="date" value-format="YYYY-MM-DD" :disabled-date="disabledDate" placeholder="选择日期" style="width:100%" @change="loadSlots" />
         </el-form-item>
@@ -205,6 +212,7 @@ import { getPetInfo } from '@/api/pet/petInfo'
 import { createPetOrder } from '@/api/pet/petOrder'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { addPetAppointment, getAppointmentSlots } from '@/api/pet/petAppointment'
+import { serviceItemOptions } from '@/api/pet/petService'
 import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
 import { getPetPreference } from '@/api/pet/petPreference'
@@ -225,7 +233,16 @@ const showAppoint = ref(false)
 const submitting = ref(false)
 const buying = ref(false)
 const appointRef = ref()
-const appointForm = reactive({ storeId: null, date: '', slot: '', contactPhone: '', remark: '' })
+const appointForm = reactive({ storeId: null, date: '', slot: '', contactPhone: '', remark: '', serviceItem: '' })
+
+// 门店服务项目（后台维护，前台实时；预约时可直接勾选）
+const serviceItems = ref([])
+async function loadServiceItems() {
+  try {
+    const res = await serviceItemOptions()
+    serviceItems.value = res.data || []
+  } catch (e) { /* 静默 */ }
+}
 const stores = ref([])
 const slots = ref([])
 const slotLoading = ref(false)
@@ -436,6 +453,11 @@ async function buyNow() {
 
 function openAppoint() {
   showAppoint.value = true
+  loadServiceItems()
+  // 从「我的预约 → 服务项目 → 去预约」跳过来时，自动带上所选项目
+  if (!appointForm.serviceItem && route.query.service) {
+    appointForm.serviceItem = String(route.query.service)
+  }
   if (!appointForm.storeId && stores.value.length) {
     appointForm.storeId = stores.value[0].storeId
   }
@@ -456,6 +478,8 @@ function submitAppoint() {
     if (!valid) return
     submitting.value = true
     try {
+      // 选了服务项目就把项目名并进留言，后台排班一眼可见
+      const remark = (appointForm.serviceItem ? '服务项目：' + appointForm.serviceItem + (appointForm.remark ? '；' + appointForm.remark : '') : appointForm.remark)
       await addPetAppointment({
         petId: route.params.id,
         userId: userStore.userId,
@@ -463,7 +487,7 @@ function submitAppoint() {
         appointmentDate: appointForm.date + ' ' + appointForm.slot + ':00',
         contactPhone: appointForm.contactPhone,
         status: '0',
-        remark: appointForm.remark
+        remark
       })
       ElMessage.success('预约提交成功，商家会尽快联系您！')
       showAppoint.value = false

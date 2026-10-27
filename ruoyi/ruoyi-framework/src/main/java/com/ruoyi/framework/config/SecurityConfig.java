@@ -117,6 +117,7 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.GET, "/pet/goods/list", "/pet/goods/shop/**").permitAll()
                     // 门店选项：地址/电话/营业时间属公开信息，首页门店区与预约页都需要
                     .requestMatchers(HttpMethod.GET, "/pet/store/options").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/pet/service/item/options").permitAll()
                     // AI 宠物智能匹配问卷：游客可提交问卷（登录后用协同过滤增强）
                     .requestMatchers(HttpMethod.POST, "/pet/match/recommend").permitAll()
                     // 全站 AI 助手：游客可用（服务端有 IP 限流）

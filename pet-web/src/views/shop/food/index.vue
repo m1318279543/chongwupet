@@ -38,7 +38,14 @@
           <div class="price-row">
             <span class="rating-tag" v-if="foodRating(p.fid)"><el-icon><Star /></el-icon>{{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
             <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
-            <span class="go">详情<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+            <span class="act-row">
+              <button type="button" class="quick-cart" :disabled="p.stock === 0"
+                :title="p.stock === 0 ? '暂时缺货' : '加入购物车'"
+                @click.stop="addToCart(p)">
+                <el-icon><ShoppingCart /></el-icon>加入购物车
+              </button>
+              <span class="go">详情<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+            </span>
           </div>
         </div>
       </article>
@@ -80,6 +87,7 @@
             <el-button type="primary" size="large" round :disabled="detail && detail.stock === 0" @click="addToCart(detail)">
               {{ detail && detail.stock === 0 ? '暂时缺货' : '加入购物车' }}
             </el-button>
+            <el-button size="large" round :disabled="detail && detail.stock === 0" @click="buyNow(detail)">立即购买</el-button>
             <span class="stock-hint" v-if="detail">
               {{ detail.stock > 0 ? '现货 ' + detail.stock + ' 件' : '补货中，可先咨询客服' }}
             </span>
@@ -98,6 +106,7 @@
 <script setup>
 import { ref, computed, inject, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
 import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
@@ -105,6 +114,7 @@ import PetSocial from '@/components/PetSocial/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
 
 const cartStore = useCartStore()
+const router = useRouter()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
 
 const active = ref('cat')
@@ -203,6 +213,12 @@ function addToCart(p) {
   cartStore.addItem(p)
   ElMessage.success(`已将「${p.name}」加入购物车`)
 }
+
+// 立即购买：加购后直接去购物车结算
+function buyNow(p) {
+  addToCart(p)
+  router.push('/shop/cart')
+}
 </script>
 
 <style scoped lang="scss">
@@ -224,6 +240,17 @@ function addToCart(p) {
 
 /* 网格：与首页宠物卡同一套扁平语言——无卡壳，靠图片圆角与 hover 细描边 */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 26px 20px; }
+.act-row { display: inline-flex; align-items: center; gap: 10px; }
+.quick-cart {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 30px; padding: 0 12px; border: 1px solid var(--brand-200);
+  border-radius: var(--radius-pill); background: var(--bg-card);
+  font-size: 12.5px; font-weight: 600; color: var(--brand-700); cursor: pointer;
+  transition: all .16s; font-family: inherit;
+  &:hover { background: var(--brand-50); border-color: var(--brand-600); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
 .card {
   background: none; border: 0; cursor: pointer; text-align: left;
   &:hover .thumb { box-shadow: 0 0 0 1px var(--brand-200); }

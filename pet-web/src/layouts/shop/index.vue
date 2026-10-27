@@ -25,6 +25,11 @@
         </nav>
 
         <div class="user-area">
+          <!-- 购物车：桌面端常驻入口（手机端用 m-cart，样式各管一段） -->
+          <router-link to="/shop/cart" class="d-cart" aria-label="购物车">
+            <el-icon :size="21"><ShoppingCart /></el-icon>
+            <span class="cart-badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+          </router-link>
           <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
           <NotificationBell v-if="isLogged" more-path="/shop/order" />
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
@@ -381,7 +386,16 @@ function handleCommand(cmd) {
   .m-cart { display: none; position: relative; width: 40px; height: 40px; border-radius: var(--radius-sm);
     align-items: center; justify-content: center; color: var(--text-1);
     &:active { background: var(--bg-sunken); }
-    .cart-badge { position: absolute; top: 2px; right: 2px; }
+    .d-cart {
+  display: none; position: relative; width: 40px; height: 40px; border-radius: var(--radius-sm);
+  align-items: center; justify-content: center; color: var(--text-1); cursor: pointer;
+  &:hover { background: var(--bg-sunken); color: var(--brand-700); }
+  .cart-badge { position: absolute; top: 2px; right: 2px; }
+}
+@media (min-width: 1001px) {
+  .d-cart { display: inline-flex; }
+}
+.cart-badge { position: absolute; top: 2px; right: 2px; }
   }
   .hamburger { display: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--radius-sm);
     background: transparent; cursor: pointer; flex-direction: column; align-items: center; justify-content: center;

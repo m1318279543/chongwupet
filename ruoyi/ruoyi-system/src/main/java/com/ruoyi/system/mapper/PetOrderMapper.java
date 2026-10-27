@@ -34,4 +34,9 @@ public interface PetOrderMapper
 
     /** 今日订单数 / 已付金额 */
     public List<Map<String, Object>> selectTodayStats(@Param("storeId") Long storeId, @Param("date") String date);
+
+    /**
+     * 查询超时未支付的订单（下单超过 minutes 分钟仍未支付）
+     */
+    public List<PetOrder> selectExpiredUnpaid(@Param("minutes") int minutes);
 }
