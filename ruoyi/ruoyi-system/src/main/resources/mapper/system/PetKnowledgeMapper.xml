@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetKnowledgeMapper">
+
+    <resultMap type="PetKnowledge" id="PetKnowledgeResult">
+        <result property="knowledgeId" column="knowledge_id" />
+        <result property="title"       column="title" />
+        <result property="category"    column="category" />
+        <result property="species"     column="species" />
+        <result property="keywords"    column="keywords" />
+        <result property="question"    column="question" />
+        <result property="content"     column="content" />
+        <result property="severity"    column="severity" />
+        <result property="emergency"   column="emergency" />
+        <result property="source"      column="source" />
+        <result property="sort"        column="sort" />
+        <result property="hitCount"    column="hit_count" />
+        <result property="status"      column="status" />
+        <result property="delFlag"     column="del_flag" />
+        <result property="createBy"    column="create_by" />
+        <result property="createTime"  column="create_time" />
+        <result property="updateBy"    column="update_by" />
+        <result property="updateTime"  column="update_time" />
+    </resultMap>
+
+    <sql id="selectKnowledgeVo">
+        select knowledge_id, title, category, species, keywords, question, content, severity, emergency,
+               source, sort, hit_count, status, del_flag, create_by, create_time, update_by, update_time
+        from pet_knowledge
+    </sql>
+
+    <select id="searchByFulltext" resultMap="PetKnowledgeResult">
+        select k.knowledge_id, k.title, k.category, k.species, k.keywords, k.question, k.content,
+               k.severity, k.emergency, k.source, k.sort, k.hit_count, k.status, k.del_flag,
+               k.create_by, k.create_time, k.update_by, k.update_time,
+               match(k.title, k.question, k.keywords, k.content) against(#{keyword} in natural language mode) as score
+        from pet_knowledge k
+        where k.del_flag = '0' and k.status = '0'
+          and match(k.title, k.question, k.keywords, k.content) against(#{keyword} in natural language mode) > 0
+        <if test="species != null and species != ''">
+            and (k.species = '通用' or k.species = #{species})
+        </if>
+        order by score desc
+        limit #{limit}
+    </select>
+
+    <select id="searchByLike" resultMap="PetKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        <where>
+            del_flag = '0' and status = '0'
+            and (title like concat('%', #{keyword}, '%')
+                 or keywords like concat('%', #{keyword}, '%')
+                 or question like concat('%', #{keyword}, '%')
+                 or content like concat('%', #{keyword}, '%'))
+            <if test="species != null and species != ''">
+                and (species = '通用' or species = #{species})
+            </if>
+        </where>
+        order by sort asc
+        limit #{limit}
+    </select>
+
+    <select id="selectPetKnowledgeList" parameterType="PetKnowledge" resultMap="PetKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        <where>
+            del_flag = '0'
+            <if test="title != null and title != ''">AND title like concat('%', #{title}, '%')</if>
+            <if test="category != null and category != ''">AND category = #{category}</if>
+            <if test="species != null and species != ''">AND species = #{species}</if>
+            <if test="status != null and status != ''">AND status = #{status}</if>
+            <if test="keywords != null and keywords != ''">
+                AND (title like concat('%', #{keywords}, '%') or keywords like concat('%', #{keywords}, '%'))
+            </if>
+        </where>
+        order by sort asc, knowledge_id asc
+    </select>
+
+    <select id="selectPetKnowledgeById" parameterType="Long" resultMap="PetKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        where knowledge_id = #{knowledgeId}
+    </select>
+
+    <insert id="insertPetKnowledge" parameterType="PetKnowledge" useGeneratedKeys="true" keyProperty="knowledgeId">
+        insert into pet_knowledge
+        (title, category, species, keywords, question, content, severity, emergency, source, sort, hit_count,
+         status, del_flag, create_by, create_time)
+        values
+        (#{title}, #{category}, #{species}, #{keywords}, #{question}, #{content}, #{severity}, #{emergency},
+         #{source}, #{sort}, 0, #{status}, '0', #{createBy}, sysdate())
+    </insert>
+
+    <update id="updatePetKnowledge" parameterType="PetKnowledge">
+        update pet_knowledge
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="species != null">species = #{species},</if>
+            <if test="keywords != null">keywords = #{keywords},</if>
+            <if test="question != null">question = #{question},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="severity != null">severity = #{severity},</if>
+            <if test="emergency != null">emergency = #{emergency},</if>
+            <if test="source != null">source = #{source},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where knowledge_id = #{knowledgeId}
+    </update>
+
+    <delete id="deletePetKnowledgeByIds" parameterType="Long">
+        update pet_knowledge set del_flag = '2' where knowledge_id in
+        <foreach item="knowledgeId" collection="array" open="(" separator="," close=")">
+            #{knowledgeId}
+        </foreach>
+    </delete>
+
+    <update id="incrementHit">
+        update pet_knowledge set hit_count = ifnull(hit_count, 0) + 1 where knowledge_id = #{knowledgeId}
+    </update>
+
+</mapper>

@@ -36,6 +36,7 @@ export const MENU_GROUPS = [
       '/admin/like',
       '/admin/comment',
       '/admin/consult',
+      '/admin/knowledge',
       '/admin/cancel',
       '/admin/match'
     ]

@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page ui-page--md">
+  <div class="ui-page">
     <!-- 页面头 -->
     <header class="ui-head">
       <div class="ui-head__main">
@@ -41,7 +41,7 @@
         <p class="ui-empty__title">还没有下单记录</p>
         <p class="ui-empty__desc">挑点好粮给毛孩子吧，结算后会在这里生成订单。</p>
         <div class="ui-empty__act">
-          <button type="button" class="ui-btn ui-btn--line" @click="goShop">去挑选宠物粮</button>
+          <button type="button" class="ui-btn ui-btn--solid" @click="goShop">去挑选宠物粮</button>
         </div>
       </div>
 
@@ -58,6 +58,7 @@
             <div class="order__act">
               <span class="order__time">{{ g.createTime }}</span>
               <button v-if="g.unpaid" type="button" class="ui-btn ui-btn--solid ui-btn--sm" @click="openCashier(g)">去支付</button>
+              <button type="button" class="ui-linkbtn" @click="askAssistant(g)">遇到问题</button>
               <button
                 v-if="canRefund(g)"
                 type="button"
@@ -85,16 +86,16 @@
                   <span v-if="o.itemType === '2'" class="ui-chip ui-chip--brand">宠物</span>
                 </div>
                 <div class="item__spec">
-                  {{ o.goodsSpec }}<span class="item__unit"> · ¥{{ o.price }} ×{{ o.qty }}</span>
+                  {{ o.goodsSpec }}<span class="item__unit"> · ¥{{ money(o.price) }} ×{{ o.qty }}</span>
                 </div>
               </div>
-              <span class="item__sum ui-price">¥{{ Number(o.amount != null ? o.amount : o.price * o.qty).toFixed(2) }}</span>
+              <span class="item__sum ui-price ui-price--sm">¥{{ money(o.amount != null ? o.amount : o.price * o.qty) }}</span>
             </li>
           </ul>
 
           <footer class="order__foot" v-if="g.items.length > 1">
             <span class="order__count">共 {{ g.items.length }} 件</span>
-            <span class="order__total">合计 <b class="ui-price">¥{{ g.total.toFixed(2) }}</b></span>
+            <span class="order__total">合计 <b class="ui-price">¥{{ money(g.total) }}</b></span>
           </footer>
           </article>
         </div>
@@ -129,7 +130,7 @@
       <div class="cashier-body" v-if="!paySuccess">
         <div class="cashier-amount">
           <span class="label">支付金额</span>
-          <span class="num">¥{{ current ? current.total.toFixed(2) : '0.00' }}</span>
+          <span class="num">¥{{ current ? money(current.total) : '0' }}</span>
         </div>
         <div class="pay-methods">
           <div class="pay-item" v-for="m in methods" :key="m.key" :class="{ active: payMethod === m.key }"
@@ -157,7 +158,7 @@
       <div class="cashier-success" v-else>
         <div class="s-icon"><el-icon><CircleCheckFilled /></el-icon></div>
         <h3>支付成功</h3>
-        <p class="s-amount">¥{{ current ? current.total.toFixed(2) : '' }}</p>
+        <p class="s-amount">¥{{ current ? money(current.total) : '' }}</p>
         <p class="s-tip">{{ current && current.isPet ? '请带上身份证到门店接它回家，可在「我的订单」查看进度' : '我们会尽快为你安排发货，可在「我的订单」查看进度' }}</p>
         <button type="button" class="ui-btn ui-btn--solid" @click="closeCashier">完成</button>
       </div>
@@ -174,6 +175,7 @@ import { useUserStore } from '@/store/modules/user'
 import { listMyOrders, payOrder, cancelOrder as cancelOrderApi } from '@/api/pet/petOrder'
 import { listMyRefunds, applyRefund } from '@/api/pet/petRefund'
 import Pagination from '@/components/Pagination/index.vue'
+import { money } from '@/utils/money'
 
 const router = useRouter()
 const route = useRoute()
@@ -263,6 +265,17 @@ watch(() => shownGroups.value.length, (len) => {
   if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
 })
 
+/** 带着订单号唤起助手，直接问当前状态 */
+function askAssistant(g) {
+  window.dispatchEvent(new CustomEvent('pet-assistant-open', {
+    detail: {
+      scene: 'order',
+      bizId: g.orderNo,
+      message: `订单 ${g.orderNo} 现在是什么状态？`
+    }
+  }))
+}
+
 function openCashier(g) {
   current.value = g
   paySuccess.value = false
@@ -303,9 +316,9 @@ function closeCashier() {
 }
 
 function cancelOrder(g) {
-  const first = g.items[0]
+  const first = g.items?.[0]
   ElMessageBox.prompt(
-    `确认取消订单 ${g.orderNo}${g.items.length > 1 ? `（${g.items.length} 件商品）` : `（${first.goodsName}）`}吗？可填写取消原因：`,
+    `确认取消订单 ${g.orderNo}${g.items.length > 1 ? `（${g.items.length} 件商品）` : `（${first?.goodsName || '商品'}）`}吗？可填写取消原因：`,
     '取消订单',
     {
       confirmButtonText: '确认取消',
@@ -338,7 +351,7 @@ function canRefund(g) {
 
 function askRefund(g) {
   ElMessageBox.prompt(
-    `订单 ${g.orderNo}，退款金额 ¥${g.total.toFixed(2)}。请填写退款原因：`,
+    `订单 ${g.orderNo}，退款金额 ¥${money(g.total)}。请填写退款原因：`,
     '申请退款',
     {
       confirmButtonText: '提交申请',
@@ -428,7 +441,7 @@ onBeforeUnmount(() => {
   &:hover { color: var(--text-1); }
   &.on {
     color: var(--text-1);
-    font-weight: 600;
+    font-weight: 700;
     // 选中态：底部 2px 线，压在标签栏的 1px 线上
     &::after {
       content: '';
@@ -475,7 +488,7 @@ onBeforeUnmount(() => {
 }
 .order__no {
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: .01em;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
@@ -521,8 +534,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-1);
   line-height: 1.45;
 }
@@ -551,7 +564,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  b { font-size: 18px; }
+  b { font-size: 20px; }
 }
 
 /* ---------- 定高列表 ---------- */
@@ -570,7 +583,8 @@ onBeforeUnmount(() => {
     padding: 6px 0 18px;
     .label { display: block; font-size: 13px; color: var(--text-3); }
     .num {
-      font-size: 32px;
+      font-family: var(--font-num);
+      font-size: 28px;
       font-weight: 700;
       color: var(--price);
       font-variant-numeric: tabular-nums;
@@ -597,7 +611,7 @@ onBeforeUnmount(() => {
       align-items: center;
       justify-content: center;
       border-radius: var(--r-2);
-      font-size: 17px;
+      font-size: 16px;
       color: #fff;
     }
     .pm-info {
@@ -629,10 +643,11 @@ onBeforeUnmount(() => {
   text-align: center;
   padding: 6px 0 4px;
   .s-icon { font-size: 46px; color: var(--success-500); }
-  h3 { margin: 10px 0 4px; font-size: 17px; color: var(--text-1); }
+  h3 { margin: 10px 0 4px; font-size: 16px; color: var(--text-1); }
   .s-amount {
     margin: 0;
-    font-size: 26px;
+    font-family: var(--font-num);
+    font-size: 24px;
     font-weight: 700;
     color: var(--price);
     font-variant-numeric: tabular-nums;
@@ -657,7 +672,7 @@ onBeforeUnmount(() => {
     padding: 10px 0;
   }
   .item__thumb { width: 48px; height: 48px; }
-  .item__sum { font-size: 15px; }
+  .item__sum { font-size: 16px; }
 
   .order__foot { gap: 12px; }
 }

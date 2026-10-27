@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page ui-page--md">
+  <div class="ui-page">
     <!-- 页面头 -->
     <header class="ui-head">
       <div class="ui-head__main">
@@ -98,7 +98,7 @@
         <p class="ui-empty__title">还没有预约记录</p>
         <p class="ui-empty__desc">在宠物档案页提交预约后，进度会出现在这里。</p>
         <div class="ui-empty__act">
-          <button type="button" class="ui-btn ui-btn--line" @click="$router.push('/shop/home')">去看宠物</button>
+          <button type="button" class="ui-btn ui-btn--solid" @click="$router.push('/shop/home')">去看宠物</button>
         </div>
       </div>
     </section>
@@ -230,6 +230,8 @@ function cancelApt(item) {
 }
 
 async function loadData() {
+  // 游客没有 token 时不请求 /pet/appointment/mine，避免 401 触发全局重新登录弹窗
+  if (!userStore.token) { loading.value = false; return }
   loading.value = true
   try {
     // /mine 接口已 join 宠物表返回 petName/image/categoryId，无需再拉全量宠物列表
@@ -260,7 +262,7 @@ onMounted(() => {
   margin: 22px 0 0;
   padding: 2px 0 2px 12px;
   border-left: 2px solid var(--brand-300);
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-2);
 }
 
@@ -304,7 +306,7 @@ onMounted(() => {
 .svc__score { color: var(--warning-500); }
 
 .eval-box {
-  .eval-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-1); }
+  .eval-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--text-1); }
 }
 
 @media (max-width: 768px) {

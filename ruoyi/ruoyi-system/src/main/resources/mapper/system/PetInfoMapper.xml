@@ -60,8 +60,57 @@
             <if test="description != null and description != ''">
                 AND description like concat('%', #{description}, '%')
             </if>
+            <!-- 前台搜索：名称或品种命中 -->
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (pet_name like concat('%', #{params.keyword}, '%') or breed like concat('%', #{params.keyword}, '%'))
+            </if>
+            <!-- 前台价格区间：前端按「0-500 / 500-2000 / 5000-」传入 -->
+            <if test="params.minPrice != null and params.minPrice != ''">
+                AND price &gt;= #{params.minPrice}
+            </if>
+            <if test="params.maxPrice != null and params.maxPrice != ''">
+                AND price &lt;= #{params.maxPrice}
+            </if>
         </where>
-        order by pet_id desc
+        <choose>
+            <when test="params.orderBy != null and 'priceAsc'.equals(params.orderBy.toString())">
+                order by price asc, pet_id desc
+            </when>
+            <when test="params.orderBy != null and 'priceDesc'.equals(params.orderBy.toString())">
+                order by price desc, pet_id desc
+            </when>
+            <when test="params.orderBy != null and 'categoryFirst'.equals(params.orderBy.toString())">
+                order by case category_id when 1 then 0 when 2 then 1 when 3 then 2 else 9 end, pet_id desc
+            </when>
+            <otherwise>
+                order by pet_id desc
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 首页精选：在售优先、猫狗兔优先，一次只取 N 条，避免前端拉全表再截断 -->
+    <select id="selectFeaturedPets" resultMap="PetInfoResult">
+        <include refid="selectPetInfoVo"/>
+        order by case status when '0' then 0 else 1 end,
+                 case category_id when 1 then 0 when 2 then 1 when 3 then 2 else 9 end,
+                 pet_id desc
+        limit #{limit}
+    </select>
+
+    <!-- 概览统计：一条 SQL 出三个数，替代前端拉全表自己数 -->
+    <select id="selectPetInfoCounts" resultType="java.util.HashMap">
+        select count(*) as total,
+               sum(case when status = '0' then 1 else 0 end) as onSale,
+               count(distinct category_id) as categoryCount
+        from pet_info
+    </select>
+
+    <!-- 品类快筛角标：只回分类与数量 -->
+    <select id="selectPetCountByCategory" resultType="java.util.HashMap">
+        select category_id as categoryId, count(*) as count
+        from pet_info
+        group by category_id
+        order by category_id
     </select>
 
     <select id="selectPetInfoByPetId" parameterType="Long" resultMap="PetInfoResult">

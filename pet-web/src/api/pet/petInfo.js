@@ -9,6 +9,15 @@ export function listPetInfo(query) {
   });
 }
 
+// 首页/列表页聚合：总数、在售数、分类数、各分类计数、精选 N 只（免登录）
+export function getPetOverview(limit = 12) {
+  return request({
+    url: "/pet/info/overview",
+    method: "get",
+    params: { limit },
+  });
+}
+
 // 查询宠物信息详细
 export function getPetInfo(petId) {
   return request({

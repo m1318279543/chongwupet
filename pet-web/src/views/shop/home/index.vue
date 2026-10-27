@@ -76,7 +76,7 @@
             <p>按健康记录完整度与到店可看时间排序</p>
           </div>
           <router-link class="more" to="/shop/pets">
-            宠物售卖 · 全部 {{ allPets.length }} 只
+            宠物售卖 · 全部 {{ counts.total }} 只
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
           </router-link>
         </div>
@@ -119,9 +119,11 @@
             <div class="thumb"><img :src="p.image" :alt="p.name" loading="lazy" /></div>
             <div class="body">
               <div class="name">{{ p.name }}</div>
+              <div class="spec">{{ p.spec }}</div>
+              <!-- 与宠物卡同一结构：左价格 / 右行动，中间 1px 线收口 -->
               <div class="row">
-                <span class="spec">{{ p.spec }}</span>
-                <span class="price">¥{{ p.price }}<i>起</i></span>
+                <span class="price">¥{{ money(p.price) }}<i>起</i></span>
+                <span class="go">详情<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
               </div>
             </div>
           </article>
@@ -187,14 +189,15 @@ import { ref, inject, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { listPetInfo } from '@/api/pet/petInfo'
-import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
+import { getPetOverview } from '@/api/pet/petInfo'
+import { listPetFavorite, addPetFavorite, delPetFavorite, listMyFavoriteIds } from '@/api/pet/petFavorite'
 import { commentStatGroup } from '@/api/pet/petComment'
-import { listGoods } from '@/api/pet/petGoods'
+import { listFeaturedGoods } from '@/api/pet/petGoods'
 import { storeOptions } from '@/api/pet/petStore'
 import { useUserStore } from '@/store/modules/user'
 import PetCard from './PetCard.vue'
 import { PET_GRADIENTS } from './homeData'
+import { money } from '@/utils/money'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -202,7 +205,9 @@ const openAuth = inject('openAuth', () => {})
 
 const keyword = ref('')
 const petList = ref([])
-const allPets = ref([])
+// 首页只拿接口算好的聚合结果：统计数字 + 精选若干只，不再拉全表
+const featured = ref([])
+const counts = ref({ total: 0, onSale: 0, categoryCount: 0 })
 const loading = ref(false)
 const myFavorites = ref([])
 const stores = ref([])
@@ -234,7 +239,7 @@ function isFav(petId) { return myFavorites.value.includes(petId) }
 
 // Hero 图集：猫 / 狗 / 小宠各取一张有图的
 const heroPets = computed(() => {
-  const withImg = allPets.value.filter((p) => isImage(p.image))
+  const withImg = featured.value.filter((p) => isImage(p.image))
   const pick = []
   for (const id of [1, 2, 3]) {
     const p = withImg.find((x) => x.categoryId === id)
@@ -243,26 +248,18 @@ const heroPets = computed(() => {
   return (pick.length >= 3 ? pick : withImg).slice(0, 3)
 })
 
-// 首页精选顺序：猫 / 狗 / 兔 优先，其余按后台录入顺序
-// 后台新增数据通常按分类批量导入，不排的话首屏可能整屏都是水族或爬行
-const CAT_PRIORITY = { 1: 0, 2: 1, 3: 2 }
-const featuredPets = computed(() => allPets.value.slice().sort((a, b) => {
-  const pa = CAT_PRIORITY[a.categoryId] ?? 9
-  const pb = CAT_PRIORITY[b.categoryId] ?? 9
-  return pa - pb
-}))
-
 // 首页只放精选 12 只，完整列表（含品类筛选）在宠物售卖页
 const HOME_COUNT = 12
-const gridPets = computed(() => featuredPets.value.slice(0, HOME_COUNT))
+const gridPets = computed(() => featured.value.slice(0, HOME_COUNT))
 
 // 宠物粮精选：每个品类挑一款，展示 4 款
 const foodList = ref([])
-const petCats = computed(() => new Set(allPets.value.map(p => p.categoryId)).size)
+const petCats = computed(() => Number(counts.value.categoryCount || 0))
 async function loadFood() {
   try {
-    const res = await listGoods({ status: '0', pageNum: 1, pageSize: 200 })
-    const rows = (res.rows || []).map((g) => ({
+    // 后端按品类各取一款，避免拉 200 条商品到前端再挑
+    const res = await listFeaturedGoods(4)
+    foodList.value = (res.data || []).map((g) => ({
       goodsId: g.goodsId,
       image: g.image,
       name: g.goodsName,
@@ -270,20 +267,16 @@ async function loadFood() {
       price: Number(g.price),
       cat: g.cat
     })).filter((g) => g.price > 0)
-    const seen = []
-    for (const g of rows) {
-      if (!seen.includes(g.cat)) { seen.push(g.cat); foodList.value.push(g) }
-      if (foodList.value.length >= 4) break
-    }
-    if (!foodList.value.length) foodList.value = rows.slice(0, 4)
   } catch (e) { /* 接口不可用时不摆空壳 */ }
 }
 
-async function loadAllPets() {
+async function loadOverview() {
   loading.value = true
   try {
-    const res = await listPetInfo({ pageNum: 1, pageSize: 1000 })
-    allPets.value = res.rows || []
+    // 一次请求拿统计 + 精选，前端不再拉全表自己排序截断
+    const res = await getPetOverview(HOME_COUNT)
+    counts.value = res.counts || { total: 0, onSale: 0, categoryCount: 0 }
+    featured.value = res.featured || []
   } catch (e) {
     console.error('加载宠物失败', e)
   } finally {
@@ -302,8 +295,8 @@ async function loadStores() {
 async function loadMyFavorites() {
   if (!isLogged()) { myFavorites.value = []; return }
   try {
-    const res = await listPetFavorite({ userId: userStore.userId, pageNum: 1, pageSize: 1000 })
-    myFavorites.value = (res.rows || []).map(r => r.petId)
+    const res = await listMyFavoriteIds()
+    myFavorites.value = res.data || []
   } catch (e) { console.warn('收藏加载失败', e) }
 }
 
@@ -346,7 +339,7 @@ function goDetail(petId) {
 }
 
 onMounted(() => {
-  loadAllPets()
+  loadOverview()
   loadMyFavorites()
   loadRatings()
   loadStores()
@@ -371,14 +364,14 @@ onMounted(() => {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px 6px 10px; background: var(--bg-card);
   border: 1px solid var(--border-1); border-radius: var(--radius-pill);
-  font-size: 12.5px; font-weight: 500; color: var(--text-2); box-shadow: var(--shadow-card);
+  font-size: 12.5px; font-weight: 500; color: var(--text-2);
   svg { width: 13px; height: 13px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; flex-shrink: 0; }
-  b { color: var(--text-1); font-weight: 600; }
+  b { color: var(--text-1); font-weight: 700; }
   .sep { width: 1px; height: 11px; background: var(--border-1); }
 }
 
 h1 {
-  margin: 20px 0 0; font-size: clamp(30px, 3.3vw, 44px); line-height: 1.16;
+  margin: 20px 0 0; font-size: clamp(28px, 3.2vw, 44px); line-height: 1.16;
   font-weight: 700; letter-spacing: -.012em; color: var(--text-1);
   em {
     font-style: normal; color: var(--brand-700); position: relative; white-space: nowrap;
@@ -389,27 +382,28 @@ h1 {
   }
 }
 .hero-sub {
-  margin: 20px 0 0; max-width: 30em; font-size: 15.5px; line-height: 1.8; color: var(--text-2);
-  b { color: var(--text-1); font-weight: 600; }
+  margin: 20px 0 0; max-width: 30em; font-size: 16px; line-height: 1.8; color: var(--text-2);
+  b { color: var(--text-1); font-weight: 700; }
 }
 
 .hero-search {
   display: flex; align-items: center; gap: 8px; margin-top: 32px;
   height: 56px; padding: 0 8px 0 18px; background: var(--bg-card);
-  border: 1px solid var(--border-1); border-radius: 14px;
-  box-shadow: var(--shadow-sm); max-width: 520px;
-  transition: border-color .16s, box-shadow .16s;
-  &:focus-within { border-color: var(--brand-300); box-shadow: 0 0 0 3px var(--brand-50), var(--shadow-sm); }
-  .s-ico { font-size: 18px; color: var(--text-3); flex-shrink: 0; }
+  border: 1px solid var(--border-1); border-radius: var(--radius-md);
+  max-width: 520px;
+  transition: border-color .16s;
+  // 焦点态只加深描边，不加投影（投影只留给弹窗）
+  &:focus-within { border-color: var(--brand-400); }
+  .s-ico { font-size: 20px; color: var(--text-3); flex-shrink: 0; }
   input {
     flex: 1; min-width: 0; border: 0; outline: 0; background: none;
-    font-size: 15px; font-family: inherit; color: var(--text-1);
+    font-size: 16px; font-family: inherit; color: var(--text-1);
     &::placeholder { color: var(--text-4); }
     &::-webkit-search-cancel-button { display: none; }
   }
   .s-go {
-    height: 40px; padding: 0 22px; border-radius: 10px; border: 0;
-    background: var(--brand-600); color: #fff; font-size: 14.5px; font-weight: 600;
+    height: 40px; padding: 0 22px; border-radius: var(--radius-md); border: 0;
+    background: var(--brand-600); color: #fff; font-size: 14px; font-weight: 700;
     font-family: inherit; cursor: pointer; flex-shrink: 0; transition: background .16s;
     &:hover { background: var(--brand-700); }
   }
@@ -419,27 +413,26 @@ h1 {
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 48px; padding: 0 22px; border-radius: var(--radius-md);
-  font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+  font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
   border: 1px solid transparent; transition: transform .16s, background .16s, border-color .16s, color .16s;
   svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.9; }
 }
 .btn-primary {
-  background: var(--brand-600); color: #fff; box-shadow: var(--shadow-cta);
-  &:hover { background: var(--brand-700); transform: translateY(-1px); }
+  background: var(--brand-600); color: #fff;
+  &:hover { background: var(--brand-700); }
 }
 .btn-ghost {
   background: var(--bg-card); color: var(--text-1); border-color: var(--border-1);
-  box-shadow: var(--shadow-card);
   &:hover { border-color: var(--brand-300); color: var(--brand-700); background: var(--brand-50); }
 }
-.btn-sm { height: 38px; padding: 0 16px; font-size: 13.5px; border-radius: 10px; }
+.btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-md); }
 
 .trust {
   display: flex; gap: 32px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-1);
   div strong {
     display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em;
-    line-height: 1.3; color: var(--text-1);
-    i { font-style: normal; font-size: 12px; font-weight: 600; }
+    line-height: 1.3; color: var(--text-1); font-variant-numeric: tabular-nums;
+    i { font-style: normal; font-size: 12px; font-weight: 700; }
   }
   div span { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
 }
@@ -460,12 +453,12 @@ h1 {
   position: absolute; left: -18px; bottom: 26px;
   display: flex; align-items: center; gap: 10px;
   padding: 11px 16px 11px 12px; background: var(--bg-card);
-  border: 1px solid var(--border-1); border-radius: 14px; box-shadow: var(--shadow-float);
+  border: 1px solid var(--border-1); border-radius: var(--radius-md);
   .ok { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-50);
     display: grid; place-items: center; flex-shrink: 0;
     svg { width: 15px; height: 15px; stroke: var(--brand-600); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; } }
-  strong { display: block; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text-1); }
-  & > span > span { display: block; font-size: 11.5px; color: var(--text-3); line-height: 1.35; }
+  strong { display: block; font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--text-1); }
+  & > span > span { display: block; font-size: 12px; color: var(--text-3); line-height: 1.35; }
 }
 
 /* ===== 区块通用 ===== */
@@ -474,21 +467,24 @@ h1 {
 .sec-head {
   display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
   margin-bottom: 32px; padding-bottom: 18px; border-bottom: var(--rule);
-  h2 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--text-1); }
-  p { margin-top: 6px; font-size: 13.5px; color: var(--text-3); }
+  h2 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--text-1); }
+  p { margin-top: 6px; font-size: 13px; color: var(--text-3); }
 }
 .more {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
-  font-size: 14px; font-weight: 600; color: var(--brand-700);
+  font-size: 14px; font-weight: 700; color: var(--brand-700);
   background: none; border: 0; font-family: inherit; cursor: pointer; padding: 8px 0; white-space: nowrap;
   text-decoration: none;
   svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .16s; }
   &:hover svg { transform: translateX(3px); }
 }
 
-/* 网格：4 / 3 / 2 列；卡片已去壳，行距加大靠留白分组 */
+/* 网格：auto-fill + minmax 自适应，不再用固定列数在 768 处跳变
+   —— min(250px, 45%) 保证 390 宽也能并排两张，1200 宽自动落成 4 列 */
 .grid {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 45%), 1fr));
+  gap: 26px 16px;
   min-height: 200px;
 }
 .empty {
@@ -496,23 +492,34 @@ h1 {
   p { margin-bottom: 16px; font-size: 14px; }
 }
 
-/* ===== ③ 宠物粮精选：与宠物卡同一套扁平语言 ===== */
-.food-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 16px; }
+/* ===== ③ 宠物粮精选：与宠物卡同一套扁平语言，图片统一 4:3 ===== */
+.food-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 45%), 1fr));
+  gap: 26px 16px;
+}
 .food-card {
   background: none; border: 0; cursor: pointer; text-align: left; font-family: inherit;
   &:hover .thumb { box-shadow: 0 0 0 1px var(--brand-200); }
   .thumb {
-    height: 180px; background: var(--bg-sunken); border-radius: var(--radius-md);
+    aspect-ratio: 4 / 3; background: var(--bg-sunken); border-radius: var(--radius-md);
     overflow: hidden; transition: box-shadow .2s;
     img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
     &:hover img { transform: scale(1.05); }
   }
   .body { padding: 12px 2px 0; }
-  .name { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
-  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .spec { font-size: 13px; color: var(--text-3); }
-  .price { font-size: 17px; font-weight: 700; color: var(--price); font-variant-numeric: tabular-nums;
-    i { font-style: normal; font-size: 11.5px; color: var(--text-3); font-weight: 400; margin-left: 1px; } }
+  .name { font-size: 16px; font-weight: 700; color: var(--text-1); line-height: 1.4; }
+  .spec { margin-top: 3px; font-size: 12.5px; color: var(--text-3); }
+  .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-2); }
+  // 与 PetCard 同一写法：数字字体、20px、价格色
+  .price { font-family: var(--font-num); font-size: 20px; font-weight: 700; line-height: 1.15;
+    letter-spacing: -.01em; color: var(--price); font-variant-numeric: tabular-nums;
+    i { font-style: normal; font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 1px; } }
+  .go { display: inline-flex; align-items: center; gap: 3px; padding-bottom: 2px;
+    font-size: 12.5px; font-weight: 700; color: var(--text-3); transition: color .16s;
+    svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .food-card:hover & { color: var(--brand-700); } }
 }
 
 /* ===== ④ 门店：去卡化，列间 1px 细线，与整页扁平语言一致 ===== */
@@ -526,17 +533,17 @@ h1 {
 }
 .store-top {
   display: flex; align-items: center; gap: 8px;
-  h4 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--text-1); }
+  h4 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
   .tag { padding: 2px 7px; border-radius: var(--radius-xs); background: var(--brand-50);
-    color: var(--brand-700); font-size: 11px; font-weight: 600; }
+    color: var(--brand-700); font-size: 11px; font-weight: 700; }
 }
 .store-row {
   display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text-2); line-height: 1.6;
   svg { width: 14px; height: 14px; stroke: var(--text-3); fill: none; stroke-width: 1.7; margin-top: 3px; flex-shrink: 0; }
-  &.tel { color: var(--text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+  &.tel { color: var(--text-1); font-weight: 700; font-variant-numeric: tabular-nums; }
 }
 .store-btn {
-  margin-top: auto; width: 100%; height: 40px; font-size: 13.5px; border-radius: 10px;
+  margin-top: auto; width: 100%; height: 40px; font-size: 13px; border-radius: var(--radius-md);
   background: var(--bg-card); color: var(--brand-700); border: 1px solid var(--brand-200);
   &:hover { background: var(--brand-50); border-color: var(--brand-300); }
 }
@@ -548,13 +555,12 @@ h1 {
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: var(--radius-xl);
   h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
-  p { margin-top: 6px; font-size: 13.5px; color: var(--text-2); }
+  p { margin-top: 6px; font-size: 13px; color: var(--text-2); }
   .cta-actions { display: flex; gap: 12px; flex-shrink: 0; }
 }
 
 /* ===== 响应式 ===== */
 @media (max-width: 1240px) {
-  .grid, .food-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hero-media { height: 420px; }
 }
 @media (max-width: 1000px) {
@@ -571,8 +577,8 @@ h1 {
 @media (max-width: 768px) {
   .hero-inner { padding: 32px 16px 40px; }
   .sec-inner { padding: 0 16px; }
-  h1 { font-size: 27px; }
-  .hero-sub { font-size: 14.5px; }
+  h1 { font-size: 24px; }
+  .hero-sub { font-size: 14px; }
   .hero-search { height: 52px; border-radius: var(--radius-md); margin-top: 24px;
     .s-go { padding: 0 16px; font-size: 14px; } }
   .hero-cta { margin-top: 20px; }
@@ -581,7 +587,7 @@ h1 {
   .trust { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px; margin-top: 28px; padding-top: 20px; }
   .trust div strong { font-size: 16px; }
-  .trust div span { font-size: 11px; line-height: 1.4; }
+  .trust div span { font-size: 12px; line-height: 1.4; }
 
   /* 图集改为主图横幅 + 两张并排 */
   .hero-media {
@@ -593,11 +599,11 @@ h1 {
   .media-badge { display: none; }
 
   .sec { padding: 48px 0; }
-  .sec-head { h2 { font-size: 21px; } p { margin-top: 4px; font-size: 12.5px; } }
+  .sec-head { h2 { font-size: 20px; } p { margin-top: 4px; font-size: 12.5px; } }
   .more { font-size: 13px; }
-  .grid, .food-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 10px; }
-  .food-card .thumb { height: auto; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
-  .cta-inner h3 { font-size: 17px; }
+  .grid, .food-grid { gap: 18px 10px; }
+  .food-card .thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
+  .cta-inner h3 { font-size: 16px; }
   .cta-actions { width: 100%;
     .btn { flex: 1; padding: 0 12px; font-size: 14px; } }
 }

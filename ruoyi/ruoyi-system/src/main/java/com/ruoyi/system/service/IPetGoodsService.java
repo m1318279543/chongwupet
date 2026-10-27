@@ -2,6 +2,7 @@ package com.ruoyi.system.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.system.domain.PetGoods;
 import com.ruoyi.system.domain.PetGoodsSku;
 import com.ruoyi.system.domain.PetStockLog;
@@ -14,6 +15,12 @@ import com.ruoyi.system.domain.PetStockLog;
 public interface IPetGoodsService
 {
     public List<PetGoods> selectPetGoodsList(PetGoods goods);
+
+    /** 首页精选：每个品类一款 */
+    public List<PetGoods> selectFeaturedGoods(int limit);
+
+    /** 商品概览统计 */
+    public Map<String, Object> selectGoodsStats();
 
     /** 商品详情（含 SKU） */
     public PetGoods selectPetGoodsById(Long goodsId);

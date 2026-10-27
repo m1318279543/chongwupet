@@ -1,6 +1,7 @@
 package com.ruoyi.system.mapper;
 
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.PetGoods;
 import com.ruoyi.system.domain.PetGoodsSku;
@@ -14,6 +15,12 @@ import com.ruoyi.system.domain.PetStockLog;
 public interface PetGoodsMapper
 {
     public List<PetGoods> selectPetGoodsList(PetGoods goods);
+
+    /** 首页宠物粮精选：每个品类取销量/排序最靠前的一款 */
+    public List<PetGoods> selectFeaturedGoods(@Param("limit") int limit);
+
+    /** 商品概览统计：总数 / 在售 / 低库存 / 库存合计 */
+    public Map<String, Object> selectGoodsStats();
 
     public PetGoods selectPetGoodsById(Long goodsId);
 

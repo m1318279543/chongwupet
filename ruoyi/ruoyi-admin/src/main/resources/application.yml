@@ -93,8 +93,8 @@ spring:
 token:
   # 令牌自定义标识
   header: Authorization
-  # 令牌密钥
-  secret: abcdefghijklmnopqrstuvwxyz
+  # 令牌密钥（更换后所有已登录会话失效，需重新登录）
+  secret: e8b105206272ea013ef8346682feeca982a822fa46dce421319163a4bd83ae9c
   # 令牌有效期（默认30分钟）
   expireTime: 30
 
@@ -143,24 +143,16 @@ xss:
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
 
-# 宠物医生在线模型（OpenAI 兼容 /chat/completions 协议）
-# 默认接入 Pollinations AI：完全免费、无需 API Key、开箱即用（真正的"自动接入"）
-# 如需更高质量的密钥模型（豆包/Kimi/通义/智谱等），只需把下面三项改成对应厂商即可
-llm:
-  # 是否启用在线模型
-  enabled: true
-  # 接口地址（OpenAI 兼容）
-  #   - 默认（免费·免密钥）：https://text.pollinations.ai/v1
-  #   - 豆包/火山方舟示例：https://ark.cn-beijing.volces.com/api/v3
-  #   - 通义千问示例：https://dashscope.aliyuncs.com/compatible-mode/v1
-  base-url: https://text.pollinations.ai/v1
-  # API Key：默认留空即用 Pollinations 免费免密钥通道；
-  #   换成密钥模型时填厂商 Key（建议用环境变量 LLM_API_KEY 注入，避免入库）
-  api-key: ${LLM_API_KEY:}
-  # 模型名
-  #   - 默认（免费）：openai（Pollinations 推荐免费模型，也可换 mistral / llama 等）
-  #   - 豆包：火山方舟推理接入点 EndpointId（ep-xxxx）
-  #   - 通义：qwen-plus / qwen-turbo；Kimi：moonshot-v1-8k；智谱：glm-4-flash
-  model: openai
-  # 单次问答超时（秒）
-  timeout: 60
+# AI 助手（OpenAI 兼容协议，可在豆包 / 通义 / Kimi / DeepSeek 之间切换）
+# provider=local：不调用远程模型，用知识检索 + 业务数据生成回答，无需 API Key 即可运行
+# provider=openai：配置 base-url / api-key / model 后启用模型润色
+pet:
+  ai:
+    enabled: true
+    provider: ${PET_AI_PROVIDER:local}
+    base-url: ${LLM_BASE_URL:https://api.deepseek.com/v1}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:deepseek-chat}
+    timeout: 45
+    rate-per-minute: 20
+    knowledge-limit: 4

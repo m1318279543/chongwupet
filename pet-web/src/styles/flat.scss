@@ -19,10 +19,10 @@
 // ============================================================
 
 :root {
-  // ---- 圆角：3 档封顶 8px ----
-  --r-1: 4px; // 标签、角标
-  --r-2: 6px; // 输入框、按钮、缩略图
-  --r-3: 8px; // 唯一允许的面板圆角（硬上限）
+  // ---- 圆角：直接引用 tokens.scss，避免两套值互相矛盾 ----
+  --r-1: var(--radius-xs); // 4px 标签、角标
+  --r-2: var(--radius-sm); // 6px 输入框、缩略图
+  --r-3: var(--radius-md); // 8px 按钮、面板（硬上限）
 
   // ---- 分割线：全站只有两种 ----
   --rule: 1px solid var(--border-1); // 区块级（章节、表头）
@@ -32,12 +32,14 @@
   --zebra: #f9faf9;
   --row-hover: #f6f9f7;
 
-  // ---- 垂直节奏 ----
-  --gap-1: 6px;
-  --gap-2: 12px;
-  --gap-3: 20px;
-  --gap-4: 32px;
-  --gap-5: 48px;
+  // ---- 垂直节奏：别名指向 --sp-*，不再自建一套 ----
+  --gap-1: var(--sp-2); // 8
+  --gap-2: var(--sp-3); // 12
+  --gap-3: var(--sp-5); // 24
+  --gap-4: var(--sp-6); // 32
+  --gap-5: var(--sp-7); // 48
+  --gap-6: var(--sp-8); // 64
+  --gap-7: var(--sp-9); // 96
 }
 
 /* ============================================================
@@ -69,17 +71,17 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--text-3);
 }
 .ui-title {
   margin: 0;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.25;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: -.01em;
   color: var(--text-1);
 }
@@ -105,7 +107,7 @@
 .ui-count b {
   margin-right: 3px;
   font-size: 20px;
-  font-weight: 650;
+  font-weight: 700;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
 }
@@ -122,8 +124,8 @@
   border-bottom: var(--rule);
 }
 .ui-sec__title {
-  font-size: 15px;
-  font-weight: 650;
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: .01em;
   color: var(--text-1);
 }
@@ -161,8 +163,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text-1);
   line-height: 1.4;
 }
@@ -213,7 +215,7 @@
 .ui-table th {
   padding: 0 12px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: .04em;
   color: var(--text-3);
   white-space: nowrap;
@@ -285,7 +287,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-1);
 }
 .ui-label em {
@@ -340,7 +342,7 @@
 .ui-stat__value {
   margin-top: 6px;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: -.01em;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
@@ -360,14 +362,14 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 42px;
-  padding: 0 22px;
+  height: 40px;
+  padding: 0 20px;
   border: 1px solid transparent;
-  border-radius: var(--r-2);
+  border-radius: var(--r-3);
   background: transparent;
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color .16s ease, color .16s ease, border-color .16s ease;
@@ -377,7 +379,9 @@
 .ui-btn--solid[disabled] { background: var(--border-1); border-color: var(--border-1); color: var(--text-4); cursor: not-allowed; }
 .ui-btn--line { border-color: var(--text-1); color: var(--text-1); }
 .ui-btn--line:hover { background: var(--text-1); color: #fff; }
-.ui-btn--sm { height: 34px; padding: 0 14px; font-size: 13px; }
+// 三级高度：32（表格行内）/ 40（默认）/ 48（首屏主行动）
+.ui-btn--sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.ui-btn--lg { height: 48px; padding: 0 24px; font-size: 16px; }
 
 .ui-linkbtn {
   appearance: none;
@@ -385,7 +389,7 @@
   background: none;
   padding: 0;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--brand-700);
   cursor: pointer;
   display: inline-flex;
@@ -421,17 +425,24 @@
 .ui-chip--ok { border-color: var(--success-100); background: var(--success-50); color: var(--success-500); }
 
 /* ============================================================
-   12. 价格 / 数字
+   12. 价格 / 数字：三档字号 16 / 20 / 28，全站金额唯一写法
+   —— 千分位由 formatPrice 负责，这里只管字形与层级
    ============================================================ */
 .ui-price {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.01em;
   color: var(--price);
   white-space: nowrap;
 }
-.ui-price small { font-size: 12px; font-weight: 500; }
+.ui-price small { font-size: 12px; font-weight: 500; margin-right: 1px; }
+.ui-price--sm { font-size: 16px; }
+.ui-price--sm small { font-size: 11px; }
+.ui-price--lg { font-size: 28px; }
+.ui-price--lg small { font-size: 14px; }
 .ui-num { font-variant-numeric: tabular-nums; }
 
 /* ============================================================
@@ -461,23 +472,26 @@
 .ui-thumb--lg { width: 104px; height: 104px; }
 
 /* ============================================================
-   14. 空态：居中文案 + 一个主操作，不做插图卡片
+   14. 空态：居中文案 + 一个实心主操作，不做插图卡片
+   —— 高度统一为 min(46vh, 380px)，购物车 / 订单 / 收藏的空页不再各留一大块空白
    ============================================================ */
 .ui-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 80px 0;
+  min-height: min(46vh, 380px);
+  padding: 40px 0;
   text-align: center;
 }
 .ui-empty__title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text-1);
 }
 .ui-empty__desc {
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--text-3);
   max-width: 32em;
@@ -535,7 +549,7 @@
   .el-pager li.is-active {
     background: transparent;
     color: var(--text-1);
-    font-weight: 650;
+    font-weight: 700;
   }
   .btn-prev,
   .btn-next {
@@ -561,7 +575,7 @@
 @media (max-width: 768px) {
   .ui-page { padding: 24px 14px 56px; }
   .ui-head { flex-wrap: wrap; align-items: flex-start; gap: 12px; }
-  .ui-title { font-size: 21px; }
+  .ui-title { font-size: 20px; }
   .ui-sub { font-size: 13px; }
   .ui-head__aside { width: 100%; gap: 14px; }
 

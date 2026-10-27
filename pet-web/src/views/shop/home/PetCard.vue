@@ -26,7 +26,7 @@
         {{ metaText }}<template v-if="rating"> · <el-icon class="star"><Star /></el-icon>{{ rating.avg }}</template>
       </p>
       <div class="pet-foot">
-        <span class="pet-price num" v-if="pet.price > 0"><i>¥</i>{{ formatPrice(pet.price) }}</span>
+        <span class="pet-price num" v-if="pet.price > 0"><i>¥</i>{{ money(pet.price) }}</span>
         <span class="pet-price free" v-else>协商领养</span>
         <span class="pet-link">
           详情
@@ -39,6 +39,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { money } from '@/utils/money'
 
 const props = defineProps({
   pet: { type: Object, required: true },
@@ -53,10 +54,6 @@ function isImage(s) {
 }
 function genderText(g) {
   return g === '0' ? '公' : g === '1' ? '母' : ''
-}
-// 价格加千分位，¥ 与数字分离便于分层字号
-function formatPrice(p) {
-  return Number(p).toLocaleString('zh-CN')
 }
 // 品种 · 性别 · 月龄 合并成一行，不再堆三枚灰色标签
 const metaText = computed(() => {
@@ -97,32 +94,40 @@ const metaText = computed(() => {
 .pet-flag {
   position: absolute; top: 10px; left: 10px; z-index: 2;
   display: inline-flex; align-items: center; gap: 5px;
-  height: 24px; padding: 0 9px; border-radius: 7px;
+  height: 24px; padding: 0 9px; border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, .94); backdrop-filter: blur(4px);
-  font-size: 11.5px; font-weight: 600; color: var(--text-1);
+  font-size: 12px; font-weight: 700; color: var(--text-1);
   box-shadow: 0 1px 3px rgba(22, 25, 23, .12);
 
   .d { width: 5px; height: 5px; border-radius: 50%; background: var(--success-500); }
   &.sold { background: rgba(22, 25, 23, .72); color: #fff;
-    .d { background: #a8a29e; } }
+    .d { background: var(--text-4); } }
 }
 
 .fav {
-  position: absolute; top: 9px; right: 9px; z-index: 2;
-  width: 30px; height: 30px; border-radius: 50%; border: 0;
-  background: rgba(255, 255, 255, .94); display: grid; place-items: center;
-  box-shadow: 0 1px 3px rgba(22, 25, 23, .14); cursor: pointer;
-  transition: transform .16s, background .16s;
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  // 触控热区 40×40（图标仍 15px，视觉不变）
+  width: 40px; height: 40px; border-radius: 50%; border: 0;
+  background: transparent; display: grid; place-items: center;
+  cursor: pointer;
+  transition: transform .16s;
 
-  svg { width: 15px; height: 15px; stroke: var(--text-2); fill: none; stroke-width: 1.8; }
-  &:hover { transform: scale(1.08); background: #fff; }
+  // 视觉底片单独一层，避免 40px 的点击区变成一块大白圆
+  &::before {
+    content: ''; position: absolute; width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255, 255, 255, .94); box-shadow: 0 1px 3px rgba(22, 25, 23, .14);
+    transition: background .16s;
+  }
+  svg { position: relative; width: 15px; height: 15px; stroke: var(--text-2); fill: none; stroke-width: 1.8; }
+  &:hover { transform: scale(1.06); }
+  &:hover::before { background: #fff; }
   &[aria-pressed="true"] svg { stroke: var(--brand-600); fill: var(--brand-600); }
 }
 
 .pet-body { padding: 12px 2px 0; }
 
 .pet-name {
-  font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--text-1);
+  font-size: 16px; font-weight: 700; line-height: 1.4; color: var(--text-1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pet-meta {
@@ -134,13 +139,14 @@ const metaText = computed(() => {
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-2);
 }
 .pet-price {
-  font-size: 20px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; color: var(--price);
-  i { font-style: normal; font-size: 12.5px; font-weight: 600; margin-right: 1px; }
-  &.free { font-size: 14px; font-weight: 600; color: var(--brand-700); }
+  font-family: var(--font-num); font-size: 20px; font-weight: 700; line-height: 1.1;
+  letter-spacing: -.02em; color: var(--price); font-variant-numeric: tabular-nums;
+  i { font-style: normal; font-size: 12.5px; font-weight: 700; margin-right: 1px; }
+  &.free { font-family: var(--font-sans); font-size: 14px; font-weight: 700; color: var(--brand-700); }
 }
 .pet-link {
   display: inline-flex; align-items: center; gap: 3px; padding-bottom: 2px;
-  font-size: 12.5px; font-weight: 600; color: var(--text-3); transition: color .16s;
+  font-size: 12.5px; font-weight: 700; color: var(--text-3); transition: color .16s;
   svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
   .pet-card:hover & { color: var(--brand-700); }
 }
@@ -149,11 +155,14 @@ const metaText = computed(() => {
   .pet-media { aspect-ratio: 1 / 1; border-radius: var(--radius-sm);
     .pet-emoji { font-size: 12px; } }
   .pet-body { padding: 9px 1px 0; }
-  .pet-name { font-size: 13.5px; }
-  .pet-meta { font-size: 11.5px; }
+  .pet-name { font-size: 14px; }
+  .pet-meta { font-size: 12px; }
   .pet-foot { margin-top: 9px; padding-top: 9px; }
-  .pet-price { font-size: 17px;
+  .pet-price { font-size: 16px;
     i { font-size: 11px; } }
-  .pet-link { display: none; }
+  // 窄屏保留「价格 / 详情」的左右结构，与桌面同一套阅读顺序
+  .pet-link { font-size: 12px;
+    svg { width: 11px; height: 11px; } }
+  .fav { top: 6px; right: 6px; width: 40px; height: 40px; }
 }
 </style>

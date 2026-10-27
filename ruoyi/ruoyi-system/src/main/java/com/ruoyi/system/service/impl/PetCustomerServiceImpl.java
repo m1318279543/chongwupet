@@ -42,7 +42,18 @@ public class PetCustomerServiceImpl implements IPetCustomerService
     @Override
     public List<PetOwner> selectPetsByCustomerId(Long customerId)
     {
-        return petCustomerMapper.selectPetsByCustomerId(customerId);
+        // 同一只宠物可能有多条归属记录（历史转手），展示层按 petId 去重
+        List<PetOwner> rows = petCustomerMapper.selectPetsByCustomerId(customerId);
+        if (rows == null || rows.size() <= 1)
+        {
+            return rows;
+        }
+        java.util.Map<Long, PetOwner> unique = new java.util.LinkedHashMap<>();
+        for (PetOwner one : rows)
+        {
+            unique.putIfAbsent(one.getPetId(), one);
+        }
+        return new java.util.ArrayList<>(unique.values());
     }
 
     @Override

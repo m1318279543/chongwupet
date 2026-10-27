@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page ui-page--md">
+  <div class="ui-page">
     <!-- 页面头：标题左、件数右，1px 线收口 -->
     <header class="ui-head">
       <div class="ui-head__main">
@@ -17,7 +17,7 @@
       <p class="ui-empty__title">购物车还是空的</p>
       <p class="ui-empty__desc">去宠物粮专区挑几袋，回来这里一起结算。</p>
       <div class="ui-empty__act">
-        <button type="button" class="ui-btn ui-btn--line" @click="goShop">去挑选宠物粮</button>
+        <button type="button" class="ui-btn ui-btn--solid" @click="goShop">去挑选宠物粮</button>
       </div>
     </div>
 
@@ -47,12 +47,12 @@
                 <div class="goods__text">
                   <div class="goods__name">{{ item.name }}</div>
                   <div class="goods__spec">
-                    {{ item.spec }}<span class="unit"> · ¥{{ item.price }}</span>
+                    {{ item.spec }}<span class="unit"> · ¥{{ money(item.price) }}</span>
                   </div>
                 </div>
               </div>
             </td>
-            <td class="c-price align-right ui-num">¥{{ item.price }}</td>
+            <td class="c-price align-right ui-num">¥{{ money(item.price) }}</td>
             <td class="c-qty">
               <el-input-number
                 :model-value="item.qty"
@@ -63,7 +63,7 @@
               />
             </td>
             <td class="c-sub align-right">
-              <span class="ui-price">¥{{ (item.price * item.qty).toFixed(2) }}</span>
+              <span class="ui-price ui-price--sm">¥{{ money(item.price * item.qty) }}</span>
             </td>
             <td class="c-op align-right">
               <button type="button" class="ui-linkbtn ui-linkbtn--danger" @click="removeItem(item)">删除</button>
@@ -82,7 +82,7 @@
           <span class="checkout__count">已选 <b>{{ cartStore.selectedCount }}</b> 件</span>
           <span class="checkout__sum">
             <i>合计</i>
-            <span class="ui-price">¥{{ cartStore.selectedPrice.toFixed(2) }}</span>
+            <span class="ui-price ui-price--lg">¥{{ money(cartStore.selectedPrice) }}</span>
           </span>
           <button
             type="button"
@@ -105,6 +105,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import { submitPetCart } from '@/api/pet/petCart'
+import { money } from '@/utils/money'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -214,8 +215,8 @@ function checkout() {
 }
 .goods__text { min-width: 0; }
 .goods__name {
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-1);
   line-height: 1.45;
 }
@@ -257,7 +258,7 @@ function checkout() {
   font-size: 13px;
   color: var(--text-3);
   b {
-    font-weight: 650;
+    font-weight: 700;
     color: var(--text-1);
     font-variant-numeric: tabular-nums;
   }
@@ -271,7 +272,6 @@ function checkout() {
     font-size: 13px;
     color: var(--text-3);
   }
-  .ui-price { font-size: 22px; }
 }
 
 /* ============================================================
@@ -307,7 +307,7 @@ function checkout() {
     :deep(.el-input-number) { width: 116px; }
   }
   .c-sub { order: 4; width: auto; margin-left: auto;
-    .ui-price { font-size: 15px; }
+    .ui-price { font-size: 16px; }
   }
   .c-op { order: 5; width: auto; }
 
@@ -326,6 +326,6 @@ function checkout() {
   .checkout__left { gap: 14px; }
   .checkout__right { gap: 12px; margin-left: auto; }
   .checkout__count { display: none; } // 窄屏省掉重复计数，只留合计
-  .checkout__sum .ui-price { font-size: 19px; }
+  .checkout__sum .ui-price { font-size: 20px; }
 }
 </style>

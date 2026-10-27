@@ -30,6 +30,12 @@ public class PetConsult extends BaseEntity
     @Excel(name = "联系方式")
     private String contact;
 
+    /** 来源（user 用户提交 / ai 助手转人工） */
+    private String source;
+
+    /** AI 已尝试的回答摘要，便于客服了解上下文 */
+    private String aiSummary;
+
     /** 咨询问题 */
     @Excel(name = "咨询问题")
     private String question;
@@ -65,6 +71,12 @@ public class PetConsult extends BaseEntity
 
     public String getContact() { return contact; }
     public void setContact(String contact) { this.contact = contact; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+
+    public String getAiSummary() { return aiSummary; }
+    public void setAiSummary(String aiSummary) { this.aiSummary = aiSummary; }
 
     public String getQuestion() { return question; }
     public void setQuestion(String question) { this.question = question; }

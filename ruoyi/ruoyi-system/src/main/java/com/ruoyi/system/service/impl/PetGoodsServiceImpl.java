@@ -2,6 +2,7 @@ package com.ruoyi.system.service.impl;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,18 @@ public class PetGoodsServiceImpl implements IPetGoodsService
     public List<PetGoods> selectPetGoodsList(PetGoods goods)
     {
         return petGoodsMapper.selectPetGoodsList(goods);
+    }
+
+    @Override
+    public List<PetGoods> selectFeaturedGoods(int limit)
+    {
+        return petGoodsMapper.selectFeaturedGoods(limit);
+    }
+
+    @Override
+    public Map<String, Object> selectGoodsStats()
+    {
+        return petGoodsMapper.selectGoodsStats();
     }
 
     @Override

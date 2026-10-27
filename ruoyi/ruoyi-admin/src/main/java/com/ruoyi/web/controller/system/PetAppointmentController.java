@@ -207,7 +207,7 @@ public class PetAppointmentController extends BaseController
             petNotificationService.push(origin.getUserId(), origin.getUserName(), "appointment",
                     "预约" + statusText(st),
                     "你预约看宠「" + (origin.getPetName() == null ? "" : origin.getPetName()) + "」的记录状态已更新为「"
-                            + statusText(st) + "」" + ("2".equals(st) ? "，感谢你的信任，期待毛孩子到家 🐾" : "，可到「我的预约」查看详情。"),
+                            + statusText(st) + "」" + ("2".equals(st) ? "，感谢你的信任，期待毛孩子到家。" : "，可到「我的预约」查看详情。"),
                     origin.getAppointmentId());
         }
         return toAjax(rows);

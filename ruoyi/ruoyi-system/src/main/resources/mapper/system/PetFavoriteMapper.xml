@@ -15,18 +15,27 @@
         <result property="petName"    column="pet_name"    />
         <result property="image"      column="image"       />
         <result property="categoryId" column="category_id" />
+        <result property="breed"      column="breed"       />
+        <result property="age"        column="age"         />
+        <result property="price"      column="price"       />
     </resultMap>
 
     <sql id="selectPetFavoriteVo">
         select f.favorite_id, f.user_id, f.pet_id, f.create_by, f.create_time, f.update_by, f.update_time, f.remark,
-               u.user_name as user_name, p.pet_name as pet_name, p.image as image, p.category_id as category_id
+               u.user_name as user_name, p.pet_name as pet_name, p.image as image, p.category_id as category_id,
+               p.breed as breed, p.age as age, p.price as price
         from pet_favorite f
         left join sys_user u on u.user_id = f.user_id
         left join pet_info p on p.pet_id = f.pet_id
     </sql>
 
     <select id="selectPetFavoriteList" parameterType="PetFavorite" resultMap="PetFavoriteResult">
-        <include refid="selectPetFavoriteVo"/>
+        select f.favorite_id, f.user_id, f.pet_id, f.create_by, f.create_time, f.update_by, f.update_time, f.remark,
+               u.user_name as user_name, p.pet_name as pet_name, p.image as image, p.category_id as category_id,
+               p.breed as breed, p.age as age, p.price as price
+        from pet_favorite f
+        left join sys_user u on u.user_id = f.user_id
+        inner join pet_info p on p.pet_id = f.pet_id
         <where>
             <if test="userId != null">
                 AND f.user_id = #{userId}
@@ -41,6 +50,14 @@
     <select id="selectPetFavoriteByFavoriteId" parameterType="Long" resultMap="PetFavoriteResult">
         <include refid="selectPetFavoriteVo"/>
         where f.favorite_id = #{favoriteId}
+    </select>
+
+    <!-- 只回 petId 一列：前台列表页打红心，避免把整行收藏+宠物数据拉到前端 -->
+    <select id="selectPetIdsByUserId" resultType="java.lang.Long">
+        select p.pet_id
+        from pet_favorite f
+        inner join pet_info p on p.pet_id = f.pet_id
+        where f.user_id = #{userId}
     </select>
 
     <insert id="insertPetFavorite" parameterType="PetFavorite" useGeneratedKeys="true" keyProperty="favoriteId">

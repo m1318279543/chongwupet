@@ -56,17 +56,17 @@
         </button>
         <div class="price" v-if="pet.price">
           <span class="label">售价</span>
-          <span class="amount">¥ {{ pet.price }}</span>
+          <span class="amount"><i>¥</i>{{ fmtPrice(pet.price) }}</span>
         </div>
         <div class="desc" v-if="pet.description">
           <h3>宠物简介</h3>
           <p>{{ pet.description }}</p>
         </div>
         <div class="actions">
-          <el-button size="large" type="primary" round :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
+          <el-button size="large" type="primary" :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
             {{ pet.status === '0' ? '立即购买' : '已被订走' }}
           </el-button>
-          <el-button size="large" round @click="openAppoint">立即预约看宠</el-button>
+          <el-button size="large" @click="openAppoint">立即预约看宠</el-button>
           <button type="button" class="ai-link" @click="askAi">它适合我吗？问 AI ›</button>
         </div>
       </div>
@@ -255,6 +255,11 @@ function genderText(g) { return g === '0' ? '公' : g === '1' ? '母' : '未知'
 function statusText(s) { return ['在售','已售','下架'][s] || '未知' }
 function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
 function fmtDate(d) { return d ? String(d).slice(0, 10) : '—' }
+// 价格统一千分位，与列表卡同一写法（¥2,800 而不是 ¥ 2500）
+function fmtPrice(p) {
+  const n = Number(p)
+  return Number.isFinite(n) ? n.toLocaleString('zh-CN') : p
+}
 function skillTag(s) {
   return s === '入门' ? 'success' : s === '进阶' ? 'warning' : 'danger'
 }
@@ -351,11 +356,17 @@ async function loadFavStatus() {
   } catch (e) {}
 }
 
-/** 唤起全站 AI 助手，并带上当前宠物作为上下文 */
+/** 唤起 AI 选宠顾问，带上当前宠物作为上下文 */
 function askAi() {
-  const p = pet.value || {}
-  const q = `我在看「${p.petName}」（${p.breed || '品种未知'}，¥${p.price || '价格面议'}），它适合什么样的家庭？养它每月大概要花多少？`
-  window.dispatchEvent(new CustomEvent('pet-ai-open', { detail: { q } }))
+  const id = pet.value?.petId || route.params.id
+  window.dispatchEvent(new CustomEvent('pet-assistant-open', {
+    detail: {
+      scene: 'detail',
+      petId: id,
+      bizId: String(id || ''),
+      message: '它适合新手吗？每月大概要花多少钱？'
+    }
+  }))
 }
 
 async function toggleFav() {
@@ -486,7 +497,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
-.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: 1px solid var(--border-1); background: #fff; border-radius: 8px; cursor: pointer; transition: .15s;
+.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: 1px solid var(--border-1); background: #fff; border-radius: var(--radius-md); cursor: pointer; transition: .15s;
   b { font-size: 13px; color: var(--text-1); font-weight: 500; }
   span { font-size: 11px; color: var(--text-3); }
   &:hover:not(:disabled) { border-color: var(--brand-500); }
@@ -495,28 +506,29 @@ onMounted(() => {
 }
 .slot-empty { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-3); }
 
-.detail { max-width: var(--container-md); margin: 0 auto; padding: 24px 24px 32px; }
+.detail { max-width: var(--container-lg); margin: 0 auto; padding: 24px 24px 32px; }
 .back-row {
   display: inline-flex; align-items: center; gap: 5px;
   margin: 0 0 14px; padding: 6px 10px 6px 6px;
   border: 0; background: none; cursor: pointer; font-family: inherit;
   border-radius: var(--radius-sm);
-  font-size: 13.5px; font-weight: 600; color: var(--text-3);
+  font-size: 13px; font-weight: 700; color: var(--text-3);
   transition: color .16s, background .16s;
   svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   &:hover { color: var(--brand-700); background: var(--brand-50); }
 }
-.detail-inner { display: flex; gap: 40px; background: #fff; border-radius: var(--radius-lg); padding: 32px; border: 1px solid var(--border-2); box-shadow: var(--shadow-card); }
+/* 首屏：不再把左右两块装进一张白卡，改为「图片 + 一条竖分割线 + 信息」 */
+.detail-inner { display: flex; gap: 40px; padding: 8px 0 0; }
 .left { flex: 0 0 380px;
-  .big-avatar { height: 320px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 160px; overflow: hidden;
+  .big-avatar { height: 320px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 160px; overflow: hidden;
     .big-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
   }
-  .guest-tip { margin-top: 12px; background: var(--brand-50); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .guest-tip { margin-top: 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand-300); font-size: 13px; color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 }
-.right { flex: 1;
+.right { flex: 1; min-width: 0; padding-left: 40px; border-left: var(--rule);
   .title-row { display: flex; align-items: center; gap: 12px; margin: 0 0 16px;
-    h1 { font-size: 30px; color: var(--text-1); margin: 0; }
-    .fav-star { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%;
+    h1 { font-size: 28px; color: var(--text-1); margin: 0; }
+    .fav-star { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
       border: 1px solid var(--border-1); background: var(--bg-card); cursor: pointer;
       display: grid; place-items: center; transition: border-color .16s, background .16s;
       svg { width: 18px; height: 18px; stroke: var(--text-2); fill: none; stroke-width: 1.8; transition: stroke .16s, fill .16s; }
@@ -527,32 +539,40 @@ onMounted(() => {
     }
   }
   .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
-    .tag-health { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600; }
+    .tag-health { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700; }
   }
   .health-strip { display: flex; align-items: stretch; gap: 0; width: 100%; margin: 0 0 20px; padding: 12px 0;
     border: 0; border-top: var(--rule); border-bottom: var(--rule); background: none; cursor: pointer; text-align: left; font-family: inherit;
+    // 条目多时允许换行，避免第 3 条与「完整档案」互相挤到截断
+    flex-wrap: wrap; row-gap: 12px;
     &:hover .hs-more { color: var(--brand-500); }
     &:hover .hs-txt b { color: var(--brand-700); }
-    .hs-item { display: flex; align-items: flex-start; gap: 8px; flex: 1; padding: 0 16px; border-left: var(--rule-soft);
+    .hs-item { display: flex; align-items: flex-start; gap: 8px; flex: 1 1 200px; padding: 0 16px; border-left: var(--rule-soft);
       &:first-child { border-left: 0; padding-left: 0; }
       .hs-dot { flex-shrink: 0; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--success-500); box-shadow: 0 0 0 3px var(--success-50); }
       .hs-txt { font-size: 12.5px; color: var(--text-2); line-height: 1.55; overflow-wrap: anywhere;
-        b { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; color: var(--text-3); margin-bottom: 2px; }
+        b { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); margin-bottom: 2px; }
       }
     }
     .hs-more { flex-shrink: 0; align-self: center; padding-left: 16px; border-left: var(--rule-soft); font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
   }
-  .price { background: var(--price-soft); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
-    .label { color: var(--text-3); font-size: 13px; margin-right: 12px; }
-    .amount { color: var(--price); font-size: 28px; font-weight: 700; }
+  /* 价格：去底色块，用上下两条 1px 线把「售价」框成一行 */
+  .price { display: flex; align-items: center; gap: 12px; padding: 16px 0; margin-bottom: 20px;
+    border-top: var(--rule); border-bottom: var(--rule);
+    .label { color: var(--text-3); font-size: 13px; }
+    .amount { color: var(--price); font-family: var(--font-num); font-size: 28px; font-weight: 700;
+      line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+      i { font-style: normal; font-size: 16px; margin-right: 2px; } }
   }
   .desc { margin-bottom: 24px;
     h3 { font-size: 16px; color: var(--text-1); margin: 0 0 8px; }
     p { color: var(--text-2); line-height: 1.8; }
   }
   .actions { display: flex; align-items: center; gap: 16px; margin-top: 32px; flex-wrap: wrap;
+    // 首屏主行动统一 48px 高（与首页 .btn 同一档）
+    .el-button { height: 48px; min-width: 148px; font-weight: 700; }
     .ai-link { border: 0; background: none; padding: 4px 0; cursor: pointer; font-family: inherit;
-      font-size: 13.5px; font-weight: 600; color: var(--text-3); transition: color .16s;
+      font-size: 13px; font-weight: 700; color: var(--text-3); transition: color .16s;
       &:hover { color: var(--brand-700); }
     }
   }
@@ -568,13 +588,13 @@ onMounted(() => {
 
   /* 健康时间线：1px 分割线的表格是本面板主角 */
   .tl { width: 100%; border-collapse: collapse; margin-bottom: 8px;
-    th { padding: 0 12px 9px 0; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; color: var(--text-3); text-align: left; border-bottom: var(--rule); white-space: nowrap; }
+    th { padding: 0 12px 9px 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--text-3); text-align: left; border-bottom: var(--rule); white-space: nowrap; }
     td { padding: 11px 12px 11px 0; font-size: 13px; line-height: 1.6; vertical-align: top; border-bottom: var(--rule-soft); }
     tr:last-child td { border-bottom: none; }
     .tl-date { width: 100px; white-space: nowrap; color: var(--text-2); font-variant-numeric: tabular-nums; }
-    .tl-name { width: 92px; white-space: nowrap; color: var(--text-1); font-weight: 600; }
+    .tl-name { width: 92px; white-space: nowrap; color: var(--text-1); font-weight: 700; }
     .tl-detail { color: var(--text-2); }
-    .tl-res { width: 150px; white-space: nowrap; color: var(--success-500); font-weight: 600;
+    .tl-res { width: 150px; white-space: nowrap; color: var(--success-500); font-weight: 700;
       .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success-500); margin-right: 7px; box-shadow: 0 0 0 3px var(--success-50); }
     }
   }
@@ -582,7 +602,7 @@ onMounted(() => {
 
   .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 8px 36px; margin-top: 22px; padding-top: 20px; border-top: var(--rule);
     .h-sec {
-      h3 { margin: 0 0 6px; font-size: 14.5px; color: var(--text-1); }
+      h3 { margin: 0 0 6px; font-size: 14px; color: var(--text-1); }
       ul { margin: 0; padding: 0; list-style: none;
         li { display: flex; gap: 12px; padding: 7px 0; font-size: 13px; line-height: 1.7; border-bottom: var(--rule-soft);
           &:last-child { border-bottom: none; }
@@ -605,11 +625,11 @@ onMounted(() => {
     .archive { color: var(--text-3); font-size: 13px; }
   }
   .pref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px;
-    .pref-item { display: flex; gap: 12px; align-items: flex-start; background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 12px; padding: 14px 16px;
-      .ico { font-size: 22px; flex-shrink: 0; }
+    .pref-item { display: flex; gap: 12px; align-items: flex-start; padding: 3px 0 3px 12px; border-left: 2px solid var(--brand-200);
+      .ico { font-size: 20px; flex-shrink: 0; }
       b { display: block; font-size: 13px; color: var(--brand-500); margin-bottom: 2px; }
       p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.6; }
-      &.warn { background: var(--danger-50); border-color: var(--danger-100);
+      &.warn { border-left-color: var(--danger-500);
         b { color: var(--danger-500); }
       }
     }
@@ -618,7 +638,7 @@ onMounted(() => {
 /* 手机端：左右结构改上下，大图等比例缩小，不再一张图占一屏 */
 @media (max-width: 768px) {
   .detail { padding: 16px 12px; }
-  .detail-inner { flex-direction: column; gap: 18px; padding: 20px 16px; }
+  .detail-inner { flex-direction: column; gap: 18px; padding: 0; }
   .left {
     flex: none;
     width: 100%;
@@ -631,12 +651,13 @@ onMounted(() => {
     }
   }
   .right {
+    padding-left: 0; border-left: 0;
     .title-row { margin-bottom: 12px;
-      h1 { font-size: 22px; }
-      .fav-star { width: 34px; height: 34px; }
+      h1 { font-size: 20px; }
+      .fav-star { width: 40px; height: 40px; }
     }
-    .price { padding: 12px 16px; margin-bottom: 14px;
-      .amount { font-size: 22px; }
+    .price { padding: 12px 0; margin-bottom: 14px;
+      .amount { font-size: 24px; }
     }
     .actions { gap: 10px; margin-top: 20px;
       .el-button { flex: 1 1 40%; min-width: 0; padding-left: 8px; padding-right: 8px; }
@@ -644,7 +665,7 @@ onMounted(() => {
     }
   }
   .health-panel, .pref-panel { padding: 18px 0 0; margin-top: 24px;
-    .panel-head h2 { font-size: 17px; }
+    .panel-head h2 { font-size: 16px; }
     .tl {
       thead { display: none; }
       tr { display: block; padding: 10px 0; border-bottom: var(--rule-soft); }

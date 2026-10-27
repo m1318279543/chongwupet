@@ -37,7 +37,7 @@
           <div class="desc">{{ p.desc }}</div>
           <div class="price-row">
             <span class="rating-tag" v-if="foodRating(p.fid)"><el-icon><Star /></el-icon>{{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
-            <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
+            <div class="price">¥{{ money(p.price) }}<span class="unit">起</span></div>
             <span class="go">详情<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
           </div>
         </div>
@@ -60,11 +60,9 @@
           <img :src="detail.image" :alt="detail.name" />
         </div>
         <div class="detail-right">
-          <div class="detail-cat">
-            <span class="emoji">{{ currentCat.emoji }}</span>{{ currentCat.name }}专区
-          </div>
+          <div class="detail-cat">{{ currentCat.name }}专区</div>
           <h2 class="detail-name">{{ detail.name }}</h2>
-          <div class="detail-price">¥{{ detail.price }}<span class="unit">起</span></div>
+          <div class="detail-price">¥{{ money(detail.price) }}<span class="unit">起</span></div>
           <div class="detail-tags">
             <el-tag v-for="t in detail.tags" :key="t" size="small" type="warning" effect="plain">{{ t }}</el-tag>
           </div>
@@ -103,6 +101,7 @@ import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
+import { money } from '@/utils/money'
 
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
@@ -136,35 +135,23 @@ function adaptGoods(g) {
   }
 }
 
-async function loadGoods() {
+async function loadGoods(cat = active.value) {
   try {
-    const res = await listGoods({ status: '0', pageNum: 1, pageSize: 200 })
+    // 按品类服务端筛选：每类只取当前页，不再一次拉 200 条全场商品
+    const res = await listGoods({ status: '0', cat, pageNum: 1, pageSize: 50 })
     const rows = res.rows || []
-    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST
+    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST.filter(f => f.cat === cat)
   } catch (e) {
-    goodsList.value = FOOD_LIST
+    goodsList.value = FOOD_LIST.filter(f => f.cat === cat)
   }
 }
 
 const filtered = computed(() => goodsList.value.filter(p => p.cat === active.value))
 
-// 类目清单：随商品数据派生（按 FOOD_CATEGORIES 元数据顺序排，出现新 cat 值则追加在末尾）
+// 类目用固定元数据（与后台 pet_goods.cat 词表一致），不再从全量商品里派生
 const CAT_META = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.id, c]))
-const categories = computed(() => {
-  const seen = []
-  for (const p of goodsList.value) {
-    if (p.cat && !seen.includes(p.cat)) seen.push(p.cat)
-  }
-  // 元数据顺序优先，未知类目兜底追加
-  const ordered = [
-    ...FOOD_CATEGORIES.filter(c => seen.includes(c.id)),
-    ...seen.filter(id => !CAT_META[id]).map(id => ({ id, name: id, color: '#9aa79f' }))
-  ]
-  return ordered
-})
-watch(categories, (list) => {
-  if (list.length && !list.some(c => c.id === active.value)) active.value = list[0].id
-})
+const categories = computed(() => FOOD_CATEGORIES)
+watch(active, () => loadGoods())
 
 // 详情弹窗
 // 评分角标：fid -> {avg,count}
@@ -214,21 +201,25 @@ function addToCart(p) {
 .cat-tab {
   display: inline-flex; align-items: center; gap: 7px;
   height: 36px; padding: 0 15px; border: 1px solid var(--border-1); background: var(--bg-card);
-  border-radius: var(--radius-pill); cursor: pointer; font-size: 13.5px; color: var(--text-2);
+  border-radius: var(--radius-pill); cursor: pointer; font-size: 13px; color: var(--text-2);
   font-family: inherit; transition: all .16s;
   .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   &:hover { border-color: var(--brand-200); color: var(--brand-700); background: var(--brand-50); }
-  &.active { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 600;
+  &.active { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700;
     .dot { background: rgba(255, 255, 255, .75) !important; } }
 }
 
 /* 网格：与首页宠物卡同一套扁平语言——无卡壳，靠图片圆角与 hover 细描边 */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 26px 20px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 45%), 1fr));
+  gap: 26px 20px;
+}
 .card {
   background: none; border: 0; cursor: pointer; text-align: left;
   &:hover .thumb { box-shadow: 0 0 0 1px var(--brand-200); }
   .thumb {
-    position: relative; height: 200px; background: var(--bg-sunken);
+    position: relative; aspect-ratio: 4 / 3; background: var(--bg-sunken);
     border-radius: var(--radius-md); overflow: hidden;
     display: flex; align-items: center; justify-content: center;
     transition: box-shadow .2s;
@@ -236,15 +227,18 @@ function addToCart(p) {
     &:hover img { transform: scale(1.05); }
   }
   .body { padding: 12px 2px 0; }
-  .name { font-size: 15.5px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+  .name { font-size: 16px; font-weight: 700; color: var(--text-1); margin-bottom: 6px; }
   .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .spec { font-size: 13px; color: var(--text-3); }
   .desc { font-size: 13px; color: var(--text-2); line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
   .price-row { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: var(--rule-soft); }
-  .price { color: var(--price); font-size: 19px; font-weight: 700; margin-left: auto;
-    .unit { font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 2px; }
+  // 与 PetCard 同一写法：数字字体、20px、价格色，价格左 / 行动右
+  .price { font-family: var(--font-num); color: var(--price); font-size: 20px; font-weight: 700;
+    line-height: 1.15; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+    .unit { font-family: var(--font-sans); font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 2px; }
   }
-  .go { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 600;
+  .go { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 700;
+    margin-left: auto; padding-bottom: 2px;
     color: var(--text-3); transition: color .16s;
     svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
     .card:hover & { color: var(--brand-700); }
@@ -274,10 +268,10 @@ function addToCart(p) {
     .detail-right { flex: 1; padding: 24px 28px; }
     .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--brand-700);
       background: var(--brand-50); padding: 3px 12px; border-radius: var(--radius-pill); margin-bottom: 12px;
-      .emoji { font-size: 16px; }
     }
-    .detail-name { font-size: 22px; color: var(--text-1); margin: 0 0 10px; }
-    .detail-price { color: var(--price); font-size: 26px; font-weight: 700; margin-bottom: 12px;
+    .detail-name { font-size: 20px; color: var(--text-1); margin: 0 0 10px; }
+    .detail-price { font-family: var(--font-num); color: var(--price); font-size: 24px; font-weight: 700;
+      letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-bottom: 12px;
       .unit { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 3px; }
     }
     .detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
@@ -288,7 +282,7 @@ function addToCart(p) {
       }
     }
     .detail-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
-      .el-button { flex: 1; min-width: 140px; font-weight: 600; }
+      .el-button { flex: 1; min-width: 140px; font-weight: 700; }
     }
   }
 }
@@ -301,21 +295,22 @@ function addToCart(p) {
   .food-page { padding: 24px 12px 60px; }
   .cat-tabs { gap: 8px; margin: 18px 0 16px; }
   .cat-tab { height: 32px; padding: 0 12px; font-size: 13px; }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 10px; }
+  .grid { gap: 18px 10px; }
   .card {
-    .thumb { height: auto; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
+    .thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
     .body { padding: 9px 1px 0; }
-    .name { font-size: 13px; margin-bottom: 4px; }
+    .name { font-size: 14px; margin-bottom: 4px; }
     .meta { margin-bottom: 4px;
       .spec { font-size: 12px; }
     }
     .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
     .price-row { gap: 6px; padding-top: 8px; }
-  .rating-tag { font-size: 11px; padding: 1px 6px; }
-  .price { font-size: 15px;
+  .rating-tag { font-size: 12px; padding: 1px 6px; }
+  .price { font-size: 16px;
       .unit { font-size: 11px; }
     }
-  .go { display: none; }
+  // 窄屏也保留「详情」入口，价格左、行动右的结构与桌面一致
+  .go { font-size: 12px; }
   }
   .tip { margin-top: 32px; padding-top: 18px;
     h3 { font-size: 14px; }

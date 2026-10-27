@@ -7,6 +7,8 @@
         <result property="userId"      column="user_id"       />
         <result property="userName"    column="user_name"     />
         <result property="contact"     column="contact"       />
+        <result property="source"      column="source"        />
+        <result property="aiSummary"   column="ai_summary"    />
         <result property="question"    column="question"      />
         <result property="reply"       column="reply"         />
         <result property="replyBy"     column="reply_by"      />
@@ -20,7 +22,7 @@
     </resultMap>
 
     <sql id="selectPetConsultVo">
-        select consult_id, user_id, user_name, contact, question, reply, reply_by, reply_time,
+        select consult_id, user_id, user_name, contact, source, ai_summary, question, reply, reply_by, reply_time,
                status, del_flag, create_by, create_time, update_by, update_time
         from pet_consult
     </sql>
@@ -47,6 +49,8 @@
             <if test="userId != null">user_id,</if>
             <if test="userName != null and userName != ''">user_name,</if>
             <if test="contact != null">contact,</if>
+            <if test="source != null and source != ''">source,</if>
+            <if test="aiSummary != null">ai_summary,</if>
             <if test="question != null and question != ''">question,</if>
             <if test="status != null and status != ''">status,</if>
             create_by, create_time
@@ -54,6 +58,8 @@
             <if test="userId != null">#{userId},</if>
             <if test="userName != null and userName != ''">#{userName},</if>
             <if test="contact != null">#{contact},</if>
+            <if test="source != null and source != ''">#{source},</if>
+            <if test="aiSummary != null">#{aiSummary},</if>
             <if test="question != null and question != ''">#{question},</if>
             <if test="status != null and status != ''">#{status},</if>
             #{createBy}, sysdate()

@@ -172,7 +172,7 @@ function dist(n) {
   return Number(stat.value['d' + n] || 0)
 }
 function barPct(n) {
-  const total = Number(stat.value.count || 0)
+  const total = Number(stat.value.commentCount || 0)
   if (!total) return 0
   return Math.round((dist(n) / total) * 100)
 }
@@ -341,7 +341,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
 
 .like-bar { display: flex; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--border-2); flex-wrap: wrap;
   .like-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ffd6e0; background: #fff5f7; color: #e91e63;
-    border-radius: 24px; padding: 10px 22px; font-size: 15px; cursor: pointer; transition: all .2s;
+    border-radius: var(--radius-md); padding: 10px 22px; font-size: 15px; cursor: pointer; transition: all .2s;
     &:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(233,30,99,.18); }
     &.liked { background: linear-gradient(135deg, #ff8fab, #e91e63); color: #fff; border-color: transparent; }
     &.bounce .icon { animation: heartbeat .5s ease; }
@@ -370,8 +370,8 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
   .rs-bars { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 5px;
     .bar-row { display: flex; align-items: center; gap: 8px;
       .bar-label { width: 34px; font-size: 12px; color: var(--text-3); }
-      .bar-track { flex: 1; height: 7px; border-radius: 4px; background: #f2f3f5; overflow: hidden; }
-      .bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--brand-300), var(--brand-500)); transition: width .3s; }
+      .bar-track { flex: 1; height: 7px; border-radius: var(--radius-xs); background: #f2f3f5; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: var(--radius-xs); background: linear-gradient(90deg, var(--brand-300), var(--brand-500)); transition: width .3s; }
       .bar-num { width: 26px; text-align: right; font-size: 12px; color: var(--text-3); }
     }
   }
@@ -390,7 +390,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
   }
 
   .editor { margin-bottom: 22px;
-    .reply-tip { display: flex; gap: 10px; align-items: center; background: var(--bg-page); border-radius: 8px; padding: 6px 12px; margin-bottom: 8px; font-size: 13px; color: var(--text-2); }
+    .reply-tip { display: flex; gap: 10px; align-items: center; background: var(--bg-page); border-radius: var(--radius-md); padding: 6px 12px; margin-bottom: 8px; font-size: 13px; color: var(--text-2); }
     .editor-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
   }
 
@@ -409,7 +409,7 @@ watch(() => props.petId, () => { loadStat(); loadLike(); loadComments() })
           .el-link { font-size: 12px; }
         }
 
-        .replies { margin-top: 10px; background: var(--bg-page); border-radius: 10px; padding: 10px 14px;
+        .replies { margin-top: 10px; background: var(--bg-page); border-radius: var(--radius-md); padding: 10px 14px;
           .reply { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #ebebeb;
             &:last-child { border-bottom: none; }
             .r-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; color: var(--text-1); font-weight: 700;

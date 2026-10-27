@@ -112,6 +112,10 @@
         select count(*) from pet_match_record where del_flag = '0'
     </select>
 
+    <select id="selectMonthlyCost" resultType="java.lang.Integer">
+        select cast(monthly_cost as signed) from pet_match_trait where pet_id = #{petId} limit 1
+    </select>
+
     <select id="selectMatchStat" resultType="java.util.LinkedHashMap">
         select count(*) as total,
                sum(case when match_status = '1' then 1 else 0 end) as emptyCount,

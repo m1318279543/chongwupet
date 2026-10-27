@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.PetAiConversationMapper">
+
+    <resultMap type="PetAiConversation" id="PetAiConversationResult">
+        <result property="convId"        column="conv_id" />
+        <result property="convNo"        column="conv_no" />
+        <result property="userId"        column="user_id" />
+        <result property="userName"      column="user_name" />
+        <result property="scene"         column="scene" />
+        <result property="bizId"         column="biz_id" />
+        <result property="title"         column="title" />
+        <result property="storeId"       column="store_id" />
+        <result property="messageCount"  column="message_count" />
+        <result property="lastTime"      column="last_time" />
+        <result property="status"        column="status" />
+        <result property="createTime"    column="create_time" />
+        <result property="updateTime"    column="update_time" />
+    </resultMap>
+
+    <resultMap type="PetAiMessage" id="PetAiMessageResult">
+        <result property="msgId"         column="msg_id" />
+        <result property="convId"        column="conv_id" />
+        <result property="role"          column="role" />
+        <result property="content"       column="content" />
+        <result property="blocksJson"    column="blocks_json" />
+        <result property="citationsJson" column="citations_json" />
+        <result property="actionsJson"   column="actions_json" />
+        <result property="toolNames"     column="tool_names" />
+        <result property="latencyMs"     column="latency_ms" />
+        <result property="createTime"    column="create_time" />
+    </resultMap>
+
+    <insert id="insertConversation" parameterType="PetAiConversation" useGeneratedKeys="true" keyProperty="convId">
+        insert into pet_ai_conversation
+        (conv_no, user_id, user_name, scene, biz_id, title, store_id, message_count, last_time, status, create_time, update_time)
+        values
+        (#{convNo}, #{userId}, #{userName}, #{scene}, #{bizId}, #{title}, #{storeId}, 0, sysdate(), '0', sysdate(), sysdate())
+    </insert>
+
+    <update id="updateConversation" parameterType="PetAiConversation">
+        update pet_ai_conversation
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="messageCount != null">message_count = #{messageCount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            last_time = sysdate(),
+            update_time = sysdate()
+        </set>
+        where conv_id = #{convId}
+    </update>
+
+    <select id="selectConversationById" parameterType="Long" resultMap="PetAiConversationResult">
+        select * from pet_ai_conversation where conv_id = #{convId}
+    </select>
+
+    <select id="selectConversationByNo" resultMap="PetAiConversationResult">
+        select * from pet_ai_conversation where conv_no = #{convNo}
+    </select>
+
+    <select id="selectRecentByUser" resultMap="PetAiConversationResult">
+        select * from pet_ai_conversation
+        where user_id = #{userId}
+        order by last_time desc
+        limit #{limit}
+    </select>
+
+    <insert id="insertMessage" parameterType="PetAiMessage" useGeneratedKeys="true" keyProperty="msgId">
+        insert into pet_ai_message
+        (conv_id, role, content, blocks_json, citations_json, actions_json, tool_names, latency_ms, create_time)
+        values
+        (#{convId}, #{role}, #{content}, #{blocksJson}, #{citationsJson}, #{actionsJson}, #{toolNames}, #{latencyMs}, sysdate())
+    </insert>
+
+    <select id="selectMessagesByConvId" resultMap="PetAiMessageResult">
+        select * from pet_ai_message where conv_id = #{convId} order by msg_id asc
+    </select>
+
+    <insert id="insertFeedback">
+        insert into pet_ai_feedback (conv_id, msg_id, user_id, rating, reason, create_time)
+        values (#{convId}, #{msgId}, #{userId}, #{rating}, #{reason}, sysdate())
+    </insert>
+
+    <!-- 知识缺口：助手明确回答"没查到"时，回捞同一会话里的原始问题 -->
+    <select id="selectKnowledgeGaps" resultType="java.util.LinkedHashMap">
+        select m.conv_id as convId,
+               date_format(m.create_time, '%Y-%m-%d %H:%i') as createTime,
+               (select u.content from pet_ai_message u
+                 where u.conv_id = m.conv_id and u.role = 'user' and u.msg_id &lt; m.msg_id
+                 order by u.msg_id desc limit 1) as question
+        from pet_ai_message m
+        where m.role = 'assistant' and m.content like '%没有查到可靠%'
+        order by m.msg_id desc
+        limit #{limit}
+    </select>
+
+    <select id="selectFeedbackStat" resultType="java.util.LinkedHashMap">
+        select count(*) as total,
+               coalesce(sum(case when rating = '1' then 1 else 0 end), 0) as good,
+               coalesce(sum(case when rating = '0' then 1 else 0 end), 0) as bad
+        from pet_ai_feedback
+    </select>
+
+</mapper>

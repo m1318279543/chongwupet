@@ -109,6 +109,9 @@
           </transition>
         </router-view>
       </el-main>
+
+      <!-- 经营助手：按看板口径回答指标，仅管理员与店长可用 -->
+      <AssistantDock default-scene="admin" />
     </el-container>
   </el-container>
 </template>
@@ -123,11 +126,21 @@ import { hasPermi } from '@/permission'
 import { MENU_GROUPS } from './menu'
 import { getToken } from '@/utils/auth'
 import NotificationBell from '@/components/NotificationBell.vue'
+import AssistantDock from '@/components/assistant/AssistantDock.vue'
+import { useAssistant } from '@/components/assistant/useAssistant'
 import { updateUserProfile } from '@/api/system/user'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const assistant = useAssistant()
+
+// 页面通过事件唤起经营助手，避免每个页面都引入同一份状态
+function onAssistantOpen(event) {
+  assistant.open({ ...(event?.detail || {}), scene: 'admin', fresh: true })
+}
+onMounted(() => window.addEventListener('pet-assistant-open', onAssistantOpen))
+onBeforeUnmount(() => window.removeEventListener('pet-assistant-open', onAssistantOpen))
 
 const activeMenu = computed(() => route.path)
 

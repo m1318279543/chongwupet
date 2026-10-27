@@ -6,8 +6,9 @@
         <h1 class="ui-title">联系客服</h1>
         <p class="ui-sub">留下问题，客服会在后台回复，回复内容直接显示在下方记录里。</p>
       </div>
-      <div class="ui-head__aside" v-if="isLogged">
-        <span class="ui-count"><b>{{ myList.length }}</b>条咨询</span>
+      <div class="ui-head__aside">
+        <button type="button" class="ai-entry" @click="askAssistant">先问 AI，通常更快 ›</button>
+        <span class="ui-count" v-if="isLogged"><b>{{ myList.length }}</b>条咨询</span>
       </div>
     </header>
 
@@ -113,6 +114,12 @@ const submitting = ref(false)
 const loading = ref(false)
 const myList = ref([])
 
+function askAssistant() {
+  window.dispatchEvent(new CustomEvent('pet-assistant-open', {
+    detail: { scene: 'consult' }
+  }))
+}
+
 function fmt(d) { return d ? String(d).replace('T', ' ').slice(0, 19) : '—' }
 // 以状态为准：偶有「有回复内容但状态仍是待回复」的数据，避免出现「待回复」下面写着答复
 function answered(c) { return c.status === '1' && !!c.reply }
@@ -162,6 +169,20 @@ onMounted(() => {
 }
 
 .mine { padding-top: 34px; }
+
+.ai-entry {
+  border: 1px solid var(--brand-200);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 11px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover { background: #fff; }
+}
 
 .qa {
   padding: 18px 12px;
@@ -225,7 +246,7 @@ onMounted(() => {
   .qa { padding: 16px 8px; }
   .qa__line { flex-wrap: wrap; }
   .qa__line .ui-chip { margin-left: 28px; }
-  .qa__text { font-size: 13.5px; }
+  .qa__text { font-size: 13px; }
   .qa__time { margin-left: 28px; }
 }
 </style>

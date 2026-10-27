@@ -513,7 +513,7 @@ function preferName(id) {
   align-items: flex-end;
   gap: 24px;
   flex-wrap: wrap;
-  max-width: 1160px;
+  max-width: var(--container-lg);
   margin: 0 auto;
   padding: 24px 24px 20px;
 }
@@ -526,7 +526,7 @@ function preferName(id) {
 .mh-eyebrow {
   margin: 0 0 8px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -534,9 +534,9 @@ function preferName(id) {
 
 .mh-main h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.25;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-1);
 }
@@ -558,22 +558,22 @@ function preferName(id) {
 
   b {
     display: block;
-    font-size: 19px;
-    font-weight: 650;
+    font-size: 20px;
+    font-weight: 700;
     line-height: 1.2;
     color: var(--brand-700);
     font-variant-numeric: tabular-nums;
   }
 
   span {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--text-3);
   }
 }
 
 /* ---------- 主体 ---------- */
 .m-body {
-  max-width: 1160px;
+  max-width: var(--container-lg);
   margin: 0 auto;
   padding: 16px 24px 0;
 }
@@ -594,10 +594,8 @@ function preferName(id) {
 
 .panel {
   padding: 14px 15px;
-  background: var(--bg-card);
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-md);
 }
 
 .panel-h {
@@ -613,7 +611,7 @@ function preferName(id) {
   }
 
   span {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
   }
@@ -638,8 +636,8 @@ function preferName(id) {
   }
 
   b {
-    font-size: 11.5px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--text-1);
     text-align: right;
 
@@ -668,7 +666,7 @@ function preferName(id) {
 
 .side-note {
   margin: 11px 0 0;
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.7;
   color: var(--text-4);
 }
@@ -689,15 +687,15 @@ function preferName(id) {
     background: var(--bg-card);
     border: 1px solid var(--border-1);
     border-radius: var(--radius-sm);
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-2);
     cursor: pointer;
     transition: 0.15s;
 
     b {
       font-family: var(--font-num);
-      font-size: 10px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       color: var(--text-4);
     }
 
@@ -713,7 +711,7 @@ function preferName(id) {
       border-color: var(--brand-600);
       box-shadow: inset 0 0 0 1px var(--brand-600);
       color: var(--brand-800);
-      font-weight: 600;
+      font-weight: 700;
 
       b { color: var(--brand-700); }
     }
@@ -723,8 +721,7 @@ function preferName(id) {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
 }
 
 .qcard { padding: 20px 22px 8px; }
@@ -737,7 +734,7 @@ function preferName(id) {
   border-bottom: 1px solid var(--border-2);
 
   b {
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-1);
   }
@@ -767,14 +764,14 @@ function preferName(id) {
   gap: 7px;
   flex-wrap: wrap;
   margin-bottom: 9px;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-1);
 
   i {
     font-style: normal;
     font-family: var(--font-num);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-4);
   }
 
@@ -805,14 +802,14 @@ function preferName(id) {
 
   b {
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.4;
     color: var(--text-1);
   }
 
   em {
     font-style: normal;
-    font-size: 10.5px;
+    font-size: 11px;
     line-height: 1.5;
     color: var(--text-3);
   }
@@ -853,7 +850,7 @@ function preferName(id) {
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: 0.16s;
@@ -894,7 +891,7 @@ function preferName(id) {
 
   h3 {
     margin: 0 0 6px;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-1);
   }
@@ -929,15 +926,15 @@ function preferName(id) {
 
   p {
     margin: 0;
-    font-size: 14.5px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
     line-height: 1.7;
     color: var(--text-1);
   }
 
   .sub {
     margin-top: 5px;
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 400;
     line-height: 1.6;
     color: var(--text-3);
@@ -955,7 +952,7 @@ function preferName(id) {
   display: grid;
   place-items: center;
   min-height: 300px;
-  background: linear-gradient(150deg, var(--brand-100), var(--bg-sunken) 62%, #dbe7e1);
+  background: linear-gradient(150deg, var(--brand-100), var(--bg-sunken));
 
   img {
     width: 100%;
@@ -969,7 +966,7 @@ function preferName(id) {
     background: var(--bg-card);
     border: 1px solid var(--border-1);
     border-radius: var(--radius-pill);
-    font-size: 11.5px;
+    font-size: 12px;
     line-height: 1.5;
     text-align: center;
     color: var(--brand-700);
@@ -982,8 +979,8 @@ function preferName(id) {
     padding: 3px 9px;
     background: var(--brand-600);
     border-radius: var(--radius-pill);
-    font-size: 10.5px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     color: #fff;
   }
 }
@@ -1012,25 +1009,26 @@ function preferName(id) {
     gap: 8px;
     flex-wrap: wrap;
     margin: 0 0 4px;
-    font-size: 21px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--text-1);
   }
 
   :deep(.ui-chip) {
     height: 19px;
-    font-size: 10.5px;
+    font-size: 11px;
   }
 }
 
 .tp-info {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-3);
 }
 
 .tp-price {
   margin-top: 6px;
-  font-size: 19px;
+  font-family: var(--font-num);
+  font-size: 20px;
   font-weight: 700;
   color: var(--price);
   font-variant-numeric: tabular-nums;
@@ -1050,7 +1048,7 @@ function preferName(id) {
 
   b {
     display: block;
-    font-size: 29px;
+    font-size: 28px;
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.02em;
@@ -1073,8 +1071,8 @@ function preferName(id) {
     background: var(--brand-50);
     border: 1px solid var(--brand-100);
     border-radius: var(--radius-xs);
-    font-size: 10.5px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     color: var(--brand-700);
   }
 }
@@ -1092,13 +1090,13 @@ function preferName(id) {
   margin-bottom: 8px;
 
   b {
-    font-size: 11.5px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--text-1);
   }
 
   span {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-4);
   }
 }
@@ -1112,7 +1110,7 @@ function preferName(id) {
   .n {
     width: 58px;
     flex-shrink: 0;
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--text-3);
   }
 
@@ -1135,7 +1133,7 @@ function preferName(id) {
   .v {
     width: 26px;
     text-align: right;
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--text-2);
     font-variant-numeric: tabular-nums;
   }
@@ -1143,7 +1141,7 @@ function preferName(id) {
   .w {
     width: 38px;
     text-align: right;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-4);
     font-variant-numeric: tabular-nums;
   }
@@ -1173,14 +1171,14 @@ function preferName(id) {
     gap: 6px;
 
     .dl {
-      font-size: 11.5px;
+      font-size: 12px;
       color: var(--text-3);
     }
   }
 
   b {
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--brand-700);
     font-variant-numeric: tabular-nums;
   }
@@ -1220,7 +1218,7 @@ function preferName(id) {
     display: block;
     margin-bottom: 6px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   &.good b { color: var(--success-500); }
@@ -1238,7 +1236,7 @@ function preferName(id) {
   background: var(--success-50);
   border: 1px solid var(--success-100);
   border-radius: var(--radius-xs);
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--success-500);
 
   &.w {
@@ -1256,7 +1254,7 @@ function preferName(id) {
   padding-top: 2px;
 
   .act-note {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--text-4);
   }
 }
@@ -1286,8 +1284,7 @@ function preferName(id) {
   overflow-y: auto;
   background: var(--bg-card);
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-md);
 }
 
 .rrow {
@@ -1305,7 +1302,7 @@ function preferName(id) {
     width: 18px;
     flex-shrink: 0;
     font-family: var(--font-num);
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--text-4);
   }
 
@@ -1315,12 +1312,12 @@ function preferName(id) {
     b {
       display: block;
       font-size: 12.5px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-1);
     }
 
     span {
-      font-size: 10.5px;
+      font-size: 11px;
       color: var(--text-3);
     }
   }
@@ -1328,7 +1325,7 @@ function preferName(id) {
   .why {
     flex: 1;
     min-width: 0;
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--success-500);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1339,7 +1336,7 @@ function preferName(id) {
     width: 76px;
     text-align: right;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--price);
     font-variant-numeric: tabular-nums;
   }
@@ -1364,7 +1361,7 @@ function preferName(id) {
 .q-body {
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-thumb {
-    background: #d3ddd7;
+    background: var(--border-1);
     border-radius: 3px;
   }
   &::-webkit-scrollbar-track { background: transparent; }
@@ -1390,7 +1387,7 @@ function preferName(id) {
 
   h3 {
     margin: 0 0 6px;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-1);
   }
@@ -1419,7 +1416,7 @@ function preferName(id) {
 .foot-note {
   margin: 20px 0 0;
   text-align: center;
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.7;
   color: var(--text-3);
 }
@@ -1459,7 +1456,7 @@ function preferName(id) {
 
 @media (max-width: 768px) {
   .mh-inner { padding: 20px 16px 16px; }
-  .mh-main h1 { font-size: 22px; }
+  .mh-main h1 { font-size: 20px; }
   .mh-stats { display: none; }
 
   .m-body { padding: 14px 16px 0; }
@@ -1478,7 +1475,7 @@ function preferName(id) {
   .dims { grid-template-columns: 1fr 1fr; }
 
   .top-main { padding: 18px 15px; }
-  .tp-title h3 { font-size: 19px; }
+  .tp-title h3 { font-size: 20px; }
 
   .tp-act {
     .btn { flex: 1; }

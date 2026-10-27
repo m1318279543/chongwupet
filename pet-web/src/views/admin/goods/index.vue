@@ -232,7 +232,7 @@
 import StatCards from '@/components/StatCards.vue'
 import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listGoods, getGoods, addGoods, updateGoods, listStockLogs, changeStock } from '@/api/pet/petGoods'
+import { listGoods, getGoodsStats, getGoods, addGoods, updateGoods, listStockLogs, changeStock } from '@/api/pet/petGoods'
 
 const { proxy } = getCurrentInstance()
 
@@ -306,15 +306,15 @@ function getList() {
   }).catch(() => { loading.value = false })
 }
 
-// 概览取全量商品统计（不是当前页），否则"库存件数合计"会随翻页跳动
+// 概览由后端一条 SQL 汇总（不是当前页，也不是前端拉 500 条自己数）
 function loadStats() {
-  listGoods({ pageNum: 1, pageSize: 500 }).then((res) => {
-    const rows = res.rows || []
+  getGoodsStats().then((res) => {
+    const d = res.data || {}
     stats.value = {
-      total: res.total || rows.length,
-      onSale: rows.filter((g) => g.status === '0').length,
-      low: rows.filter((g) => Number(g.stock || 0) <= 10).length,
-      stock: rows.reduce((n, g) => n + Number(g.stock || 0), 0)
+      total: Number(d.total || 0),
+      onSale: Number(d.onSale || 0),
+      low: Number(d.low || 0),
+      stock: Number(d.stock || 0)
     }
   }).catch(() => {})
 }

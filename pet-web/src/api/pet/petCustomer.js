@@ -25,6 +25,14 @@ export function listCustomerPets(customerId) {
   })
 }
 
+// 当前登录用户名下的宠物（前台「我的宠物」）
+export function myPets() {
+  return request({
+    url: '/pet/customer/myPets',
+    method: 'get'
+  })
+}
+
 // 新增客户
 export function addCustomer(data) {
   return request({

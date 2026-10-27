@@ -100,7 +100,8 @@
         <el-table :data="form.items" size="small" border empty-text="点「按低库存带出」或「添加一行」">
           <el-table-column label="商品" min-width="230">
             <template #default="scope">
-              <el-select v-model="scope.row.goodsId" filterable placeholder="选择商品" style="width: 100%"
+              <el-select v-model="scope.row.goodsId" filterable remote :remote-method="loadGoods"
+                         placeholder="输入名称或编码搜索" style="width: 100%"
                          @change="(v) => onGoodsChange(scope.row, v)">
                 <el-option v-for="g in goodsOptions" :key="g.goodsId"
                            :label="`${g.goodsName}${g.spec ? ' · ' + g.spec : ''}`" :value="g.goodsId" />
@@ -271,9 +272,19 @@ function getStats() {
   purchaseStats().then((res) => { stats.value = res.data || {} }).catch(() => {})
 }
 
-function loadGoods() {
-  listGoods({ pageNum: 1, pageSize: 500 }).then((res) => {
-    goodsOptions.value = res.rows || []
+// 商品下拉：初始只取 20 条，输入关键词走后端模糊查询。
+// 已选中的商品始终保留在选项里，否则搜索换词后已选行会显示成一个裸 id。
+function mergeGoodsOptions(rows) {
+  const selectedIds = new Set((form.items || []).map((i) => i.goodsId))
+  const keep = goodsOptions.value.filter((g) => selectedIds.has(g.goodsId))
+  const seen = new Set(keep.map((g) => g.goodsId))
+  for (const g of rows || []) if (!seen.has(g.goodsId)) { keep.push(g); seen.add(g.goodsId) }
+  goodsOptions.value = keep
+}
+
+function loadGoods(keyword = '') {
+  listGoods({ pageNum: 1, pageSize: 20, keyword: keyword || undefined }).then((res) => {
+    mergeGoodsOptions(res.rows || [])
   }).catch(() => {})
 }
 
@@ -329,6 +340,8 @@ function fillFromLowStock() {
       return
     }
     form.items = rows
+    // 带出的商品要进下拉选项，否则「商品」列只显示一个裸 id
+    mergeGoodsOptions(res.data || [])
     if (!form.supplier) form.supplier = '宠乐供应链'
     ElMessage.success(`已带出 ${rows.length} 个低库存商品`)
   }).catch(() => {}).finally(() => { lowLoading.value = false })

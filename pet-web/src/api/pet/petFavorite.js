@@ -9,6 +9,14 @@ export function listPetFavorite(query) {
   });
 }
 
+// 我的收藏 petId 集合（列表页打红心，只回一列）
+export function listMyFavoriteIds() {
+  return request({
+    url: "/pet/favorite/mine/ids",
+    method: "get",
+  });
+}
+
 // 查询收藏管理详细
 export function getPetFavorite(favoriteId) {
   return request({

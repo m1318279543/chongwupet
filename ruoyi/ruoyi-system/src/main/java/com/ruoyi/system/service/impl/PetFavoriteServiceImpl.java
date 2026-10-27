@@ -25,6 +25,12 @@ public class PetFavoriteServiceImpl implements IPetFavoriteService
     }
 
     @Override
+    public List<Long> selectPetIdsByUserId(Long userId)
+    {
+        return petFavoriteMapper.selectPetIdsByUserId(userId);
+    }
+
+    @Override
     public PetFavorite selectPetFavoriteByFavoriteId(Long favoriteId)
     {
         return petFavoriteMapper.selectPetFavoriteByFavoriteId(favoriteId);

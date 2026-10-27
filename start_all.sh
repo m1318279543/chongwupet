@@ -1,103 +1,89 @@
 #!/usr/bin/env bash
-# 一键拉起 chongwupet 全套服务
-#   后端 8081 / 前台 82（/shop/*）/ 后台独立入口 83（/ 直接跳 /admin）/ 两条 cloudflared 隧道（自愈）
-#   后台给管理人员单独发 83 的地址，进去就是后台登录页，不再与前台共用入口。
-# 前端走 static-server（生产包 + gzip + 长缓存），公网访问才不慢。
-# 改了前端源码后先执行: bash build_web.sh
+# 一键拉起本地全套服务（Git Bash / WSL 均可，脚本自身目录即项目根）
+#   Redis 6379（缺省用内置内存版）→ 后端 8081 → 前台 82 → 后台入口 83
+#   前端走 static-server 直接服务生产包（pet-web/dist）
+#   改完前端源码后先执行: bash build_web.sh
 set -u
-ROOT="D:/Undergraduate_courses/qiyekaifa/chongwupet"
-JAVA="D:/Undergraduate_courses/jdk-17/jdk-17.0.20.1+1/bin/java.exe"
-NODE="C:/Users/asus/.workbuddy/binaries/node/versions/22.22.2-2/node.exe"
-cd "$ROOT"
 
-wait_port () { # $1=port $2=seconds
-  for i in $(seq 1 "$2"); do
-    if curl -s --noproxy '*' -o NUL --max-time 3 "http://localhost:$1/" 2>/dev/null; then
-      echo "  :$1 UP (${i}s)"; return 0
-    fi
-    sleep 1
-  done
-  echo "  :$1 待确认（服务可能已在监听）"; return 0
-}
+# ---- 定位项目根：不依赖 dirname，纯参数展开 + 内建 cd/pwd ----
+src="${BASH_SOURCE[0]}"
+case "$src" in
+  */*) ROOT="$(cd "${src%/*}" && pwd)" ;;
+  *)   ROOT="$(pwd)" ;;
+esac
+cd "$ROOT" || { echo "无法进入项目根: $ROOT"; exit 1; }
+echo "项目根: $ROOT"
 
-# 注意：Windows 原生 curl 写 /dev/null 会返回 23，必须用 NUL；
-#       且本机有 http_proxy，必须 --noproxy 否则代理的 502 会被当成"已启动"
-up () {
-  local c
-  c=$(curl -s --noproxy '*' -o NUL -w '%{http_code}' --max-time 3 "http://localhost:$1/" 2>/dev/null)
-  [ "$c" = "200" ] || [ "$c" = "302" ]
+NODE="$(command -v node 2>/dev/null || true)"
+JAVA_BIN="$(command -v java 2>/dev/null || true)"
+[ -n "$NODE" ] || { echo "未找到 node，请安装 Node.js 18+"; exit 1; }
+[ -n "$JAVA_BIN" ] || { echo "未找到 java，请安装 JDK 17+"; exit 1; }
+
+port_up () { netstat -ano 2>/dev/null | grep -q ":$1 .*LISTENING"; }
+
+http_up () {
+  local code
+  code=$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' --max-time 3 "http://localhost:$1/$2" 2>/dev/null)
+  [ "$code" = "200" ] || [ "$code" = "302" ]
 }
 
 # 1) Redis
-cd "D:/Redis"
-if ! ./redis-cli.exe ping 2>/dev/null | grep -q PONG; then
-  ./redis-server.exe > /tmp/redis.log 2>&1 &
+if port_up 6379; then
+  echo "redis   : 6379 已在运行"
+elif [ -f .runtime/redis-lite.mjs ]; then
+  "$NODE" .runtime/redis-lite.mjs > /tmp/redis-lite.log 2>&1 &
   sleep 2
+  port_up 6379 && echo "redis   : 已用内置内存版启动（重启即清空，仅本地用）" || echo "redis   : 启动失败，见 /tmp/redis-lite.log"
+else
+  echo "redis   : 未运行且缺少 .runtime/redis-lite.mjs，请手动启动 Redis"
 fi
-echo "redis: $(./redis-cli.exe ping 2>&1 | head -1)"
 
 # 2) 后端 8081
-cd "$ROOT/ruoyi/ruoyi-admin/target"
-if [ "$(curl -s --noproxy "*" -o NUL -w "%{http_code}" --max-time 3 http://localhost:8081/pet/category/list)" = "200" ]; then
-  echo "  :8081 已在运行，跳过"
+if curl -s --noproxy '*' -o /dev/null --max-time 3 http://localhost:8081/pet/category/list 2>/dev/null; then
+  echo "backend : 8081 已在运行"
 else
-"$JAVA" -jar ruoyi-admin.jar --server.port=8081 > /tmp/backend-8081.log 2>&1 &
-echo "backend launching..."
-for i in $(seq 1 45); do
-  c=$(curl -s --noproxy '*' -o NUL -w '%{http_code}' --max-time 4 "http://localhost:8081/pet/category/list")
-  [ "$c" = "200" ] && { echo "  :8081 UP ($((i*2))s)"; break; }
-  sleep 2
-done
+  if [ ! -f ruoyi/ruoyi-admin/target/ruoyi-admin.jar ]; then
+    echo "backend : 缺少 ruoyi/ruoyi-admin/target/ruoyi-admin.jar，请先 bash build_backend.sh clean package -DskipTests"
+    exit 1
+  fi
+  "$JAVA_BIN" -jar ruoyi/ruoyi-admin/target/ruoyi-admin.jar --server.port=8081 > /tmp/backend-8081.log 2>&1 &
+  echo -n "backend : 启动中"
+  for i in $(seq 1 30); do
+    if curl -s --noproxy '*' -o /dev/null --max-time 3 http://localhost:8081/pet/category/list 2>/dev/null; then
+      echo " -> UP ($((i * 2))s)"; break
+    fi
+    echo -n "."
+    sleep 2
+  done
 fi
 
-# 3) 前端静态服务
-cd "$ROOT"
-[ -d pet-web/dist-new ] || { echo "缺少 pet-web/dist-new，请先执行 bash build_web.sh"; exit 1; }
-
-if up 82; then echo "  :82 已在运行，跳过"; else
-"$NODE" static-server.mjs --port 82 --root ./pet-web/dist-new \
-  --api /dev-api=http://localhost:8081 > /tmp/petstatic-82.log 2>&1 &
-echo "frontend(82) launching..."
-wait_port 82 20
+# 3) 前端生产包
+if [ ! -f pet-web/dist/index.html ]; then
+  echo "frontend: 缺少 pet-web/dist，请先执行 bash build_web.sh"; exit 1
 fi
 
-# 3b) 后台独立入口 83：访问 / 直接 302 到 /admin
-if up 83; then echo "  :83 已在运行，跳过"; else
-"$NODE" static-server.mjs --port 83 --root ./pet-web/dist-new \
-  --api /dev-api=http://localhost:8081 --redirect /=/admin > /tmp/petstatic-83.log 2>&1 &
-echo "admin-entry(83) launching..."
-wait_port 83 20
+if http_up 82 shop/home; then
+  echo "frontend: 82 已在运行"
+else
+  "$NODE" static-server.mjs --port 82 --root ./pet-web/dist \
+    --api /dev-api=http://localhost:8081 > /tmp/petstatic-82.log 2>&1 &
+  echo "frontend: 82 启动中"
 fi
 
-# 4) 隧道（各自自愈，URL 每次重启都会变）
-#    先清掉旧隧道进程/日志，保证打印出来的地址就是当前可用的
-MSYS_NO_PATHCONV=1 taskkill /F /IM cloudflared.exe > /dev/null 2>&1 || true
-rm -f /tmp/ct-82.log /tmp/ct-83.log
-start_tunnel () { # $1=port $2=logfile
-  (
-    while true; do
-      "$ROOT/cloudflared.exe" tunnel --url "http://localhost:$1" --protocol http2 > "$2" 2>&1
-      sleep 5
-    done
-  ) &
-}
-start_tunnel 82 /tmp/ct-82.log
-start_tunnel 83 /tmp/ct-83.log
+if http_up 83 admin; then
+  echo "admin   : 83 已在运行"
+else
+  "$NODE" static-server.mjs --port 83 --root ./pet-web/dist \
+    --api /dev-api=http://localhost:8081 --redirect /=/admin > /tmp/petstatic-83.log 2>&1 &
+  echo "admin   : 83 启动中"
+fi
 
-echo "等待隧道分配地址..."
-u82=""; u83=""
-for i in $(seq 1 40); do
-  u82=$(grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/ct-82.log 2>/dev/null | tail -1)
-  u83=$(grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/ct-83.log 2>/dev/null | tail -1)
-  [ -n "$u82" ] && [ -n "$u83" ] && break
-  sleep 2
-done
+sleep 2
 echo
 echo "================ 访问地址 ================"
-echo " 客户端前台 : ${u82:-未获取到}/shop/home"
-echo " 管理后台   : ${u83:-未获取到}   （打开即后台登录页）"
-echo " 本机直连   : 前台 http://localhost:82/shop/home"
-echo "              后台 http://localhost:83  （自动跳 /admin）"
-echo " 后台账号   : admin / admin123（登录后直接进入控制台）"
+echo " 前台商城 : http://localhost:82/shop/home"
+echo " 管理后台 : http://localhost:83   （打开即后台登录页）"
+echo " 后端接口 : http://localhost:8081"
+echo " 登录账号 : admin / admin123"
 echo "=========================================="
-wait
+echo "日志: /tmp/backend-8081.log  /tmp/petstatic-82.log  /tmp/petstatic-83.log"

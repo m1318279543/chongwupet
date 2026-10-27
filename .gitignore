@@ -57,6 +57,10 @@ Thumbs.db
 .runtime/
 .workbuddy/
 
+# UI 审计产物（不入库）
+.ui-audit/
+design-preview/ui-audit-*
+
 # 手机端巡检产物
 mobile-*.png
 mobile-report-*.json
