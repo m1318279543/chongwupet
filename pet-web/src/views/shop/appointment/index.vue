@@ -31,7 +31,7 @@
           <p class="svc-item__desc" v-if="it.remark">{{ it.remark }}</p>
           <div class="svc-item__foot">
             <span class="svc-item__price">{{ Number(it.price) > 0 ? '¥' + it.price : '免费' }}</span>
-            <span class="svc-item__dur" v-if="it.duration">约 {{ it.duration }} 分钟</span>
+            <span class="svc-item__dur" v-if="it.duration">约 {{ durText(it.duration) }}</span>
             <button type="button" class="ui-linkbtn" @click="goBookService(it)">去预约</button>
           </div>
         </div>
@@ -158,6 +158,15 @@ const list = ref([])
 const serviceItems = ref([])
 const TYPE_TEXT = { groom: '洗护', beauty: '美容', reception: '接待', medical: '医疗', board: '寄养', other: '其他' }
 function typeText(t) { return TYPE_TEXT[t] || t || '服务' }
+// 时长可读化：满 1 小时按小时显示（如 1440 分钟 → 约 24 小时 / 90 分钟 → 约 1.5 小时）
+function durText(m) {
+  const n = Number(m) || 0
+  if (n >= 60) {
+    const h = n / 60
+    return (Number.isInteger(h) ? h : h.toFixed(1)) + ' 小时'
+  }
+  return n + ' 分钟'
+}
 async function loadServiceItems() {
   try {
     const res = await serviceItemOptions()
@@ -267,6 +276,8 @@ function cancelApt(item) {
 }
 
 async function loadData() {
+  // 游客不拉「我的预约」（页面已放行游客浏览服务项目价目区），避免 401 弹「登录已过期」
+  if (!userStore.token) { list.value = []; return }
   loading.value = true
   try {
     // /mine 接口已 join 宠物表返回 petName/image/categoryId，无需再拉全量宠物列表
@@ -348,13 +359,15 @@ onMounted(() => {
 @media (max-width: 768px) {
   .ui-row__end { justify-content: flex-end; }
   .svc { gap: 4px 10px; }
+  .svc-price__grid { grid-template-columns: 1fr; }
 }
-</style>
 
 /* 门店服务项目价目区：与预约列表同宽，扁平卡片 + 1px 线 */
 .svc-price { margin-top: 26px; }
 .svc-price__title { margin: 0 0 12px; font-size: 15px; font-weight: 700; color: var(--text-1); }
-.svc-price__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.svc-price__grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px;
+}
 .svc-item {
   border: 1px solid var(--border-1); border-radius: var(--radius-md); background: var(--bg-card);
   padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
@@ -367,3 +380,4 @@ onMounted(() => {
 .svc-item__price { font-weight: 700; color: var(--brand-700); }
 .svc-item__dur { font-size: 12px; color: var(--text-3); }
 .svc-item__foot .ui-linkbtn { margin-left: auto; }
+</style>
