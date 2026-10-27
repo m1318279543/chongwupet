@@ -69,7 +69,11 @@
       </section>
     </transition>
 
-    <button v-if="!state.open" type="button" class="as-launcher" aria-label="打开 AI 助手" @click="openDefault">
+    <button
+      v-if="!state.open" type="button" class="as-launcher"
+      :style="launcherStyle" aria-label="打开 AI 助手"
+      @pointerdown="onPointerDown" @click="onClickLauncher"
+    >
       <span class="as-launcher-ico" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
       </span>
@@ -278,6 +282,48 @@ async function handoff() {
   }
 }
 
+/* ---------- 挂球位置：默认右上角，桌面端可拖动并记住位置 ---------- */
+const POS_KEY = 'as-launcher-pos'
+const launcherStyle = ref({})
+const suppressClick = ref(false)
+let dragState = null
+
+try {
+  const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null')
+  if (saved && saved.left) launcherStyle.value = saved
+} catch (e) { /* 忽略坏数据，用默认位置 */ }
+
+function onPointerDown(event) {
+  if (window.innerWidth <= 768) return  // 移动端固定在标签栏上方，不拖
+  const rect = event.currentTarget.getBoundingClientRect()
+  dragState = { sx: event.clientX, sy: event.clientY, ox: rect.left, oy: rect.top, moved: false }
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+}
+function onPointerMove(event) {
+  if (!dragState) return
+  const dx = event.clientX - dragState.sx
+  const dy = event.clientY - dragState.sy
+  if (!dragState.moved && Math.hypot(dx, dy) < 5) return  // 小于 5px 视为点击
+  dragState.moved = true
+  const top = Math.min(Math.max(dragState.oy + dy, 8), window.innerHeight - 52)
+  const left = Math.min(Math.max(dragState.ox + dx, 8), window.innerWidth - 52)
+  launcherStyle.value = { top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' }
+}
+function onPointerUp() {
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  if (dragState && dragState.moved) {
+    suppressClick.value = true  // 拖动结束的这一次 pointerup 不当作点击
+    setTimeout(() => { suppressClick.value = false }, 60)
+    try { localStorage.setItem(POS_KEY, JSON.stringify(launcherStyle.value)) } catch (e) { /* 存不了就算了 */ }
+  }
+  dragState = null
+}
+function onClickLauncher() {
+  if (!suppressClick.value) openDefault()
+}
+
 function onKeydown(event) {
   if (event.key === 'Escape' && state.open) close()
 }
@@ -289,24 +335,35 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 <style scoped lang="scss">
 .assistant-dock { position: static; }
 
-/* 桌面入口：右下角胶囊 */
+/* 桌面入口：图标圆钮，默认悬在右上角（顶栏下方），可拖动，悬停显示文字气泡 */
 .as-launcher {
-  position: fixed; right: 26px; bottom: 26px; z-index: 160;
-  display: inline-flex; align-items: center; gap: 8px;
-  height: 44px; padding: 0 18px 0 14px;
+  position: fixed; top: 84px; right: 22px; z-index: 160;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0;
   // 浮标是唯一保留 pill 圆角与投影的元素：它必须始终浮在内容之上
   border: 1px solid var(--brand-200); border-radius: var(--radius-pill);
   background: #fff; color: var(--brand-700);
   font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
   box-shadow: 0 2px 8px rgba(22, 25, 23, .10);
-  transition: transform .16s, box-shadow .16s;
-  &:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22, 25, 23, .14); }
+  transition: box-shadow .16s;
+  touch-action: none;  // 拖拽期间不让浏览器接管手势
+  &:hover { box-shadow: 0 4px 14px rgba(22, 25, 23, .16); }
 }
 .as-launcher-ico {
-  width: 24px; height: 24px; border-radius: var(--radius-md); display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: var(--radius-md); display: grid; place-items: center;
   background: var(--grad-brand);
-  svg { width: 14px; height: 14px; fill: #fff; }
+  svg { width: 15px; height: 15px; fill: #fff; }
 }
+/* 文字改悬停气泡：默认隐藏，移入浮标时从右侧弹出 */
+.as-txt {
+  position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  padding: 6px 11px; border-radius: var(--radius-sm);
+  background: var(--text-1); color: #fff;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s;
+}
+.as-launcher:hover .as-txt { opacity: 1; }
 
 /* 面板：右侧全高抽屉 —— 聊天时左侧内容保持可见，边看边问 */
 .as-panel {
@@ -444,10 +501,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 @media (max-width: 768px) {
   /* 移动端此前没有入口（launcher 被 display:none），手机上根本打不开 AI。
-     现在改为图标圆钮，悬在底部标签栏上方（管理端无标签栏，位置略高无碍）。 */
+     现在改为图标圆钮，悬在底部标签栏上方（管理端无标签栏，位置略高无碍）。
+     移动端不拖拽，忽略桌面端保存的位置。 */
   .as-launcher {
     display: inline-flex;
-    right: 14px; bottom: calc(74px + env(safe-area-inset-bottom));
+    top: auto !important; left: auto !important; right: 14px !important;
+    bottom: calc(74px + env(safe-area-inset-bottom)) !important;
     width: 46px; height: 46px; padding: 0; justify-content: center;
     .as-txt { display: none; }
     .as-launcher-ico { width: 26px; height: 26px; }
