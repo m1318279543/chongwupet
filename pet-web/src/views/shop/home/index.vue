@@ -67,7 +67,7 @@
       </div>
     </section>
 
-    <!-- ② 本周值得一看：精选 12 只，右侧按钮去宠物售卖页看全部 -->
+    <!-- ② 本周值得一看：首页只放一行 4 只，其余去宠物售卖页看全部 -->
     <section class="sec pets-sec" ref="petsSec">
       <div class="sec-inner">
         <div class="sec-head">
@@ -253,7 +253,7 @@ const featuredPets = computed(() => allPets.value.slice().sort((a, b) => {
 }))
 
 // 首页只放精选 12 只，完整列表（含品类筛选）在宠物售卖页
-const HOME_COUNT = 12
+const HOME_COUNT = 4
 const gridPets = computed(() => featuredPets.value.slice(0, HOME_COUNT))
 
 // 宠物粮精选：每个品类挑一款，展示 4 款
