@@ -1,4 +1,4 @@
-// 合并后冒烟：首页一行四张 / 订单页（新接口+收银台）/ 后台看板 / 新后台页可达
+// 合并后冒烟：首页精选 12 只 / 订单页（新接口+收银台）/ 后台看板 / 新后台页可达
 // 用法: node cdp_merge_smoke.mjs <base>   例: node cdp_merge_smoke.mjs http://127.0.0.1:82
 import { spawn, execSync } from 'node:child_process'
 import os from 'node:os'
@@ -54,11 +54,11 @@ await send('Page.enable'); await send('Runtime.enable')
 const goto = async (url, wait = 3500) => { await send('Page.navigate', { url }); await sleep(wait) }
 
 try {
-  // ① 游客首页：新版设计 + 一行四张
+  // ① 游客首页：新版设计 + 精选 12 只
   await goto(BASE + '/shop/home', 5000)
   check('首页可访问', (await ev('document.body.innerText.length')) > 200)
   const cards = await ev(`document.querySelectorAll('.grid .pet-card, .grid a[href*=\"/pet/\"]').length`)
-  check('首页默认展示 ≤4 张宠物卡（一行四张）', cards != null && cards <= 4, 'cards=' + cards)
+  check('首页精选区展示 12 张宠物卡', cards === 12, 'cards=' + cards)
   const more = await ev(`!!document.querySelector('.more')`)
   check('首页有「查看全部」入口', more)
 
