@@ -22,6 +22,9 @@
             <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
             智能选宠
           </router-link>
+          <router-link to="/shop/cart" class="nav-item" :class="{ on: route.path.startsWith('/shop/cart') }">
+            购物车<i v-if="cartCount > 0" class="nav-badge">{{ cartCount > 99 ? '99+' : cartCount }}</i>
+          </router-link>
         </nav>
 
         <div class="user-area">
@@ -166,10 +169,9 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
         <span>选宠</span>
       </router-link>
-      <router-link to="/shop/cart" class="tab">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l2.2 11h9.6L20 8H7"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/></svg>
-        <span>购物车</span>
-        <i class="tab-badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</i>
+      <router-link to="/shop/pets" class="tab" :class="{ on: petsActive }">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z"/></svg>
+        <span>在售</span>
       </router-link>
       <button type="button" class="tab" :class="{ on: route.path.startsWith('/shop/profile') }" @click="goMine">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>
@@ -383,6 +385,14 @@ function handleCommand(cmd) {
     color: var(--brand-700);
     .spark { width: 14px; height: 14px; fill: var(--brand-500); }
     &:hover { background: var(--brand-50); color: var(--brand-700); }
+  }
+
+  // 导航购物车数量徽标
+  .nav-badge {
+    font-style: normal; font-size: 11px; font-weight: 700; line-height: 1;
+    padding: 3px 6px; border-radius: 999px;
+    background: var(--brand-600); color: #fff;
+    font-variant-numeric: tabular-nums;
   }
 
   .user-area { display: flex; align-items: center; gap: 4px; flex-shrink: 0;
