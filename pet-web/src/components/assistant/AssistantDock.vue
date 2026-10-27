@@ -73,7 +73,7 @@
       <span class="as-launcher-ico" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
       </span>
-      <span>{{ defaultScene === 'admin' ? '问数据' : '问助手' }}</span>
+      <span class="as-txt">{{ defaultScene === 'admin' ? '问数据' : '问助手' }}</span>
     </button>
   </div>
 </template>
@@ -308,15 +308,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   svg { width: 14px; height: 14px; fill: #fff; }
 }
 
-/* 面板 */
+/* 面板：右侧全高抽屉 —— 聊天时左侧内容保持可见，边看边问 */
 .as-panel {
-  position: fixed; right: 24px; bottom: 24px; z-index: 1900;
-  width: 404px; max-width: calc(100vw - 32px);
-  height: min(640px, calc(100vh - 96px));
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 1900;
+  width: 424px; max-width: calc(100vw - 32px);
   display: flex; flex-direction: column;
   background: var(--bg-page);
-  border: 1px solid var(--border-1); border-radius: var(--radius-md);
-  box-shadow: 0 28px 70px -32px rgba(22, 33, 29, .45);
+  border: 0; border-left: 1px solid var(--border-1); border-radius: 0;
+  box-shadow: -26px 0 60px -32px rgba(22, 33, 29, .42);
   overflow: hidden;
 }
 .as-head {
@@ -440,11 +439,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   font-size: 11px; color: var(--text-4); text-align: center;
 }
 
-.as-panel-enter-active, .as-panel-leave-active { transition: opacity .18s, transform .22s; }
-.as-panel-enter-from, .as-panel-leave-to { opacity: 0; transform: translateY(10px) scale(.98); }
+.as-panel-enter-active, .as-panel-leave-active { transition: opacity .18s, transform .24s; }
+.as-panel-enter-from, .as-panel-leave-to { opacity: 0; transform: translateX(28px); }
 
 @media (max-width: 768px) {
-  .as-launcher { display: none; }
+  /* 移动端此前没有入口（launcher 被 display:none），手机上根本打不开 AI。
+     现在改为图标圆钮，悬在底部标签栏上方（管理端无标签栏，位置略高无碍）。 */
+  .as-launcher {
+    display: inline-flex;
+    right: 14px; bottom: calc(74px + env(safe-area-inset-bottom));
+    width: 46px; height: 46px; padding: 0; justify-content: center;
+    .as-txt { display: none; }
+    .as-launcher-ico { width: 26px; height: 26px; }
+  }
   .as-panel {
     inset: 0; right: 0; bottom: 0; width: 100%; max-width: none;
     height: 100%; border: 0; border-radius: 0;
