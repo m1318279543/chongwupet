@@ -568,8 +568,6 @@ onMounted(() => {
 /* 移动端吸底购买栏：默认隐藏；手机端固定在底部标签栏（66px+安全区）之上 */
 .buy-bar { display: none; }
 @media (max-width: 768px) {
-  /* 本页吸底栏与 AI 悬浮球同占右下角：注入变量把悬浮球抬到购买栏上方 */
-  :global(.assistant-dock) { --as-dock-bottom: 136px; }
   .buy-bar {
     display: flex; align-items: center; gap: 10px;
     position: fixed; left: 0; right: 0;

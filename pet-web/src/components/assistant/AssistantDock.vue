@@ -69,10 +69,12 @@
       </section>
     </transition>
 
+    <!-- 悬浮入口：仅在没有顶栏入口的场景（如独立页面）才渲染；
+         前后台布局已把入口收进顶栏铃铛左侧，传 :show-launcher="false" 即可 -->
     <button
-      v-if="!state.open" type="button" class="as-launcher"
-      :style="launcherStyle" aria-label="打开 AI 助手"
-      @pointerdown="onPointerDown" @click="onClickLauncher"
+      v-if="showLauncher && !state.open" type="button" class="as-launcher"
+      aria-label="打开 AI 助手"
+      @click="openDefault"
     >
       <span class="as-launcher-ico" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
@@ -98,7 +100,9 @@ const userStore = useUserStore()
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', null)
 const props = defineProps({
-  defaultScene: { type: String, default: 'shop' }
+  defaultScene: { type: String, default: 'shop' },
+  // 是否渲染右下/右上悬浮入口：布局里已有顶栏入口时传 false
+  showLauncher: { type: Boolean, default: true }
 })
 const { state, open, close, reset, send, stop, feedback } = useAssistant()
 
@@ -290,47 +294,9 @@ async function handoff() {
   }
 }
 
-/* ---------- 挂球位置：默认右上角，桌面端可拖动并记住位置 ---------- */
-const POS_KEY = 'as-launcher-pos'
-const launcherStyle = ref({})
-const suppressClick = ref(false)
-let dragState = null
-
-try {
-  const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null')
-  if (saved && saved.left) launcherStyle.value = saved
-} catch (e) { /* 忽略坏数据，用默认位置 */ }
-
-function onPointerDown(event) {
-  if (window.innerWidth <= 768) return  // 移动端固定在标签栏上方，不拖
-  const rect = event.currentTarget.getBoundingClientRect()
-  dragState = { sx: event.clientX, sy: event.clientY, ox: rect.left, oy: rect.top, moved: false }
-  window.addEventListener('pointermove', onPointerMove)
-  window.addEventListener('pointerup', onPointerUp)
-}
-function onPointerMove(event) {
-  if (!dragState) return
-  const dx = event.clientX - dragState.sx
-  const dy = event.clientY - dragState.sy
-  if (!dragState.moved && Math.hypot(dx, dy) < 5) return  // 小于 5px 视为点击
-  dragState.moved = true
-  const top = Math.min(Math.max(dragState.oy + dy, 8), window.innerHeight - 52)
-  const left = Math.min(Math.max(dragState.ox + dx, 8), window.innerWidth - 52)
-  launcherStyle.value = { top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' }
-}
-function onPointerUp() {
-  window.removeEventListener('pointermove', onPointerMove)
-  window.removeEventListener('pointerup', onPointerUp)
-  if (dragState && dragState.moved) {
-    suppressClick.value = true  // 拖动结束的这一次 pointerup 不当作点击
-    setTimeout(() => { suppressClick.value = false }, 60)
-    try { localStorage.setItem(POS_KEY, JSON.stringify(launcherStyle.value)) } catch (e) { /* 存不了就算了 */ }
-  }
-  dragState = null
-}
-function onClickLauncher() {
-  if (!suppressClick.value) openDefault()
-}
+/* ---------- 挂球位置 ----------
+   早期入口是右上角可拖动浮标（位置存 localStorage）；入口收进顶栏铃铛左侧后，
+   浮标与拖拽一并退休，仅保留 openDefault（见上）供 showLauncher 场景使用。 */
 
 function onKeydown(event) {
   if (event.key === 'Escape' && state.open) close()
@@ -343,7 +309,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 <style scoped lang="scss">
 .assistant-dock { position: static; }
 
-/* 桌面入口：图标圆钮，默认悬在右上角（顶栏下方），可拖动，悬停显示文字气泡 */
+/* 悬浮入口（仅无顶栏入口的场景渲染）：图标圆钮，默认悬在右上角（顶栏下方），悬停显示文字气泡 */
 .as-launcher {
   position: fixed; top: 84px; right: 22px; z-index: 160;
   // 后台场景：右上角会压住统计卡，改默认右下角并收小，减少对管理页面的干扰
@@ -358,7 +324,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
   box-shadow: 0 2px 8px rgba(22, 25, 23, .10);
   transition: box-shadow .16s;
-  touch-action: none;  // 拖拽期间不让浏览器接管手势
+  touch-action: manipulation;  // 去掉双击缩放等待，点击更跟手
   &:hover { box-shadow: 0 4px 14px rgba(22, 25, 23, .16); }
 }
 .as-launcher-ico {

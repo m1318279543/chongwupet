@@ -28,6 +28,8 @@
         </nav>
 
         <div class="user-area">
+          <!-- AI 助手入口：固定在顶栏、消息铃铛左侧（登录与否都能问） -->
+          <AssistantEntry scene="shop" />
           <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
           <NotificationBell v-if="isLogged" more-path="/shop/cart" />
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
@@ -132,8 +134,8 @@
     <!-- 登录注册对话框 -->
     <AuthDialog ref="authRef" @success="onAuthSuccess" />
 
-    <!-- AI 助手：场景内嵌唤起 + 桌面右下入口 -->
-    <AssistantDock />
+    <!-- AI 助手：顶栏入口唤起，右侧全高抽屉；入口已收进顶栏，不再渲染悬浮球 -->
+    <AssistantDock :show-launcher="false" />
   </div>
 </template>
 
@@ -147,6 +149,7 @@ import { useCartStore } from '@/store/modules/cart'
 import AuthDialog from '@/components/AuthDialog.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 import AssistantDock from '@/components/assistant/AssistantDock.vue'
+import AssistantEntry from '@/components/assistant/AssistantEntry.vue'
 import { useAssistant } from '@/components/assistant/useAssistant'
 
 const route = useRoute()

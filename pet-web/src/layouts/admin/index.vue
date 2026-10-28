@@ -48,6 +48,8 @@
           <span class="page-title">{{ pageTitle }}</span>
         </div>
         <div class="right">
+          <!-- 经营助手入口：固定在顶栏、消息铃铛左侧，与前台同一位置 -->
+          <AssistantEntry scene="admin" />
           <NotificationBell />
           <el-dropdown @command="handleCommand">
             <span class="user">
@@ -110,8 +112,8 @@
         </router-view>
       </el-main>
 
-      <!-- 经营助手：按看板口径回答指标，仅管理员与店长可用 -->
-      <AssistantDock default-scene="admin" />
+      <!-- 经营助手：按看板口径回答指标，仅管理员与店长可用；入口已收进顶栏铃铛左侧 -->
+      <AssistantDock default-scene="admin" :show-launcher="false" />
     </el-container>
   </el-container>
 </template>
@@ -127,6 +129,7 @@ import { MENU_GROUPS } from './menu'
 import { getToken } from '@/utils/auth'
 import NotificationBell from '@/components/NotificationBell.vue'
 import AssistantDock from '@/components/assistant/AssistantDock.vue'
+import AssistantEntry from '@/components/assistant/AssistantEntry.vue'
 import { useAssistant } from '@/components/assistant/useAssistant'
 import { updateUserProfile } from '@/api/system/user'
 
@@ -248,23 +251,37 @@ function handleCommand(cmd) {
 <style scoped lang="scss">
 .admin-layout { height: 100vh; }
 .sidebar {
-  background: #2b2b36; overflow-x: hidden;
+  background: var(--brand-900); overflow-x: hidden;
   .logo {
     height: 60px; display: flex; align-items: center; justify-content: center;
-    color: #fff; gap: 8px;
-    .icon { font-size: 22px; }
-    .text { font-size: 16px; font-weight: 600; }
+    gap: 9px; padding: 0 12px;
+    // 与商城顶栏同一枚爪印标：白爪印 + 品牌渐变方块
+    .mark {
+      width: 28px; height: 28px; flex-shrink: 0; border-radius: var(--radius-sm);
+      display: grid; place-items: center; background: var(--grad-brand);
+      svg { width: 17px; height: 17px; fill: #fff; }
+    }
+    .text { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
   }
-  .menu { border-right: none; }
-  :deep(.el-menu-item.is-active) { background: #3a3a4a !important; }
+  .menu { border-right: none; background: transparent; }
+  // 激活项：浅色底 + 左侧 2px 品牌色，文字用最亮的一档（11.4:1）
+  :deep(.el-menu-item.is-active) {
+    background: rgba(185, 219, 206, .14) !important;
+    box-shadow: inset 2px 0 0 var(--brand-300);
+    font-weight: 700;
+  }
+  :deep(.el-menu-item:hover),
+  :deep(.el-sub-menu__title:hover) { background: rgba(185, 219, 206, .08) !important; }
 }
 .header {
-  background: #fff; display: flex; align-items: center; justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06); z-index: 10;
-  .page-title { font-size: 18px; font-weight: 600; color: var(--text-1); }
+  background: var(--bg-card); display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border-1); z-index: 10;
+  // 右侧操作组：AI 入口 + 消息铃铛 + 用户菜单，固定间距避免换行空隙抖动
+  .right { display: flex; align-items: center; gap: 4px; }
+  .page-title { font-size: 16px; font-weight: 700; color: var(--text-1); }
   .ruoyi-link { margin-right: 16px; }
   .user { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  .avatar { background: var(--brand-500); color: #fff; font-weight: 600; }
+  .avatar { background: var(--brand-600); color: #fff; font-weight: 600; }
   .name { font-size: 14px; color: var(--text-1); }
 }
 // el-main 默认就有 20px padding，.app-container 也有 20px —— 以前叠加成 40px
