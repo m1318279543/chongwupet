@@ -331,7 +331,7 @@ loadStat();
   font-size: 12px;
   color: var(--text-2);
   background: var(--bg-page);
-  border-radius: 10px;
+  border-radius: var(--radius-xs);
   padding: 2px 8px;
   line-height: 18px;
 }

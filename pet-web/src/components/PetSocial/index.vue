@@ -29,8 +29,8 @@
           <span class="rs-count">{{ stat.commentCount || 0 }} 条评价</span>
         </div>
       </div>
-      <div class="rs-bars" v-if="Number(stat.commentCount) > 0">
-        <div class="bar-row" v-for="n in [5, 4, 3, 2, 1]" :key="n">
+      <div class="rs-bars" v-if="visibleRatings.length">
+        <div class="bar-row" v-for="n in visibleRatings" :key="n">
           <span class="bar-label">{{ n }} 星</span>
           <div class="bar-track">
             <div class="bar-fill" :style="{ width: barPct(n) + '%' }"></div>
@@ -38,7 +38,8 @@
           <span class="bar-num">{{ dist(n) }}</span>
         </div>
       </div>
-      <div class="rs-empty" v-else>还没有评价，来发表第一条吧</div>
+      <div class="rs-empty" v-else-if="!Number(stat.commentCount)">还没有评价，来发表第一条吧</div>
+      <div class="rs-empty" v-else>评价未打星，暂无评分分布</div>
     </div>
 
     <!-- 评论区 -->
@@ -176,6 +177,8 @@ function barPct(n) {
   if (!total) return 0
   return Math.round((dist(n) / total) * 100)
 }
+// 只列有评分的档位：1 条评价时不再摆 4 行 0 值长条（看着像渲染失败）
+const visibleRatings = computed(() => [5, 4, 3, 2, 1].filter((n) => dist(n) > 0))
 
 async function loadStat() {
   try {

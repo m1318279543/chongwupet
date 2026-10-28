@@ -185,7 +185,7 @@ defineExpose({ refresh: loadUnread })
   width: 34px;
   height: 34px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-2);
   cursor: pointer;
@@ -214,7 +214,7 @@ defineExpose({ refresh: loadUnread })
   border-radius: 8px;
   background: var(--danger-500);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
   text-align: center;
   box-shadow: 0 0 0 2px #fff;
@@ -227,8 +227,8 @@ defineExpose({ refresh: loadUnread })
   width: 340px;
   max-width: calc(100vw - 24px);
   background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
   border: 1px solid var(--bg-sunken);
   z-index: 3000;
   overflow: hidden;
@@ -261,7 +261,7 @@ defineExpose({ refresh: loadUnread })
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-1);
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--danger-500); }
@@ -276,7 +276,7 @@ defineExpose({ refresh: loadUnread })
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .np-time { margin-top: 4px; font-size: 11.5px; color: var(--text-4); }
+  .np-time { margin-top: 4px; font-size: 12px; color: var(--text-3); }
 }
 .np-empty {
   text-align: center;

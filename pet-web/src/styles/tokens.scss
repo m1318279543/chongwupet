@@ -32,6 +32,8 @@
   --warning-50: #fffbeb;
   --warning-100: #fef3c7;
   --danger-500: #dc2626;
+  // 11–12px 小字用的深一档红：danger-500 在 danger-50 上只有 4.41:1
+  --danger-600: #b91c1c;
   --danger-50: #fef2f2;
   --danger-100: #fee2e2;
   --info-500: #64748b;

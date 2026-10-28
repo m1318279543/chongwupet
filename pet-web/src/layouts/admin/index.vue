@@ -4,8 +4,10 @@
          以前这里硬编码了 30 个 el-menu-item，和 router、pageTitle 表各存一份，新增页面要改三处 -->
     <el-aside :width="isNarrow ? '64px' : '220px'" class="sidebar">
       <div class="logo">
-        <span class="icon">宠</span>
-        <span v-if="!isNarrow" class="text">宠物管理后台</span>
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M7.2 10.2c1.2-1.5 1.6-3.4.9-4.3-.7-.9-2.1-.5-3.1.9s-1.2 3.2-.3 4c.6.5 1.6.3 2.5-.6zM16.8 10.2c-1.2-1.5-1.6-3.4-.9-4.3.7-.9 2.1-.5 3.1.9s1.2 3.2.3 4c-.6.5-1.6.3-2.5-.6zM12 10.6c1.6 0 3-.9 3.6-2 .7-1.3.2-2.9-1.1-3.5-1.5-.7-3.5-.7-5 0-1.3.6-1.8 2.2-1.1 3.5.6 1.1 2 2 3.6 2zM5.3 13.6c1.4-.5 2.3-1.6 2-2.6-.3-1-1.7-1.4-3.1-.9-1.4.5-2.3 1.6-2 2.6.3 1 1.7 1.4 3.1.9zM18.7 13.6c-1.4-.5-2.3-1.6-2-2.6.3-1 1.7-1.4 3.1-.9 1.4.5 2.3 1.6 2 2.6-.3 1-1.7 1.4-3.1.9zM12 12c-2.6 0-5.6 2.2-5.6 5 0 1.9 1.3 3.2 3 3.2 1 0 1.8-.5 2.6-.5s1.6.5 2.6.5c1.7 0 3-1.3 3-3.2 0-2.8-3-5-5.6-5z"/></svg>
+        </span>
+        <span v-if="!isNarrow" class="text">宠物之家 · 后台</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -13,9 +15,9 @@
         :collapse="isNarrow"
         :collapse-transition="false"
         class="menu"
-        background-color="#2b2b36"
-        text-color="#bfcbd9"
-        active-text-color="var(--brand-500)"
+        background-color="#0a3329"
+        text-color="#a9bdb5"
+        active-text-color="#dcede6"
       >
         <template v-for="group in menuGroups" :key="group.key">
           <el-menu-item v-if="!group.title" :index="group.children[0].path">
@@ -292,7 +294,7 @@ function handleCommand(cmd) {
 .pf-upload { cursor: pointer; }
 .pf-avatar-box {
   position: relative; width: 96px; height: 96px; border-radius: 50%;
-  overflow: hidden; background: var(--brand-500); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: var(--brand-600); display: flex; align-items: center; justify-content: center;
   img { width: 100%; height: 100%; object-fit: cover; }
   .pf-avatar-text { color: #fff; font-size: 32px; font-weight: 600; }
   .pf-mask {

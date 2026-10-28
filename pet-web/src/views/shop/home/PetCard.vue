@@ -1,8 +1,12 @@
 <template>
   <!-- 宠物卡：首页网格共用，首页只负责取数 -->
-  <article class="pet-card" @click="$emit('open', pet.petId)">
+  <article class="pet-card" :class="{ 'is-sold': pet.status === '1' }" @click="$emit('open', pet.petId)">
     <div class="pet-media" :style="isImage(pet.image) ? null : { background: gradient }">
-      <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy" />
+      <img
+        v-if="isImage(pet.image)"
+        :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy"
+        :style="imageVars(pet.petId)"
+      />
       <span v-else class="pet-emoji">暂无图片</span>
 
       <span class="pet-flag" :class="{ sold: pet.status === '1' }">
@@ -40,6 +44,7 @@
 <script setup>
 import { computed } from 'vue'
 import { money } from '@/utils/money'
+import { imageVars } from './imageTuning'
 
 const props = defineProps({
   pet: { type: Object, required: true },
@@ -86,9 +91,13 @@ const metaText = computed(() => {
   .pet-emoji { font-size: 13px; color: var(--text-3); }
   .pet-photo {
     width: 100%; height: 100%; object-fit: cover; display: block;
+    // 归一化：焦点与缩放出 imageTuning.js，缺省居中偏上、不缩放
+    object-position: var(--img-pos, 50% 45%);
+    transform: scale(var(--img-zoom, 1));
     transition: transform .5s cubic-bezier(.2, .7, .3, 1);
   }
-  .pet-card:hover & .pet-photo { transform: scale(1.05); }
+  // hover 在归一化基础上再放大 5%，避免把调好的缩放覆盖掉
+  .pet-card:hover & .pet-photo { transform: scale(calc(var(--img-zoom, 1) * 1.05)); }
 }
 
 .pet-flag {
@@ -122,6 +131,15 @@ const metaText = computed(() => {
   &:hover { transform: scale(1.06); }
   &:hover::before { background: #fff; }
   &[aria-pressed="true"] svg { stroke: var(--brand-600); fill: var(--brand-600); }
+}
+
+/* 已售卡降权：不隐藏、不置灰到看不清，只把注意力让给在售的 */
+.pet-card.is-sold {
+  .pet-photo { filter: saturate(.55) brightness(.99); }
+  .pet-name { color: var(--text-2); }
+  .pet-price { color: var(--text-3); }
+  // 已经降低图片饱和度来表达「已售」，角标本身要保持可读，不再减淡
+  .pet-flag.sold { background: rgba(22, 25, 23, .72); }
 }
 
 .pet-body { padding: 12px 2px 0; }

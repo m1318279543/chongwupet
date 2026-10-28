@@ -49,14 +49,16 @@
     </div>
 
     <!-- KPI -->
-    <section class="kpi-grid">
-      <div v-for="k in kpis" :key="k.key" class="kpi-card" :style="{ '--accent': k.color }">
+    <!-- 指标条：竖细线切分，与订单页 ui-stats 同一套写法，不做卡片 -->
+    <section class="kpi-strip">
+      <div v-for="k in kpis" :key="k.key" class="kpi">
         <div class="kpi-head">
           <span class="kpi-label">{{ k.label }}</span>
-          <span v-if="k.growth !== null" class="badge" :class="growthClass(k.growth)">
+          <span v-if="k.tone" class="badge" :class="k.tone.cls">{{ k.tone.text }}</span>
+          <span v-else-if="k.growth !== null" class="badge" :class="growthClass(k.growth)">
             {{ growthText(k.growth) }}
           </span>
-          <span v-else class="badge flat">区间</span>
+          <span v-else class="badge flat">区间内</span>
         </div>
         <div class="kpi-value">{{ k.value }}</div>
         <div class="kpi-sub">{{ k.sub }}</div>
@@ -224,7 +226,6 @@ const kpis = computed(() => {
       value: '¥' + money(o.revenue),
       growth: o.growth?.revenue ?? null,
       sub: `今日 ¥${money(t.todayRevenue || 0)} · 客单价 ¥${money(o.avgOrderAmount || 0)}`,
-      color: 'var(--brand-500)',
     },
     {
       key: 'orders',
@@ -232,7 +233,6 @@ const kpis = computed(() => {
       value: fmtInt(o.orders),
       growth: o.growth?.orders ?? null,
       sub: `今日 ${t.todayOrders || 0} 单 · 待处理 ${o.pendingOrders}`,
-      color: '#4f9f87',
     },
     {
       key: 'appointments',
@@ -240,7 +240,6 @@ const kpis = computed(() => {
       value: fmtInt(o.appointments),
       growth: o.growth?.appointments ?? null,
       sub: `今日 ${t.todayAppointments || 0} 单 · 待处理 ${o.pendingAppointments}`,
-      color: '#1f7a63',
     },
     {
       key: 'consults',
@@ -248,23 +247,23 @@ const kpis = computed(() => {
       value: fmtInt(o.consults || 0),
       growth: o.growth?.consults ?? null,
       sub: `今日 ${t.todayConsults || 0} 次 · 待回复 ${o.pendingConsults}`,
-      color: '#8fc3b0',
     },
     {
       key: 'social',
       label: '互动量',
+      // 值是收藏 + 评论 + 点赞的合计，三者增长率口径不同，不拿单个分项冒充整体 → 不给涨跌徽标
       value: fmtInt((o.favorites || 0) + (o.comments || 0) + (o.likes || 0)),
-      growth: o.growth?.favorites ?? null,
+      growth: null,
       sub: `收藏 ${o.favorites} · 评论 ${o.comments} · 点赞 ${o.likes}`,
-      color: '#b9dbce',
     },
     {
       key: 'cancel',
       label: '取消率',
       value: `${o.cancelRate}%`,
       growth: null,
+      // 取消率不适合用涨跌表达（越低越好），改按阈值给结论
+      tone: cancelTone(o.cancelRate),
       sub: `取消 ${o.cancels} 笔 · 今日 ${t.todayCancels || 0} 笔`,
-      color: '#f56c6c',
     },
   ]
 })
@@ -277,6 +276,14 @@ function money(v) {
 
 function fmtInt(v) {
   return Number(v || 0).toLocaleString('zh-CN')
+}
+
+/** 取消率阈值评价：≥10% 偏高，≥5% 需关注，其余正常 */
+function cancelTone(rate) {
+  const v = Number(rate || 0)
+  if (v >= 10) return { cls: 'bad', text: '偏高' }
+  if (v >= 5) return { cls: 'warn', text: '需关注' }
+  return { cls: 'good', text: '正常' }
 }
 
 function growthClass(g) {
@@ -440,7 +447,7 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--text-3);
   padding: 4px 10px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: #eef0f3;
 
   i {
@@ -496,90 +503,87 @@ onUnmounted(() => {
   margin-left: auto;
   background: #fff;
   border: 1px solid var(--border-1);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   padding: 3px 12px;
   color: var(--text-2);
 }
 
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+/* 指标条：与订单页 ui-stats 同一写法——上下 1px 线 + 竖细线切分，不做卡片、不用投影 */
+.kpi-strip {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  border-top: 1px solid var(--border-1);
+  border-bottom: 1px solid var(--border-1);
 }
 
-.kpi-card {
-  background: #fff;
-  border-radius: 10px;
+.kpi {
+  flex: 1 1 0;
+  min-width: 176px;
   padding: 16px 18px;
-  border: 1px solid #eef0f3;
-  position: relative;
-  overflow: hidden;
-  transition: box-shadow 0.2s, transform 0.2s;
+  border-left: 1px solid var(--border-2);
 
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--accent);
-  }
-
-  &:hover {
-    box-shadow: 0 6px 18px rgba(31, 35, 41, 0.07);
-    transform: translateY(-2px);
+  &:first-child {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 
 .kpi-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
 }
 
 .kpi-label {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-3);
 }
 
+/* 徽标：颜色只表达「对经营是好是坏」，方向交给箭头 */
 .badge {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 9px;
+  border-radius: var(--radius-xs);
   line-height: 16px;
   white-space: nowrap;
 
-  &.up {
-    color: #d4380d;
-    background: var(--brand-50);
+  &.up,
+  &.good {
+    color: var(--success-500);
+    background: var(--success-50);
   }
 
-  &.down {
-    color: var(--success-500);
-    background: #f0f9eb;
+  &.down,
+  &.bad {
+    color: var(--danger-600);
+    background: var(--danger-50);
+  }
+
+  &.warn {
+    color: var(--warning-500);
+    background: var(--warning-50);
   }
 
   &.flat {
     color: var(--text-3);
-    background: #f4f4f5;
+    background: var(--bg-sunken);
   }
 }
 
 .kpi-value {
-  font-size: 25px;
-  font-weight: 700;
-  color: #1f2329;
   margin: 8px 0 4px;
-  letter-spacing: -0.5px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .kpi-sub {
-  font-size: 11px;
-  color: var(--text-4);
+  font-size: 12px;
+  color: var(--text-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -608,9 +612,9 @@ onUnmounted(() => {
 }
 
 .card {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #eef0f3;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-1);
   padding: 14px 16px 10px;
   min-width: 0;
 }
@@ -630,8 +634,8 @@ onUnmounted(() => {
   }
 
   span {
-    font-size: 11px;
-    color: var(--text-4);
+    font-size: 11.5px;
+    color: var(--text-3);
   }
 }
 
@@ -652,7 +656,7 @@ onUnmounted(() => {
 }
 
 .live-tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--text-4);
@@ -718,8 +722,8 @@ onUnmounted(() => {
 }
 
 .feed-time {
-  font-size: 11px;
-  color: var(--text-4);
+  font-size: 11.5px;
+  color: var(--text-3);
   margin-top: 3px;
   display: flex;
   align-items: center;
@@ -770,8 +774,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1400px) {
-  .kpi-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .kpi {
+    min-width: 33%;
   }
 }
 
@@ -782,8 +786,8 @@ onUnmounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .kpi {
+    min-width: 50%;
   }
 }
 
@@ -809,8 +813,13 @@ onUnmounted(() => {
     height: min(170px, 25vh);
   }
 
-  .kpi-grid {
-    gap: 8px;
+  .kpi {
+    min-width: 50%;
+    padding: 12px 14px;
+  }
+
+  .kpi-value {
+    font-size: 20px;
   }
 }
 </style>

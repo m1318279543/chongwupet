@@ -24,7 +24,7 @@
       <el-table-column label="宠物" align="center" width="220">
         <template #default="scope">
           <div class="pet-cell">
-            <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="pet-img" />
+            <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="pet-img" alt="宠物图片" />
             <span v-else class="pet-emoji">—</span>
             <span>{{ scope.row.petName }}</span>
           </div>

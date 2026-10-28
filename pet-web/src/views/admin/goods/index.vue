@@ -39,7 +39,7 @@
       <el-table-column label="商品" min-width="240">
         <template #default="scope">
           <div class="goods-cell">
-            <img :src="scope.row.image" class="thumb" v-if="scope.row.image" />
+            <img :src="scope.row.image" class="thumb" v-if="scope.row.image" alt="商品图片" />
             <div>
               <div class="name">{{ scope.row.goodsName }}</div>
               <div class="code">{{ scope.row.goodsCode }} · {{ scope.row.spec }}</div>

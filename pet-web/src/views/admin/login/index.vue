@@ -1,16 +1,23 @@
 <template>
   <div class="admin-login">
-    <div class="orb orb-a"></div>
-    <div class="orb orb-b"></div>
+    <div class="login-shell">
+      <!-- 桌面端品牌栏：只有字、一条细线，不做插画与色块 -->
+      <aside class="brand-panel">
+        <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 10.2c1.2-1.5 1.6-3.4.9-4.3-.7-.9-2.1-.5-3.1.9s-1.2 3.2-.3 4c.6.5 1.6.3 2.5-.6zM16.8 10.2c-1.2-1.5-1.6-3.4-.9-4.3.7-.9 2.1-.5 3.1.9s1.2 3.2.3 4c-.6.5-1.6.3-2.5-.6zM12 10.6c1.6 0 3-.9 3.6-2 .7-1.3.2-2.9-1.1-3.5-1.5-.7-3.5-.7-5 0-1.3.6-1.8 2.2-1.1 3.5.6 1.1 2 2 3.6 2zM5.3 13.6c1.4-.5 2.3-1.6 2-2.6-.3-1-1.7-1.4-3.1-.9-1.4.5-2.3 1.6-2 2.6.3 1 1.7 1.4 3.1.9zM18.7 13.6c-1.4-.5-2.3-1.6-2-2.6.3-1 1.7-1.4 3.1-.9 1.4.5 2.3 1.6 2 2.6-.3 1-1.7 1.4-3.1.9zM12 12c-2.6 0-5.6 2.2-5.6 5 0 1.9 1.3 3.2 3 3.2 1 0 1.8-.5 2.6-.5s1.6.5 2.6.5c1.7 0 3-1.3 3-3.2 0-2.8-3-5-5.6-5z"/></svg></span>
+        <p class="eyebrow">Chongwu Home · Admin</p>
+        <h1>宠物之家<br />管理后台</h1>
+        <p class="lede">订单、宠物档案、健康记录与经营数据，在同一处闭环。</p>
+        <p class="meta">重庆 · 直营门店</p>
+      </aside>
 
-    <div class="login-card">
-      <div class="brand">
-        <div class="logo">宠</div>
-        <div class="brand-text">
-          <h1>宠物之家 · 管理后台</h1>
-          <p>仅限管理员与店长账号登录，前台用户请从商城首页进入</p>
+      <div class="login-card" role="main">
+        <div class="card-head">
+          <span class="mark mark--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 10.2c1.2-1.5 1.6-3.4.9-4.3-.7-.9-2.1-.5-3.1.9s-1.2 3.2-.3 4c.6.5 1.6.3 2.5-.6zM16.8 10.2c-1.2-1.5-1.6-3.4-.9-4.3.7-.9 2.1-.5 3.1.9s1.2 3.2.3 4c-.6.5-1.6.3-2.5-.6zM12 10.6c1.6 0 3-.9 3.6-2 .7-1.3.2-2.9-1.1-3.5-1.5-.7-3.5-.7-5 0-1.3.6-1.8 2.2-1.1 3.5.6 1.1 2 2 3.6 2zM5.3 13.6c1.4-.5 2.3-1.6 2-2.6-.3-1-1.7-1.4-3.1-.9-1.4.5-2.3 1.6-2 2.6.3 1 1.7 1.4 3.1.9zM18.7 13.6c-1.4-.5-2.3-1.6-2-2.6.3-1 1.7-1.4 3.1-.9 1.4.5 2.3 1.6 2 2.6-.3 1-1.7 1.4-3.1.9zM12 12c-2.6 0-5.6 2.2-5.6 5 0 1.9 1.3 3.2 3 3.2 1 0 1.8-.5 2.6-.5s1.6.5 2.6.5c1.7 0 3-1.3 3-3.2 0-2.8-3-5-5.6-5z"/></svg></span>
+          <div class="card-title">
+            <h2>登录后台</h2>
+            <p>仅限管理员与店长账号登录</p>
+          </div>
         </div>
-      </div>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent>
         <el-form-item label="管理员账号" prop="username">
@@ -61,9 +68,10 @@
         </el-button>
       </el-form>
 
-      <div class="foot">
-        <span class="link" @click="goShop">返回商城首页 →</span>
-        <span v-if="currentUser" class="current">当前登录：{{ currentUser }}</span>
+        <div class="foot">
+          <span class="link" @click="goShop">返回商城首页 →</span>
+          <span v-if="currentUser" class="current">当前登录：{{ currentUser }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -166,73 +174,116 @@ onMounted(getCode)
 </script>
 
 <style scoped>
+/* 登录页：与商城同一套扁平语言——大字号 + 1px 细线，不堆装饰 */
 .admin-login {
-  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
-  background: linear-gradient(160deg, #fdf7f2 0%, #f3f7fb 55%, #eef4ff 100%);
-  overflow: hidden;
+  padding: 48px 24px;
+  background:
+    radial-gradient(720px 360px at 84% -10%, var(--brand-50) 0%, rgba(255, 255, 255, 0) 70%),
+    var(--bg-page);
 }
 
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.55;
-  pointer-events: none;
+/* 桌面：左品牌栏 + 右表单；窄屏只剩表单 */
+.login-shell {
+  width: 100%;
+  max-width: 920px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 384px;
+  align-items: center;
+  gap: 72px;
 }
-.orb-a { width: 420px; height: 420px; background: var(--brand-200); top: -120px; right: -80px; }
-.orb-b { width: 380px; height: 380px; background: #cfe2ff; bottom: -140px; left: -100px; }
+
+.brand-panel .mark {
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--grad-brand);
+}
+.brand-panel .mark svg { width: 24px; height: 24px; fill: #fff; }
+.brand-panel .eyebrow {
+  margin: 22px 0 0;
+  font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.brand-panel h1 {
+  margin: 10px 0 0;
+  font-size: 34px; line-height: 1.24; font-weight: 700;
+  letter-spacing: -.02em; color: var(--text-1);
+}
+.brand-panel .lede {
+  margin: 16px 0 0; max-width: 20em;
+  font-size: 14px; line-height: 1.8; color: var(--text-2);
+}
+.brand-panel .meta {
+  margin: 28px 0 0; padding-top: 14px;
+  border-top: 1px solid var(--border-1);
+  font-size: 12.5px; color: var(--text-3);
+}
 
 .login-card {
-  position: relative;
-  z-index: 1;
   width: 100%;
-  max-width: 420px;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 32px 32px 22px;
-  box-shadow: 0 18px 50px rgba(31, 45, 61, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  padding: 30px 28px 20px;
 }
 
-.brand { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 22px; }
-.logo {
-  width: 48px; height: 48px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px; border-radius: 14px;
-  background: linear-gradient(135deg, var(--brand-100), #ffd0e0);
+.card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+/* 桌面端品牌栏已承担标识，卡片内不重复 */
+.card-head .mark--sm {
+  display: none;
+  width: 36px; height: 36px; flex: none;
 }
-.brand-text h1 { margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #1f2d3d; letter-spacing: 0.3px; }
-.brand-text p { margin: 0; font-size: 12px; color: #8a94a6; line-height: 1.5; }
+.card-title h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-1); letter-spacing: -.01em; }
+.card-title p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
 
-:deep(.el-form-item__label) { font-size: 13px; color: #5b667a; padding-bottom: 4px; }
+:deep(.el-form-item__label) { font-size: 13px; font-weight: 700; color: var(--text-1); padding-bottom: 6px; }
+:deep(.el-form-item) { margin-bottom: 18px; }
 
 .code-row { display: flex; gap: 10px; width: 100%; }
 .code-row .el-input { flex: 1; }
 .code-img {
   width: 108px; height: 40px; flex: none;
-  border-radius: 8px; cursor: pointer; object-fit: cover;
-  border: 1px solid #e3e8f0; background: var(--bg-page);
+  border-radius: var(--radius-sm); cursor: pointer; object-fit: cover;
+  border: 1px solid var(--border-1); background: var(--bg-sunken);
 }
-.code-loading { display: flex; align-items: center; justify-content: center; font-size: 12px; color: #9aa4b5; }
+.code-loading {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--text-3);
+}
 
-.submit { width: 100%; margin-top: 6px; font-size: 15px; letter-spacing: 2px; }
+.submit {
+  width: 100%; height: 44px; margin-top: 4px;
+  font-size: 15px; font-weight: 700; letter-spacing: .04em;
+}
 
 .foot {
   display: flex; align-items: center; justify-content: space-between;
-  margin-top: 18px; padding-top: 14px; border-top: 1px dashed #edf1f7;
-  font-size: 12px; color: #9aa4b5;
+  margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-2);
+  font-size: 12px; color: var(--text-3);
 }
-.foot .link { color: var(--brand-700); cursor: pointer; }
-.foot .link:hover { text-decoration: underline; }
+.foot .link { color: var(--brand-700); font-weight: 700; cursor: pointer; }
+.foot .link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .foot .current { max-width: 52%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* 平板及以下：品牌栏收起，卡片内的爪印标补位 */
+@media (max-width: 1000px) {
+  .login-shell {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 400px;
+    gap: 0;
+  }
+  .brand-panel { display: none; }
+  .card-head .mark--sm { display: grid; place-items: center; background: var(--grad-brand); border-radius: var(--radius-sm); }
+  .card-head .mark--sm svg { width: 20px; height: 20px; fill: #fff; }
+}
+
 @media (max-width: 480px) {
-  .login-card { padding: 24px 20px 18px; border-radius: 14px; }
-  .brand-text h1 { font-size: 17px; }
+  .admin-login { padding: 24px 16px; }
+  .login-card { padding: 26px 20px 18px; }
+  .card-title h2 { font-size: 18px; }
 }
 </style>
