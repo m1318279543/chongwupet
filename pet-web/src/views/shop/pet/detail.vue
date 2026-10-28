@@ -466,7 +466,8 @@ function addPetToCart() {
     spec: pet.value.breed,
     price: pet.value.price
   })
-  ElMessage.success('已加入购物车，可与宠物粮一起结算')
+  // 加购确认是「看一眼就知道成功」的短反馈，1.5s 足够读完，不赖在页面上方
+  ElMessage.success({ message: '已加入购物车，可与宠物粮一起结算', duration: 1500 })
 }
 
 /** 立即购买：下单即锁定宠物，支付走订单收银台 */

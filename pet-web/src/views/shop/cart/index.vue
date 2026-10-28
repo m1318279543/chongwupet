@@ -18,17 +18,83 @@
     <div class="tab-panel">
       <!-- ========== 购物车：只放未下单的商品，清空即空 ========== -->
       <template v-if="activeTab === 'cart'">
-      <div class="ui-empty" v-if="cartStore.items.length === 0">
-        <span class="ui-empty__ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8z"/><path d="M9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10"/></svg>
-        </span>
-        <p class="ui-empty__title">购物车还是空的</p>
-        <p class="ui-empty__desc">挑一只合眼缘的伙伴，或带几袋好粮，都放这里结算。</p>
-        <div class="ui-empty__act">
-          <!-- 未登录：登录是结算前的必经步骤，直接给入口 -->
-          <button v-if="!userStore.token" type="button" class="ui-btn ui-btn--solid" @click="openAuth('login')">去登录</button>
-          <button type="button" class="ui-btn" :class="userStore.token ? 'ui-btn--solid' : 'ui-btn--line'" @click="$router.push('/shop/pets')">去逛在售宠物</button>
-        </div>
+      <!-- 空态：头部（图标 + 一句话 + 行动）＋ 两级推荐，页面不再空一大片 -->
+      <div class="cart-empty" v-if="cartStore.items.length === 0">
+        <header class="ui-head cart-empty__head">
+          <div class="ui-head__main">
+            <h1 class="ui-title">
+              <span class="ce-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8z"/><path d="M9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10"/></svg>
+              </span>
+              购物车还是空的
+            </h1>
+            <p class="ui-sub">挑一只合眼缘的伙伴，或带几袋好粮，都放这里结算。</p>
+          </div>
+          <!-- 未登录时登录是结算前的必经步骤，设为主操作；宠物粮入口常驻 -->
+          <div class="ui-head__aside ce-act">
+            <button v-if="!userStore.token" type="button" class="ui-btn ui-btn--solid" @click="openAuth('login')">去登录</button>
+            <button type="button" class="ui-btn" :class="userStore.token ? 'ui-btn--solid' : 'ui-btn--line'" @click="$router.push('/shop/pets')">去逛在售宠物</button>
+            <button type="button" class="ui-btn ui-btn--line" @click="$router.push('/shop/food')">去逛宠物粮</button>
+          </div>
+        </header>
+
+        <!-- 推荐①：在售宠物精选，卡片与首页/售卖页完全同一只（含收藏与评分） -->
+        <section class="ce-sec" v-if="recPets.length || recLoading">
+          <div class="ce-sec__head">
+            <div>
+              <h3>在售宠物 · 先从这几只看起</h3>
+              <p>每一只都有可查的健康筛查与疫苗记录，支持到店看宠</p>
+            </div>
+            <router-link class="ce-more" to="/shop/pets">
+              看全部在售
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </router-link>
+          </div>
+          <div class="ce-grid" v-loading="recLoading">
+            <PetCard
+              v-for="pet in recPets"
+              :key="pet.petId"
+              :pet="pet"
+              :faved="isFav(pet.petId)"
+              :rating="petRating(pet.petId)"
+              :gradient="petGradient(pet.petId)"
+              @open="goPetDetail"
+              @fav="toggleFav"
+            />
+          </div>
+        </section>
+
+        <!-- 推荐②：宠物粮精选，不用离开本页就能加购（与宠物粮专区同一加购口径） -->
+        <section class="ce-sec" v-if="recFood.length">
+          <div class="ce-sec__head">
+            <div>
+              <h3>宠物粮 · 顺带带几袋</h3>
+              <p>按品类挑对口好粮，加购后可与宠物一起结算</p>
+            </div>
+            <router-link class="ce-more" to="/shop/food">
+              逛宠物粮专区
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </router-link>
+          </div>
+          <div class="ce-grid">
+            <article class="ce-food" v-for="g in recFood" :key="g.id" @click="$router.push('/shop/food')">
+              <div class="ce-food__thumb"><img :src="g.image" :alt="g.name" loading="lazy" /></div>
+              <div class="ce-food__body">
+                <div class="ce-food__name">{{ g.name }}</div>
+                <div class="ce-food__spec">{{ g.spec }}</div>
+                <div class="ce-food__row">
+                  <span class="ce-food__price">¥{{ money(g.price) }}</span>
+                  <button
+                    type="button"
+                    class="ce-food__add"
+                    :disabled="!g.stock"
+                    @click.stop="addFoodToCart(g)"
+                  >{{ g.stock ? '加入购物车' : '暂时缺货' }}</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
       </div>
       <template v-else>
         <table class="ui-table cart-table">
@@ -188,6 +254,7 @@
 
 <script setup>
 import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, CircleCheckFilled, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
@@ -195,19 +262,139 @@ import { useCartStore } from '@/store/modules/cart'
 import { submitPetCart, payPetCart } from '@/api/pet/petCart'
 import { listMyOrders } from '@/api/pet/petOrder'
 import { listMyRefunds } from '@/api/pet/petRefund'
+import { getPetOverview } from '@/api/pet/petInfo'
+import { listGoods } from '@/api/pet/petGoods'
+import { commentStatGroup } from '@/api/pet/petComment'
+import { listMyFavoriteIds, listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import OrdersSection from './OrdersSection.vue'
 import Pagination from '@/components/Pagination/index.vue'
+import PetCard from '@/views/shop/home/PetCard.vue'
+import { PET_GRADIENTS } from '@/views/shop/home/homeData'
 import { money } from '@/utils/money'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const router = useRouter()
 const openAuth = inject('openAuth', () => {})
 
 // 购物车按账号绑定：登录后把服务端数据拉下来（本地条目自动合并上传），登出回到本地模式
-onMounted(() => { cartStore.sync(); getOrders() })
+onMounted(() => { cartStore.sync(); getOrders(); loadRecs() })
 watch(() => userStore.token, () => { cartStore.sync(); getOrders() })
 // 登出时标签栏消失，强制回到购物车标签
 watch(() => userStore.token, (t) => { if (!t) activeTab.value = 'cart' })
+
+/* ---------- 空态推荐：宠物精选 + 宠物粮精选（均免登录，接口不可用时不摆空壳） ---------- */
+const recPets = ref([])
+const recFood = ref([])
+const recLoading = ref(false)
+const myFavorites = ref([])
+const ratingMap = ref({})
+
+// 与宠物粮专区同一套字段口径（含 skuId/stock，加购时直接可用）
+function adaptGoods(g) {
+  return {
+    id: g.goodsCode,
+    goodsId: g.goodsId,
+    skuId: g.skus && g.skus.length ? g.skus[0].skuId : null,
+    image: g.image,
+    name: g.goodsName,
+    spec: g.spec,
+    price: Number(g.price),
+    stock: g.stock == null ? 0 : Number(g.stock)
+  }
+}
+
+async function loadRecs() {
+  recLoading.value = true
+  try {
+    // 一次请求拿「统计 + 精选」，前端不再拉全表自己排序截断
+    const ov = await getPetOverview(4)
+    recPets.value = (ov.featured || []).slice(0, 4)
+  } catch (e) { /* 接口不可用时该区不渲染 */ }
+  try {
+    const gd = await listGoods({ status: '0', pageNum: 1, pageSize: 4 })
+    recFood.value = (gd.rows || []).map(adaptGoods).filter((g) => g.price > 0)
+  } catch (e) { /* 接口不可用时该区不渲染 */ }
+  recLoading.value = false
+  loadMyFavorites()
+  loadRatings()
+}
+
+// 收藏：与首页同一套逻辑（未登录先引导登录）
+function isFav(petId) { return myFavorites.value.includes(petId) }
+async function loadMyFavorites() {
+  if (!userStore.token) { myFavorites.value = []; return }
+  try {
+    const res = await listMyFavoriteIds()
+    myFavorites.value = res.data || []
+  } catch (e) { /* 静默 */ }
+}
+async function toggleFav(petId) {
+  if (!userStore.token) {
+    ElMessage.info('请先登录后再收藏')
+    openAuth('login')
+    return
+  }
+  if (isFav(petId)) {
+    try {
+      const res = await listPetFavorite({ userId: userStore.userId, petId })
+      const fid = res.rows?.[0]?.favoriteId
+      if (fid) await delPetFavorite(fid)
+      myFavorites.value = myFavorites.value.filter((id) => id !== petId)
+      ElMessage.success('已取消收藏')
+    } catch (e) { ElMessage.error(e?.message || '取消失败') }
+  } else {
+    try {
+      await addPetFavorite({ petId, userId: userStore.userId })
+      myFavorites.value.push(petId)
+      ElMessage.success('收藏成功')
+    } catch (e) { ElMessage.error(e?.message || '收藏失败') }
+  }
+}
+
+// 评分角标：petId -> {avg,count}
+function petRating(petId) {
+  const r = ratingMap.value[petId]
+  return r && Number(r.count) > 0 ? r : null
+}
+async function loadRatings() {
+  try {
+    const res = await commentStatGroup('pet')
+    const m = {}
+    for (const row of res.data || []) m[row.petId] = row
+    ratingMap.value = m
+  } catch (e) { /* 静默 */ }
+}
+
+// 无图宠物的占位渐变：与首页同数组同取法，保证同一只宠物配色一致
+function petGradient(petId) {
+  const c = PET_GRADIENTS[(petId || 0) % PET_GRADIENTS.length]
+  return `linear-gradient(135deg, ${c[0]}, ${c[1]})`
+}
+
+// 推荐宠物卡进详情：from 供详情页返回使用
+function goPetDetail(petId) {
+  router.push({ path: `/shop/pet/${petId}`, query: { from: '/shop/cart' } })
+}
+
+// 空态直接加购宠物粮：与宠物粮专区、详情页同一 store 口径
+function addFoodToCart(g) {
+  if (!g.stock) {
+    ElMessage.warning('该商品暂时缺货')
+    return
+  }
+  cartStore.addItem({
+    id: g.id,
+    itemType: '1',
+    goodsId: g.goodsId,
+    skuId: g.skuId,
+    name: g.name,
+    image: g.image,
+    spec: g.spec,
+    price: g.price
+  })
+  ElMessage.success({ message: `已将「${g.name}」加入购物车`, duration: 1500 })
+}
 
 // itemType '2' 是宠物（旧数据没有该字段，一律按宠物粮处理）；只用于行内徽标与数量锁定
 function isPet(item) {
@@ -505,6 +692,84 @@ onBeforeUnmount(() => {
 }
 
 /* ============================================================
+   空购物车：头部 + 两级推荐（宠物卡 / 宠物粮卡）
+   —— 原「居中一句话 + 两按钮」在定高面板里只剩一个小岛，四周全空；
+      改成页面头语言（标题左、行动右、1px 收口） + 两级可操作推荐，
+      既补信息密度，又给「现在就挑一件」的直达路径。
+   ============================================================ */
+.cart-empty { display: flex; flex-direction: column; }
+
+// 空态头图标：品牌色淡底圆底，与首页数据条的图标同一处理
+.ce-ico {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 50%; background: var(--brand-50);
+  svg { width: 17px; height: 17px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+}
+.cart-empty__head .ui-title { display: flex; align-items: center; gap: 12px; }
+
+/* ---------- 推荐分区头：标题左、入口右，1px 线收口 ---------- */
+.ce-sec { margin-top: 34px; }
+.ce-sec__head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  margin-bottom: 18px; padding-bottom: 13px; border-bottom: var(--rule);
+  h3 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.3; color: var(--text-1); }
+  p { margin-top: 4px; font-size: 12.5px; color: var(--text-3); }
+}
+.ce-more {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  padding: 6px 0; font-size: 13px; font-weight: 700; color: var(--brand-700);
+  text-decoration: none; white-space: nowrap;
+  svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .16s; }
+  &:hover svg { transform: translateX(3px); }
+}
+
+/* ---------- 两级推荐共用网格：auto-fill 自适应，窄屏并排两张 ---------- */
+.ce-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(215px, 45%), 1fr));
+  gap: 22px 14px;
+  min-height: 120px;
+}
+
+/* ---------- 宠物粮小卡：与宠物卡同一套扁平语言，图片 4:3 ---------- */
+.ce-food {
+  display: flex; flex-direction: column; padding: 0;
+  background: none; border: 0; font-family: inherit; text-align: left; cursor: pointer;
+  &:hover .ce-food__thumb { box-shadow: 0 0 0 1px var(--brand-200); }
+}
+.ce-food__thumb {
+  aspect-ratio: 4 / 3; background: var(--bg-sunken); border-radius: var(--radius-md);
+  overflow: hidden; transition: box-shadow .2s;
+  img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+  .ce-food:hover & img { transform: scale(1.04); }
+}
+.ce-food__body { flex: 1; display: flex; flex-direction: column; padding: 11px 2px 0; }
+.ce-food__name {
+  font-size: 14.5px; font-weight: 700; line-height: 1.4; color: var(--text-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ce-food__spec {
+  margin-top: 3px; font-size: 12px; color: var(--text-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+// 价格行贴卡片底：商品名长短不一时，同排卡片的价格与按钮仍对齐
+.ce-food__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: auto; padding-top: 11px;
+}
+.ce-food__price {
+  font-family: var(--font-num); font-size: 18px; font-weight: 700; letter-spacing: -.01em;
+  color: var(--price); font-variant-numeric: tabular-nums;
+}
+.ce-food__add {
+  height: 30px; padding: 0 13px; border: 1px solid var(--brand-500); border-radius: var(--radius-pill);
+  background: none; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--brand-700);
+  cursor: pointer; white-space: nowrap; transition: background .15s, color .15s;
+  &:hover:not(:disabled) { background: var(--brand-500); color: #fff; }
+  &:disabled { border-color: var(--border-1); color: var(--text-4); cursor: not-allowed; }
+}
+
+/* ============================================================
    结算条：常规文档流，靠 margin-top:auto 推到 .ui-page 底部（页脚黑框正上方）
    ============================================================ */
 // 页面被布局拉伸占满视口时，flex 列 + auto 外边距把结算条压到内容区最底、紧贴页脚
@@ -678,6 +943,17 @@ onBeforeUnmount(() => {
    ============================================================ */
 @media (max-width: 768px) {
   .tabs { gap: 18px; }
+
+  // 空态头：按钮换到下一行并三等分，避免三个按钮挤在一行点不准
+  .cart-empty__head { flex-wrap: wrap; gap: 14px; }
+  .ce-act { width: 100%; gap: 8px;
+    .ui-btn { flex: 1; min-width: 0; padding: 0 10px; } }
+  .ce-sec { margin-top: 26px; }
+  .ce-grid { gap: 18px 10px; }
+  // 与首页宠物粮卡一致：窄屏图片改 1:1，卡片更紧凑
+  .ce-food__thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
+  .ce-food__name { font-size: 14px; }
+  .ce-food__price { font-size: 16px; }
 
   .cart-table {
     margin-top: 16px;

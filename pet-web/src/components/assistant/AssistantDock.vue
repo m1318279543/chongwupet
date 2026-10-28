@@ -215,7 +215,7 @@ async function addCart(goods) {
     spec: goods.spec,
     price: goods.price
   })
-  ElMessage.success('已加入购物车，可在购物车里修改数量')
+  ElMessage.success({ message: '已加入购物车，可在购物车里修改数量', duration: 1500 })
 }
 
 /** 代预约：确认卡里的要素由后端整理，这里只做二次确认和提交 */

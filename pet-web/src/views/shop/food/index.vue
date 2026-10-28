@@ -198,7 +198,7 @@ function addToCart(p) {
     return
   }
   cartStore.addItem(p)
-  ElMessage.success(`已将「${p.name}」加入购物车`)
+  ElMessage.success({ message: `已将「${p.name}」加入购物车`, duration: 1500 })
 }
 </script>
 
