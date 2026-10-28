@@ -1,7 +1,7 @@
 // 智能选宠：全部页面逻辑（向导状态、画像计算、提交、收藏、展示工具）
 // index.vue 只保留模板与一行装配，逻辑改动都在这里。
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { recommendPet } from '@/api/pet/petMatch'
 import { addPetFavorite } from '@/api/pet/petFavorite'
@@ -11,6 +11,7 @@ import { STEPS } from './matchData'
 
 export function useMatchWizard() {
   const router = useRouter()
+  const route = useRoute()
   const userStore = useUserStore()
   const { open: openAssistant } = useAssistant()
 
@@ -33,10 +34,11 @@ export function useMatchWizard() {
   })
 
   /* ---------- 状态持久化 ----------
-     问卷要答 10 题，点进宠物详情再返回时本页组件会重新挂载，
-     不落盘就得从头再答一遍。用 sessionStorage 而不是 Pinia：
-     这份状态只属于「这一次挑选」，关掉标签页就该消失，
-     也不该让隔几天再进选宠页的用户一上来就看见上次的结果还挂在上面。 */
+     问卷要答 10 题，从详情页返回时本页组件会重新挂载，不落盘就得从头再答一遍。
+     但恢复是有条件的：只有 URL 带 restore=1（详情页返回按钮带回来的）才恢复，
+     从导航 / tabbar 进入一律是干净的新测评——否则隔几天再点「智能选宠」，
+     一上来就是上次那批结果，还得手动清。
+     用 sessionStorage 而不是 Pinia，同样是为了「关掉标签页就消失」。 */
   const STATE_KEY = 'pet-match-state'
   const STATE_VER = 1
 
@@ -72,23 +74,43 @@ export function useMatchWizard() {
     }
   }
 
-  // 恢复上次进度：答案、所在步骤、已生成的结果都要带回来
+  // 只读取，不立即应用：是否恢复由 URL 上的 restore 标记决定（见 onMounted）
   const saved = loadState()
-  if (saved) {
+
+  function applyState(s) {
     Object.keys(answers).forEach((k) => {
-      if (typeof saved.answers?.[k] === 'string') answers[k] = saved.answers[k]
+      if (typeof s.answers?.[k] === 'string') answers[k] = s.answers[k]
     })
-    if (Number.isInteger(saved.step) && saved.step >= 0 && saved.step < STEPS.length) {
-      step.value = saved.step
-    }
-    if (saved.result && typeof saved.result === 'object') result.value = saved.result
+    if (Number.isInteger(s.step) && s.step >= 0 && s.step < STEPS.length) step.value = s.step
+    if (s.result && typeof s.result === 'object') result.value = s.result
+  }
+
+  // 干净开始：组件状态与存储一起清。存也要清，否则下次带 restore 进来会把旧数据复活
+  function clearState() {
+    Object.keys(answers).forEach((k) => (answers[k] = ''))
+    step.value = 0
+    result.value = null
+    try {
+      sessionStorage.removeItem(STATE_KEY)
+    } catch (e) { /* 隐私模式：清不掉也不阻塞 */ }
   }
 
   // 答案 / 步骤 / 结果任一变就落盘，三个的变化频率都很低
   watch([answers, step, result], saveState, { deep: true })
 
-  // 返回本页时不管浏览器有没有恢复滚动位置，都回到顶部看结果
-  onMounted(() => window.scrollTo(0, 0))
+  /**
+   * 入口分流：
+   *  - 从详情页返回（URL 带 restore=1）→ 恢复上次的答案、所在步骤与已生成的结果
+   *  - 从导航 / tabbar / 其他任何入口进入 → 一次干净的新测评
+   * 刷新页面不带 restore，所以刷新也会重来。这是「导航即干净」的必然结果，
+   * 要的语义就是「只有从详情页返回才恢复现场」。
+   */
+  onMounted(() => {
+    if (route.query.restore === '1' && saved) applyState(saved)
+    else clearState()
+    // 不管浏览器有没有恢复滚动位置，都回到顶部：要看的不是上次滚到的位置
+    window.scrollTo(0, 0)
+  })
 
   /* ---------- 进度 ---------- */
   const totalCount = computed(() => STEPS.reduce((n, s) => n + s.questions.length, 0))
@@ -196,19 +218,16 @@ export function useMatchWizard() {
   }
 
   function reset() {
-    result.value = null
-    step.value = 0
-    Object.keys(answers).forEach((k) => (answers[k] = ''))
-    try {
-      sessionStorage.removeItem(STATE_KEY)
-    } catch (e) { /* 同上：清不掉也不阻塞重置 */ }
+    clearState()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   /* ---------- 跳转 / 收藏 ---------- */
   function goDetail(id) {
-    // from 供详情页返回与导航高亮使用
-    router.push({ path: '/shop/pet/' + id, query: { from: '/shop/match' } })
+    // from 供详情页返回与导航高亮使用；restore 标记「这个来源页要恢复现场」，
+    // 详情页的返回按钮会把它原样带回来。其余页面（首页/在售/收藏）不带，
+    // 所以从那些页面进详情再返回，不会误恢复选宠状态。
+    router.push({ path: '/shop/pet/' + id, query: { from: '/shop/match', restore: '1' } })
   }
   function goConsult() {
     router.push('/shop/consult')

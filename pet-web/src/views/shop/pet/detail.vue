@@ -9,7 +9,10 @@
       <!-- 左侧大图 -->
       <div class="left">
         <div class="big-avatar" :style="{ background: petGradient(pet.petId) }">
-          <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="big-photo" />
+          <img
+            v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="big-photo"
+            :style="imageVars(pet.petId)"
+          />
           <span v-else class="no-img">暂无图片</span>
         </div>
         <!-- 游客提示 -->
@@ -23,6 +26,10 @@
       <div class="right">
         <div class="title-row">
           <h1>{{ pet.petName }}</h1>
+          <!-- 状态先于行动：能不能买一眼可见，不藏在按钮的禁用态里 -->
+          <span class="state-chip" :class="pet.status === '0' ? 'ok' : 'off'">
+            <i></i>{{ statusText(pet.status) }}
+          </span>
           <button
             type="button" class="fav-star" :class="{ on: isFav }"
             :aria-pressed="isFav" :aria-label="isFav ? '取消收藏' : '收藏'"
@@ -35,7 +42,6 @@
           <el-tag effect="plain" type="info">{{ pet.breed || '未知品种' }}</el-tag>
           <el-tag effect="plain" type="info" v-if="pet.age">{{ pet.age }}</el-tag>
           <el-tag effect="plain" type="info">{{ genderText(pet.gender) }}</el-tag>
-          <el-tag effect="plain" :type="pet.status === '0' ? 'success' : 'danger'" v-if="pet.status">{{ statusText(pet.status) }}</el-tag>
           <el-tag v-if="health.healthId" class="tag-health">健康等级：{{ health.healthLevel || '待评定' }}</el-tag>
         </div>
         <!-- 健康信任条：把档案证据提到首屏决策区，点击跳转完整档案 -->
@@ -62,14 +68,21 @@
           <h3>宠物简介</h3>
           <p>{{ pet.description }}</p>
         </div>
-        <div class="actions">
-          <el-button size="large" type="primary" :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
-            {{ pet.status === '0' ? '立即购买' : '已被订走' }}
-          </el-button>
-          <el-button size="large" :disabled="pet.status !== '0'" @click="addPetToCart">加入购物车</el-button>
+        <div class="actions" v-if="pet.status === '0'">
+          <el-button size="large" type="primary" :loading="buying" @click="buyNow">立即购买</el-button>
+          <el-button size="large" @click="addPetToCart">加入购物车</el-button>
           <el-button size="large" @click="openAppoint">立即预约看宠</el-button>
           <button type="button" class="ai-link" @click="askAi">它适合我吗？问 AI ›</button>
         </div>
+        <!-- 已被订走：主行动换成「现在还能做什么」，禁用的购买按钮不再占据首屏最重的位置 -->
+        <div class="actions" v-else>
+          <el-button size="large" type="primary" @click="goSameBreed">看看同品种在售</el-button>
+          <el-button size="large" @click="openAppoint">预约到店看宠</el-button>
+          <button type="button" class="ai-link" @click="askAi('match')">帮我按条件重新匹配 ›</button>
+        </div>
+        <p class="sold-note" v-if="pet.status !== '0'">
+          这只已经被订走了。同品种个体可以到店再看；也可以让 AI 按你的预算与居住条件重新匹配。
+        </p>
       </div>
     </div>
 
@@ -79,10 +92,11 @@
         <span class="label">售价</span>
         <span class="amount"><i>¥</i>{{ fmtPrice(pet.price) }}</span>
       </div>
-      <el-button :disabled="pet.status !== '0'" @click="addPetToCart">加购</el-button>
-      <el-button type="primary" :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
-        {{ pet.status === '0' ? '立即购买' : '已被订走' }}
-      </el-button>
+      <template v-if="pet.status === '0'">
+        <el-button @click="addPetToCart">加购</el-button>
+        <el-button type="primary" :loading="buying" @click="buyNow">立即购买</el-button>
+      </template>
+      <el-button v-else type="primary" @click="goSameBreed">看看同品种</el-button>
     </div>
 
     <!-- 健康与服务档案（后台维护，前台实时展示）：时间线表格是本页的信任主角 -->
@@ -217,6 +231,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPetInfo } from '@/api/pet/petInfo'
 import { createPetOrder } from '@/api/pet/petOrder'
 import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
+import { imageVars } from '@/views/shop/home/imageTuning'
 import { addPetAppointment, getAppointmentSlots } from '@/api/pet/petAppointment'
 import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
@@ -327,7 +342,12 @@ const FROM_LABELS = {
 const backLabel = computed(() => FROM_LABELS[String(route.query.from || '')] || '')
 function goBack() {
   const from = String(route.query.from || '')
-  if (from && FROM_LABELS[from]) return router.push(from)
+  if (from && FROM_LABELS[from]) {
+    // 来源页若要恢复现场（目前只有智能选宠，由 ?restore= 标记），把标记一起带回去；
+    // 其余来源不带 query，避免给列表页的 URL 添上无意义的参数
+    const query = route.query.restore ? { restore: String(route.query.restore) } : {}
+    return router.push({ path: from, query })
+  }
   if (window.history.state && window.history.state.back) return router.back()
   router.push('/shop/pets')
 }
@@ -371,17 +391,22 @@ async function loadFavStatus() {
   } catch (e) {}
 }
 
-/** 唤起 AI 选宠顾问，带上当前宠物作为上下文 */
-function askAi() {
+/** 唤起 AI 选宠顾问，带上当前宠物作为上下文；已售时改问「重新匹配」 */
+function askAi(mode) {
   const id = pet.value?.petId || route.params.id
+  const sold = pet.value?.status !== '0'
+  const message = (mode === 'match' || sold)
+    ? '这只已经被订走了，按我的预算和居住条件重新推荐几只'
+    : '它适合新手吗？每月大概要花多少钱？'
   window.dispatchEvent(new CustomEvent('pet-assistant-open', {
-    detail: {
-      scene: 'detail',
-      petId: id,
-      bizId: String(id || ''),
-      message: '它适合新手吗？每月大概要花多少钱？'
-    }
+    detail: { scene: 'detail', petId: id, bizId: String(id || ''), message }
   }))
+}
+
+/** 已售时的去处：同品种在售列表（没有品种名就退回全部在售） */
+function goSameBreed() {
+  const kw = String(pet.value?.breed || '').trim()
+  router.push(kw ? { path: '/shop/pets', query: { kw } } : '/shop/pets')
 }
 
 async function toggleFav() {
@@ -578,7 +603,11 @@ onMounted(() => {
 .detail-inner { display: flex; gap: 40px; padding: 8px 0 0; }
 .left { flex: 0 0 380px;
   .big-avatar { height: 320px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 160px; overflow: hidden;
-    .big-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .big-photo {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    object-position: var(--img-pos, 50% 45%);
+    transform: scale(var(--img-zoom, 1));
+  }
   }
   .guest-tip { margin-top: 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand-300); font-size: 13px; color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 }
@@ -594,6 +623,14 @@ onMounted(() => {
       &.on { border-color: var(--brand-300); background: var(--brand-50);
         svg { stroke: var(--brand-600); fill: var(--brand-600); } }
     }
+  }
+  /* 状态 chip：与卡片上的「已售 / 可到店看」同一套语义色 */
+  .state-chip { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    height: 24px; padding: 0 9px; border-radius: var(--radius-xs);
+    border: 1px solid var(--border-1); background: var(--bg-sunken);
+    font-size: 12px; font-weight: 700; color: var(--text-2);
+    i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    &.ok { border-color: var(--success-100); background: var(--success-50); color: var(--success-500); }
   }
   .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
     .tag-health { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700; }
@@ -633,6 +670,8 @@ onMounted(() => {
       &:hover { color: var(--brand-700); }
     }
   }
+  /* 已售说明：一行解释，不占按钮位 */
+  .sold-note { margin: 14px 0 0; max-width: 34em; font-size: 12.5px; line-height: 1.7; color: var(--text-3); }
 }
 
 /* 健康与服务档案：去容器化，1px 顶线 + 分区标题直接承接；锚点定位给 sticky 头留偏移 */
