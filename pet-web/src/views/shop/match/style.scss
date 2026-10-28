@@ -71,6 +71,15 @@
     /* 未测评时的「—」占位：弱化，避免读成一条装饰横线 */
     &.mh-pending { color: var(--text-4); font-weight: 500; }
     font-variant-numeric: tabular-nums;
+
+    /* 「8 / 10」里的分母 */
+    i {
+      margin-left: 1px;
+      font-style: normal;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-3);
+    }
   }
 
   span {
@@ -113,235 +122,103 @@
   .score-note .sn-head { flex-direction: column; gap: 4px; }
 }
 
-/* 两栏等高：左栏拉伸到与右栏（导航条 + 题卡 + 操作条）同高，
-   左栏不足的部分由 .gnav 与贴底的注脚吸收，不再让左栏提前结束、下沿空出一截 */
-.wz {
+/* ---------- 问卷（单栏） ----------
+   选宠问卷本质是表单：一屏一组的线性流程，不需要侧栏。
+   原来 236px 的左栏只用来预览「用户自己刚选的条件」，却挤窄了题卡、
+   还要靠填充物撑高，所以取消左栏，整幅宽度给题目。 */
+.wz { padding-bottom: 24px; }
+
+/* 步骤条：一条组件同时承担「跳组导航」与「组内进度」
+   上行 序号 + 组名 + 已答数，下行该组完成度。
+   原来分散在四处（画像卡计数 / 进度条 / 分组清单 / 步骤条）的同一信息收敛到这里。 */
+.stepper {
   display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
-  gap: 24px;
-  align-items: stretch;
-  padding-bottom: 40px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
-/* 等高后没有可粘的余量，取消 sticky（sticky 在满高容器里本就不生效） */
-.side {
-  display: flex;
-  min-height: 0;
-}
-
-.panel {
-  /* 撑满左栏高度，内部用 flex 把内容分布到上下两端 */
-  flex: 1;
+.step {
   display: flex;
   flex-direction: column;
-  padding: 14px 15px;
+  gap: 10px;
+  padding: 13px 14px 15px;
   background: var(--bg-card);
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-md);
-}
-
-.panel-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 2px;
-
-  b {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: var(--text-1);
-  }
-
-  span {
-    font-size: 11px;
-    color: var(--text-3);
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.pf {
-  > div {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 7px 0;
-    border-bottom: 1px dashed var(--border-2);
-
-    &:last-child { border-bottom: 0; }
-  }
-
-  span {
-    flex-shrink: 0;
-    font-size: 11px;
-    color: var(--text-3);
-  }
-
-  b {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-1);
-    text-align: right;
-
-    &.none {
-      font-weight: 400;
-      color: var(--text-4);
-    }
-  }
-}
-
-.pbar {
-  height: 4px;
-  margin-top: 12px;
-  background: var(--bg-sunken);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-
-  i {
-    display: block;
-    height: 100%;
-    border-radius: var(--radius-pill);
-    background: var(--brand-600);
-    transition: width 0.3s;
-  }
-}
-
-/* 分组进度：三组各自已答几题，可点击跳组 */
-.gnav {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border-2);
-}
-
-.gnav-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 8px;
-
-  b {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--text-2);
-  }
-
-  span {
-    font-size: 11px;
-    color: var(--text-4);
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.grow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 8px;
-  background: transparent;
-  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   text-align: left;
   cursor: pointer;
   transition: 0.15s;
 
-  i {
-    flex-shrink: 0;
-    font-style: normal;
-    font-family: var(--font-num);
-    font-size: 10.5px;
-    color: var(--text-4);
-  }
-
-  span {
-    flex: 1;
-    min-width: 0;
-    font-size: 12px;
-    color: var(--text-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  em {
-    flex-shrink: 0;
-    font-style: normal;
-    font-size: 11px;
-    color: var(--text-4);
-    font-variant-numeric: tabular-nums;
-  }
-
-  &:hover { background: var(--bg-page); }
-
-  /* 已答完的组：勾选色；当前组：实线边框 */
-  &.done {
-    i, em { color: var(--brand-600); }
-  }
-
-  &.on {
-    background: var(--brand-50);
-    border-color: var(--brand-200);
-
-    span { color: var(--brand-800); font-weight: 700; }
-  }
-}
-
-/* 贴底：把剩余空白收进这里，卡的下沿与右栏对齐 */
-.side-note {
-  margin: auto 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-2);
-  font-size: 11px;
-  line-height: 1.7;
-  color: var(--text-4);
-}
-
-.main { min-width: 0; }
-
-.stepnav {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-
-  button {
+  .step-l {
     display: flex;
-    align-items: center;
-    gap: 7px;
-    flex: 1;
-    padding: 8px 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-1);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    color: var(--text-2);
-    cursor: pointer;
-    transition: 0.15s;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
 
-    b {
+    i {
+      flex-shrink: 0;
+      font-style: normal;
       font-family: var(--font-num);
       font-size: 11px;
       font-weight: 700;
       color: var(--text-4);
     }
 
-    &.done {
-      border-color: var(--brand-200);
-      background: var(--brand-50);
-      color: var(--brand-700);
-
-      b { color: var(--brand-600); }
+    b {
+      flex: 1;
+      min-width: 0;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    &.on {
-      border-color: var(--brand-600);
-      box-shadow: inset 0 0 0 1px var(--brand-600);
-      color: var(--brand-800);
-      font-weight: 700;
-
-      b { color: var(--brand-700); }
+    em {
+      flex-shrink: 0;
+      font-style: normal;
+      font-size: 11px;
+      color: var(--text-4);
+      font-variant-numeric: tabular-nums;
     }
   }
+
+  .step-bar {
+    display: block;
+    height: 4px;
+    background: var(--bg-sunken);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+
+    .fill {
+      display: block;
+      height: 100%;
+      border-radius: var(--radius-pill);
+      background: var(--brand-400);
+      transition: width 0.3s;
+    }
+  }
+
+  &:hover { border-color: var(--brand-300); }
+
+  /* 已答完：数字与进度条转主色；当前：实线边框描边 */
+  &.done {
+    .step-l i, .step-l em { color: var(--brand-600); }
+    .step-bar .fill { background: var(--brand-500); }
+  }
+
+  &.on {
+    border-color: var(--brand-600);
+    box-shadow: inset 0 0 0 1px var(--brand-600);
+
+    .step-l b { color: var(--brand-800); }
+    .step-bar .fill { background: var(--brand-600); }
+  }
 }
+
+.main { min-width: 0; }
 
 .card {
   background: var(--bg-card);
@@ -349,33 +226,15 @@
   border-radius: var(--radius-md);
 }
 
-.qcard { padding: 20px 22px 8px; }
-
-.qgroup-h {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-2);
-
-  b {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-1);
-  }
-
-  span {
-    font-size: 11px;
-    color: var(--text-3);
-  }
-}
+/* 组名与题数已由步骤条承担，题卡里不再重复一遍标题 */
+.qcard { padding: 18px 22px 10px; }
 
 /* 三步题卡同高：高度写死，不再用 min/max 让它在 300~404 之间浮动。
    420 是按「第三步 4 题（含 8 选项的类型题）」的实际内容定的：留 7px 余量，
    避免只溢出 9px 那种一滚就到底的假滚动条。
    题少的步骤靠 .q 的 flex:1 均分剩余空间（每题占等高的块）。 */
 .q-body {
-  height: 420px;
+  height: 436px;
   padding-right: 2px;
   overflow-y: auto;
   display: flex;
@@ -417,16 +276,27 @@
   }
 }
 
+/* 选项行吃掉题块的剩余高度：题少的步骤不会在每题下面留一条空白，
+   而是把选项做成更高的卡（选宠问卷里选项本身就是一个可点的卡）。
+   basis 必须是 auto：用 flex:1（basis 0）时空间不够会把选项压扁，
+   第三步 4 题就会挤成 33px 高的一排。 */
 .opts {
+  flex: 1 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-auto-rows: 1fr;
+  /* 列数跟选项数走（--cols 由模板按 min(选项数, 4) 给出）：
+     3 项排 3 列、4 项排 4 列、8 项排 4 列两行，
+     否则 auto-fit 在 1100px 宽下会排成「7 + 1」，最后一行只剩一个孤零零的按钮 */
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
   gap: 7px;
 }
 
 .opt {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 1px;
+  min-height: 44px;
   padding: 10px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-1);
@@ -1064,19 +934,6 @@
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
-  /* 单列堆叠后没有「并列板块」，等高不适用：画像卡回到内容高度 */
-  .wz { grid-template-columns: minmax(0, 1fr); }
-
-  .side { display: block; }
-
-  .pf {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 16px;
-  }
-
-  .side-note, .pbar { display: none; }
-
   .top { grid-template-columns: minmax(0, 1fr); }
 
   .top-img {
@@ -1097,15 +954,18 @@
 
   .m-body { padding: 14px 16px 0; }
 
-  .stepnav button {
-    justify-content: center;
-
-    span { display: none; }
-  }
+  /* 窄屏步骤条去掉已答数：进度条本身已表达完成度，组名优先保留 */
+  .stepper { gap: 6px; margin-bottom: 10px; }
+  .step { padding: 9px 10px 10px; gap: 7px; }
+  .step .step-l { gap: 5px; }
+  .step .step-l b { font-size: 11.5px; }
+  .step .step-l em { display: none; }
 
   .qcard { padding: 16px 15px 8px; }
   .q-body { height: 320px; }
   .opts { grid-template-columns: 1fr 1fr; }
+  /* 3 个选项排成 2+1 会留一个缺口，让末项占满整行 */
+  .opts .opt:last-child:nth-child(odd) { grid-column: span 2; }
 
   .two { grid-template-columns: 1fr; }
   .dims { grid-template-columns: 1fr 1fr; }

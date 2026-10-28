@@ -35,7 +35,6 @@ export function useMatchWizard() {
   /* ---------- 进度 ---------- */
   const totalCount = computed(() => STEPS.reduce((n, s) => n + s.questions.length, 0))
   const doneCount = computed(() => Object.keys(answers).filter((k) => answers[k]).length)
-  const progress = computed(() => Math.round((doneCount.value / totalCount.value) * 100))
   const allDone = computed(() => STEPS.every((s) => s.questions.every((q) => !!answers[q.key])))
 
   const curGroup = computed(() => STEPS[step.value])
@@ -59,41 +58,14 @@ export function useMatchWizard() {
     return g.questions.every((q) => !!answers[q.key])
   }
 
-  // 某组已答几题，给左栏「分组进度」用（与右侧 stepnav 的勾选态同源）
+  // 某组已答几题 / 完成百分比，给步骤条用（步骤条同时是导航条，进度就内嵌在里面）
   function groupDone(g) {
     return `${g.questions.filter((q) => !!answers[q.key]).length}/${g.questions.length}`
   }
-  const groupDoneCount = computed(() => STEPS.filter((s) => groupAll(s)).length)
 
-  /* ---------- 画像（与后端 Profile.of 同口径） ---------- */
-  const profile = computed(() => {
-    const a = answers
-    return {
-      space: a.home === 'small' ? 1 : a.home === 'house' ? 3 : 2,
-      activity: a.activity === 'low' ? 1 : a.activity === 'high' ? 3 : 2,
-      experience: a.experience === 'none' ? 1 : a.experience === 'pro' ? 3 : 2,
-      time: a.time === 'lt1' ? 1 : a.time === 'gt3' ? 3 : 2,
-      noiseTol: a.noise === 'low' ? 1 : a.noise === 'high' ? 3 : 2
-    }
-  })
-
-  const profileRows = computed(() => {
-    const a = answers
-    const p = profile.value
-    return [
-      { label: '居住空间', filled: !!a.home, value: ['小户型', '普通住宅', '大房子'][p.space - 1] },
-      { label: '活动量', filled: !!a.activity, value: ['宅家', '偶尔运动', '每天运动'][p.activity - 1] },
-      { label: '每日陪伴', filled: !!a.time, value: ['< 1 小时', '1 ~ 3 小时', '3 小时以上'][p.time - 1] },
-      { label: '养宠经验', filled: !!a.experience, value: ['第一次', '养过 1-2 只', '多年'][p.experience - 1] },
-      { label: '噪音容忍', filled: !!a.noise, value: ['不能接受', '一般', '无所谓'][p.noiseTol - 1] },
-      { label: '购宠预算', filled: !!a.budget, value: budgetText(a.budget) },
-      { label: '月均养护', filled: !!a.monthly, value: budgetText(a.monthly) }
-    ]
-  })
-
-  function budgetText(v) {
-    const n = Number(v)
-    return !v || n >= 99999 ? '不限' : `¥${n.toLocaleString('zh-CN')}`
+  function groupPct(g) {
+    const n = g.questions.filter((q) => !!answers[q.key]).length
+    return Math.round((n / g.questions.length) * 100)
   }
 
   /* ---------- 结果 ---------- */
@@ -233,9 +205,8 @@ export function useMatchWizard() {
   return {
     // 状态
     loading, result, step, analyzeText, answers, STEPS,
-    // 进度与画像
-    totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, groupDone, groupDoneCount,
-    profile, profileRows,
+    // 进度
+    totalCount, doneCount, allDone, curGroup, curLeft, qIndex, groupAll, groupDone, groupPct,
     // 结果
     recommendations, top, rest, diag, candidateCount, nextBudget,
     // 动作

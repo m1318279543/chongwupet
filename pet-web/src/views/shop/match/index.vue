@@ -10,7 +10,7 @@
         <div class="mh-stats">
           <!-- 未测评时 candidateCount 是「—」，弱化成占位符，免得看起来像一条破折线 -->
           <div><b :class="{ 'mh-pending': candidateCount === '—' }">{{ candidateCount }}</b><span>在售个体</span></div>
-          <div><b>{{ totalCount }}</b><span>道题 · 3 组</span></div>
+          <div><b>{{ doneCount }}<i>/{{ totalCount }}</i></b><span>已答 / 题数</span></div>
           <div><b>8</b><span>只上限</span></div>
         </div>
       </div>
@@ -19,60 +19,28 @@
     <div class="m-body">
       <!-- ================= 问卷 ================= -->
       <div v-show="!result && !loading" class="wz">
-        <aside class="side">
-          <div class="panel">
-            <div class="panel-h">
-              <b>你的画像</b><span>{{ doneCount }} / {{ totalCount }}</span>
-            </div>
-            <div class="pf">
-              <div v-for="r in profileRows" :key="r.label">
-                <span>{{ r.label }}</span>
-                <b :class="{ none: !r.filled }">{{ r.filled ? r.value : '未选' }}</b>
-              </div>
-            </div>
-            <div class="pbar"><i :style="{ width: progress + '%' }"></i></div>
-
-            <!-- 分组进度：左栏与右侧题卡等高后，用它填住下半段，顺带给一个跳组入口 -->
-            <div class="gnav">
-              <div class="gnav-h"><b>分组进度</b><span>{{ groupDoneCount }} / {{ STEPS.length }}</span></div>
-              <button
-                v-for="(g, i) in STEPS"
-                :key="g.key"
-                type="button"
-                class="grow"
-                :class="{ on: step === i, done: groupAll(g) }"
-                @click="step = i"
-              >
-                <i>{{ pad(i + 1) }}</i>
-                <span>{{ g.title }}</span>
-                <em>{{ groupDone(g) }}</em>
-              </button>
-            </div>
-
-            <p class="side-note">
-              画像与后端 Profile 一一对应：空间 / 运动 / 经验 / 陪伴 / 噪音 / 预算。
-              没选的项目按「未选」处理，不会替你猜一个中间档。
-            </p>
-          </div>
-        </aside>
+        <!-- 步骤条：一条组件同时承担「跳组导航」与「组内进度」，
+             取代原来重复四次的进度显示（画像卡计数 / 进度条 / 分组进度 / 步骤条） -->
+        <nav class="stepper" aria-label="测评步骤">
+          <button
+            v-for="(g, i) in STEPS"
+            :key="g.key"
+            type="button"
+            class="step"
+            :class="{ on: step === i, done: groupAll(g) }"
+            @click="step = i"
+          >
+            <span class="step-l">
+              <i>{{ pad(i + 1) }}</i>
+              <b>{{ g.title }}</b>
+              <em>{{ groupDone(g) }}</em>
+            </span>
+            <span class="step-bar"><span class="fill" :style="{ width: groupPct(g) + '%' }"></span></span>
+          </button>
+        </nav>
 
         <section class="main">
-          <div class="stepnav">
-            <button
-              v-for="(g, i) in STEPS"
-              :key="g.key"
-              type="button"
-              :class="{ on: step === i, done: groupAll(g) }"
-              @click="step = i"
-            >
-              <b>{{ pad(i + 1) }}</b><span>{{ g.title }}</span>
-            </button>
-          </div>
-
           <div class="card qcard">
-            <div class="qgroup-h">
-              <b>{{ curGroup.title }}</b><span>{{ curGroup.questions.length }} 题</span>
-            </div>
 
             <div class="q-body">
               <div v-for="q in curGroup.questions" :key="q.key" class="q">
@@ -80,7 +48,7 @@
                   <i>Q{{ qIndex[q.key] }}</i>{{ q.title }}
                   <span v-if="q.hint">{{ q.hint }}</span>
                 </div>
-                <div class="opts">
+                <div class="opts" :style="{ '--cols': Math.min(q.options.length, 4) }">
                   <button
                     v-for="o in q.options"
                     :key="o.value"
@@ -335,8 +303,7 @@ import { useMatchWizard } from './useMatchWizard'
 // 页面逻辑全部在 useMatchWizard.js；这里只做装配。样式外链 style.scss（scoped 生效）。
 const {
   loading, result, step, analyzeText, answers, STEPS,
-  totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, groupDone, groupDoneCount,
-  profileRows,
+  totalCount, doneCount, curGroup, curLeft, qIndex, groupAll, groupDone, groupPct,
   recommendations, top, rest, diag, candidateCount, nextBudget,
   next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, askAi, fav,
   pad, fmt, isImg, genderText, preferName
