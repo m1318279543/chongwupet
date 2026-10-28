@@ -31,8 +31,29 @@
               </div>
             </div>
             <div class="pbar"><i :style="{ width: progress + '%' }"></i></div>
+
+            <!-- 分组进度：左栏与右侧题卡等高后，用它填住下半段，顺带给一个跳组入口 -->
+            <div class="gnav">
+              <div class="gnav-h"><b>分组进度</b><span>{{ groupDoneCount }} / {{ STEPS.length }}</span></div>
+              <button
+                v-for="(g, i) in STEPS"
+                :key="g.key"
+                type="button"
+                class="grow"
+                :class="{ on: step === i, done: groupAll(g) }"
+                @click="step = i"
+              >
+                <i>{{ pad(i + 1) }}</i>
+                <span>{{ g.title }}</span>
+                <em>{{ groupDone(g) }}</em>
+              </button>
+            </div>
+
+            <p class="side-note">
+              画像与后端 Profile 一一对应：空间 / 运动 / 经验 / 陪伴 / 噪音 / 预算。
+              没选的项目按「未选」处理，不会替你猜一个中间档。
+            </p>
           </div>
-          <p class="side-note">画像与后端 Profile 一一对应：空间 / 运动 / 经验 / 陪伴 / 噪音 / 预算。</p>
         </aside>
 
         <section class="main">
@@ -314,7 +335,8 @@ import { useMatchWizard } from './useMatchWizard'
 // 页面逻辑全部在 useMatchWizard.js；这里只做装配。样式外链 style.scss（scoped 生效）。
 const {
   loading, result, step, analyzeText, answers, STEPS,
-  totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, profileRows,
+  totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, groupDone, groupDoneCount,
+  profileRows,
   recommendations, top, rest, diag, candidateCount, nextBudget,
   next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, askAi, fav,
   pad, fmt, isImg, genderText, preferName

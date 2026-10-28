@@ -59,6 +59,12 @@ export function useMatchWizard() {
     return g.questions.every((q) => !!answers[q.key])
   }
 
+  // 某组已答几题，给左栏「分组进度」用（与右侧 stepnav 的勾选态同源）
+  function groupDone(g) {
+    return `${g.questions.filter((q) => !!answers[q.key]).length}/${g.questions.length}`
+  }
+  const groupDoneCount = computed(() => STEPS.filter((s) => groupAll(s)).length)
+
   /* ---------- 画像（与后端 Profile.of 同口径） ---------- */
   const profile = computed(() => {
     const a = answers
@@ -228,7 +234,8 @@ export function useMatchWizard() {
     // 状态
     loading, result, step, analyzeText, answers, STEPS,
     // 进度与画像
-    totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, profile, profileRows,
+    totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, groupDone, groupDoneCount,
+    profile, profileRows,
     // 结果
     recommendations, top, rest, diag, candidateCount, nextBudget,
     // 动作

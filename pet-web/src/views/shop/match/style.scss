@@ -113,21 +113,29 @@
   .score-note .sn-head { flex-direction: column; gap: 4px; }
 }
 
+/* 两栏等高：左栏拉伸到与右栏（导航条 + 题卡 + 操作条）同高，
+   左栏不足的部分由 .gnav 与贴底的注脚吸收，不再让左栏提前结束、下沿空出一截 */
 .wz {
   display: grid;
   grid-template-columns: 236px minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
   padding-bottom: 40px;
 }
 
+/* 等高后没有可粘的余量，取消 sticky（sticky 在满高容器里本就不生效） */
 .side {
-  position: sticky;
-  top: 72px;
+  display: flex;
+  min-height: 0;
 }
 
 .panel {
+  /* 撑满左栏高度，内部用 flex 把内容分布到上下两端 */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 14px 15px;
+  background: var(--bg-card);
   border: 1px solid var(--border-1);
   border-radius: var(--radius-md);
 }
@@ -198,8 +206,91 @@
   }
 }
 
+/* 分组进度：三组各自已答几题，可点击跳组 */
+.gnav {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-2);
+}
+
+.gnav-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+
+  b {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-2);
+  }
+
+  span {
+    font-size: 11px;
+    color: var(--text-4);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.grow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: 0.15s;
+
+  i {
+    flex-shrink: 0;
+    font-style: normal;
+    font-family: var(--font-num);
+    font-size: 10.5px;
+    color: var(--text-4);
+  }
+
+  span {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  em {
+    flex-shrink: 0;
+    font-style: normal;
+    font-size: 11px;
+    color: var(--text-4);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &:hover { background: var(--bg-page); }
+
+  /* 已答完的组：勾选色；当前组：实线边框 */
+  &.done {
+    i, em { color: var(--brand-600); }
+  }
+
+  &.on {
+    background: var(--brand-50);
+    border-color: var(--brand-200);
+
+    span { color: var(--brand-800); font-weight: 700; }
+  }
+}
+
+/* 贴底：把剩余空白收进这里，卡的下沿与右栏对齐 */
 .side-note {
-  margin: 11px 0 0;
+  margin: auto 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-2);
   font-size: 11px;
   line-height: 1.7;
   color: var(--text-4);
@@ -279,15 +370,24 @@
   }
 }
 
-/* 定高改为「下限 + 上限」：题少的步骤不再留半屏空白，题多的步骤仍在面板内滚动 */
+/* 三步题卡同高：高度写死，不再用 min/max 让它在 300~404 之间浮动。
+   420 是按「第三步 4 题（含 8 选项的类型题）」的实际内容定的：留 7px 余量，
+   避免只溢出 9px 那种一滚就到底的假滚动条。
+   题少的步骤靠 .q 的 flex:1 均分剩余空间（每题占等高的块）。 */
 .q-body {
-  min-height: 300px;
-  max-height: 404px;
+  height: 420px;
   padding-right: 2px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .q {
+  /* 0 收缩：内容超出时保持原高由外层滚动，不被压扁 */
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: 15px 0 6px;
 
   & + .q { border-top: 1px dashed var(--border-2); }
@@ -964,9 +1064,10 @@
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1000px) {
+  /* 单列堆叠后没有「并列板块」，等高不适用：画像卡回到内容高度 */
   .wz { grid-template-columns: minmax(0, 1fr); }
 
-  .side { position: static; }
+  .side { display: block; }
 
   .pf {
     display: grid;
