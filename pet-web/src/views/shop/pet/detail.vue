@@ -66,10 +66,23 @@
           <el-button size="large" type="primary" :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
             {{ pet.status === '0' ? '立即购买' : '已被订走' }}
           </el-button>
+          <el-button size="large" :disabled="pet.status !== '0'" @click="addPetToCart">加入购物车</el-button>
           <el-button size="large" @click="openAppoint">立即预约看宠</el-button>
           <button type="button" class="ai-link" @click="askAi">它适合我吗？问 AI ›</button>
         </div>
       </div>
+    </div>
+
+    <!-- 移动端吸底购买栏：价格常驻 + 加购/购买主行动，替代随滚动离场的按钮组 -->
+    <div class="buy-bar" v-if="pet.petId">
+      <div class="bb-price">
+        <span class="label">售价</span>
+        <span class="amount"><i>¥</i>{{ fmtPrice(pet.price) }}</span>
+      </div>
+      <el-button :disabled="pet.status !== '0'" @click="addPetToCart">加购</el-button>
+      <el-button type="primary" :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
+        {{ pet.status === '0' ? '立即购买' : '已被订走' }}
+      </el-button>
     </div>
 
     <!-- 健康与服务档案（后台维护，前台实时展示）：时间线表格是本页的信任主角 -->
@@ -209,11 +222,13 @@ import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
 import { getPetPreference } from '@/api/pet/petPreference'
 import { useUserStore } from '@/store/modules/user'
+import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
 
 const pet = ref({})
@@ -411,6 +426,24 @@ async function loadSlots() {
   }
 }
 
+/** 加入购物车：宠物一只一条（数量固定 1），可与宠物粮一起结算 */
+function addPetToCart() {
+  if (pet.value.status !== '0') {
+    ElMessage.warning('这只宠物已经被订走了')
+    return
+  }
+  cartStore.addItem({
+    id: `pet-${pet.value.petId}`,
+    itemType: '2',
+    petId: pet.value.petId,
+    name: pet.value.petName,
+    image: pet.value.image,
+    spec: pet.value.breed,
+    price: pet.value.price
+  })
+  ElMessage.success('已加入购物车，可与宠物粮一起结算')
+}
+
 /** 立即购买：下单即锁定宠物，支付走订单收银台 */
 async function buyNow() {
   if (!userStore.token) {
@@ -424,7 +457,7 @@ async function buyNow() {
   }
   try {
     await ElMessageBox.confirm(
-      `确认购买「${pet.value.petName}」？金额 ¥${pet.value.price || 0}。下单后这只宠物会为你锁定，未支付可在「我的订单」中取消释放。`,
+      `确认购买「${pet.value.petName}」？金额 ¥${pet.value.price || 0}。下单后这只宠物会为你锁定，未支付可在购物车的「下单记录」中取消释放。`,
       '确认购买',
       { confirmButtonText: '去支付', cancelButtonText: '再看看', type: 'warning' }
     )
@@ -435,8 +468,8 @@ async function buyNow() {
   try {
     const res = await createPetOrder(pet.value.petId)
     ElMessage.success('下单成功，请完成支付')
-    // 带 pay 参数跳转，订单页会自动弹出收银台
-    router.push({ path: '/shop/order', query: { pay: res.data && res.data.orderNo } })
+    // 带 pay 参数去购物车页，下单记录会自动弹出收银台
+    router.push({ path: '/shop/cart', query: { pay: res.data && res.data.orderNo } })
   } catch (e) {
     ElMessage.error(e?.message || '下单失败，可能刚被别人订走')
     loadPet()
@@ -505,6 +538,30 @@ onMounted(() => {
   &.full { background: var(--bg-page); cursor: not-allowed; b { color: var(--text-4); } span { color: var(--text-4); } }
 }
 .slot-empty { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-3); }
+
+/* 移动端吸底购买栏：默认隐藏；手机端固定在底部标签栏（66px+安全区）之上 */
+.buy-bar { display: none; }
+@media (max-width: 768px) {
+  /* 本页吸底栏与 AI 悬浮球同占右下角：注入变量把悬浮球抬到购买栏上方 */
+  :global(.assistant-dock) { --as-dock-bottom: 136px; }
+  .buy-bar {
+    display: flex; align-items: center; gap: 10px;
+    position: fixed; left: 0; right: 0;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    z-index: 89; /* 低于 tabbar(90)，但位置在其上方不重叠 */
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, .97);
+    backdrop-filter: blur(8px);
+    border-top: var(--rule);
+    .bb-price { flex: 1; display: flex; align-items: baseline; gap: 6px; min-width: 0;
+      .label { font-size: 12px; color: var(--text-3); }
+      .amount { color: var(--price); font-family: var(--font-num); font-size: 22px; font-weight: 700;
+        line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+        i { font-style: normal; font-size: 13px; margin-right: 1px; } }
+    }
+    .el-button { height: 40px; margin: 0; font-weight: 700; padding-left: 14px; padding-right: 14px; }
+  }
+}
 
 .detail { max-width: var(--container-lg); margin: 0 auto; padding: 24px 24px 32px; }
 .back-row {
@@ -637,7 +694,8 @@ onMounted(() => {
 }
 /* 手机端：左右结构改上下，大图等比例缩小，不再一张图占一屏 */
 @media (max-width: 768px) {
-  .detail { padding: 16px 12px; }
+  /* 底部多让出吸底购买栏(约60px)+安全区，避免盖住页面最后几行 */
+  .detail { padding: 16px 12px calc(60px + env(safe-area-inset-bottom)); }
   .detail-inner { flex-direction: column; gap: 18px; padding: 0; }
   .left {
     flex: none;

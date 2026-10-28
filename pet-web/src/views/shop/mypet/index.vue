@@ -68,6 +68,9 @@
       </div>
 
       <div v-else-if="!loading" class="ui-empty">
+        <span class="ui-empty__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="8" cy="8.5" r="1.7"/><circle cx="12" cy="6.5" r="1.7"/><circle cx="16" cy="8.5" r="1.7"/><path d="M12 11c2.8 0 5 2 5 4.4 0 1.6-1.3 2.6-2.7 2.3-.8-.2-1.5-.3-2.3-.3s-1.5.1-2.3.3C8.3 18 7 17 7 15.4 7 13 9.2 11 12 11z"/></svg>
+        </span>
         <p class="ui-empty__title">还没有宠物档案</p>
         <p class="ui-empty__desc">
           在门店完成购买或建档后，宠物会出现在这里，疫苗、驱虫和服务记录也会同步。

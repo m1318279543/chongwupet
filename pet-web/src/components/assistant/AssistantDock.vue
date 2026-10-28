@@ -1,5 +1,5 @@
 <template>
-  <div class="assistant-dock">
+  <div class="assistant-dock" :class="{ 'is-admin': defaultScene === 'admin' }">
     <transition name="as-panel">
       <section v-if="state.open" class="as-panel" role="dialog" aria-label="AI 助手">
         <header class="as-head">
@@ -338,6 +338,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 /* 桌面入口：图标圆钮，默认悬在右上角（顶栏下方），可拖动，悬停显示文字气泡 */
 .as-launcher {
   position: fixed; top: 84px; right: 22px; z-index: 160;
+  // 后台场景：右上角会压住统计卡，改默认右下角并收小，减少对管理页面的干扰
+  .is-admin & {
+    top: auto; bottom: 28px; width: 40px; height: 40px;
+  }
   display: inline-flex; align-items: center; justify-content: center;
   width: 44px; height: 44px; padding: 0;
   // 浮标是唯一保留 pill 圆角与投影的元素：它必须始终浮在内容之上
@@ -506,7 +510,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   .as-launcher {
     display: inline-flex;
     top: auto !important; left: auto !important; right: 14px !important;
-    bottom: calc(74px + env(safe-area-inset-bottom)) !important;
+    /* bottom 可被页面注入 --as-dock-bottom 调整（如详情页吸底购买栏时抬升） */
+    bottom: calc(var(--as-dock-bottom, 74px) + env(safe-area-inset-bottom)) !important;
     width: 46px; height: 46px; padding: 0; justify-content: center;
     .as-txt { display: none; }
     .as-launcher-ico { width: 26px; height: 26px; }

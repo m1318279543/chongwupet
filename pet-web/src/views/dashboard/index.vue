@@ -232,7 +232,7 @@ const kpis = computed(() => {
       value: fmtInt(o.orders),
       growth: o.growth?.orders ?? null,
       sub: `今日 ${t.todayOrders || 0} 单 · 待处理 ${o.pendingOrders}`,
-      color: '#5b8def',
+      color: '#4f9f87',
     },
     {
       key: 'appointments',
@@ -240,7 +240,7 @@ const kpis = computed(() => {
       value: fmtInt(o.appointments),
       growth: o.growth?.appointments ?? null,
       sub: `今日 ${t.todayAppointments || 0} 单 · 待处理 ${o.pendingAppointments}`,
-      color: '#52c41a',
+      color: '#1f7a63',
     },
     {
       key: 'consults',
@@ -248,7 +248,7 @@ const kpis = computed(() => {
       value: fmtInt(o.consults || 0),
       growth: o.growth?.consults ?? null,
       sub: `今日 ${t.todayConsults || 0} 次 · 待回复 ${o.pendingConsults}`,
-      color: '#9254de',
+      color: '#8fc3b0',
     },
     {
       key: 'social',
@@ -256,7 +256,7 @@ const kpis = computed(() => {
       value: fmtInt((o.favorites || 0) + (o.comments || 0) + (o.likes || 0)),
       growth: o.growth?.favorites ?? null,
       sub: `收藏 ${o.favorites} · 评论 ${o.comments} · 点赞 ${o.likes}`,
-      color: '#13c2c2',
+      color: '#b9dbce',
     },
     {
       key: 'cancel',

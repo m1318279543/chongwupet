@@ -490,6 +490,26 @@
   font-weight: 700;
   color: var(--text-1);
 }
+/* 空态图标：品牌色圆片 + 线性图标，跟随现有扁平语言（不做插图卡片） */
+.ui-empty__ico {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--brand-50);
+  color: var(--brand-600);
+  svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
 .ui-empty__desc {
   font-size: 13px;
   line-height: 1.7;

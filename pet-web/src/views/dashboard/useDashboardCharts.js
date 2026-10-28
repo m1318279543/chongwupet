@@ -50,7 +50,7 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
     const showZoom = t.dates.length > 31
     charts.trend.setOption(
       {
-        color: ['#ff8c42', '#5b8def', '#52c41a', '#c9a227'],
+        color: ['#14614e', '#4f9f87', '#8fc3b0', '#c9a227'],
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'cross', label: { backgroundColor: '#606266' } },
@@ -139,14 +139,14 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
             type: 'bar',
             yAxisIndex: 1,
             barWidth: t.dates.length > 45 ? 4 : 8,
-            itemStyle: { color: 'rgba(201,162,39,.28)', borderRadius: [3, 3, 0, 0] },
+            itemStyle: { color: 'rgba(20,97,78,.22)', borderRadius: [3, 3, 0, 0] },
             data: t.revenue,
           },
         ],
         dataZoom: showZoom
           ? [
               { type: 'inside' },
-              { type: 'slider', height: 16, bottom: 2, borderColor: 'transparent', fillerColor: 'rgba(255,140,66,.12)', handleSize: 14 },
+              { type: 'slider', height: 16, bottom: 2, borderColor: 'transparent', fillerColor: 'rgba(20,97,78,.12)', handleSize: 14 },
             ]
           : [{ type: 'inside' }],
       },
@@ -200,14 +200,14 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
     const items = dashboard.value?.distribution?.appointmentStatus || []
     ensureCharts()
     if (!charts.aptStatus) return
-    charts.aptStatus.setOption(pieOption(items, ['#e6a23c', '#5b8def', '#52c41a', '#c8c9cc']), true)
+    charts.aptStatus.setOption(pieOption(items, ['#8fc3b0', '#4f9f87', '#14614e', '#c8c9cc']), true)
   }
 
   function renderOrderStatus() {
     const items = dashboard.value?.distribution?.orderStatus || []
     ensureCharts()
     if (!charts.orderStatus) return
-    charts.orderStatus.setOption(pieOption(items, ['#ff8c42', '#c8c9cc']), true)
+    charts.orderStatus.setOption(pieOption(items, ['#14614e', '#c8c9cc']), true)
   }
 
   function renderCategory() {
@@ -231,8 +231,8 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
             type: 'bar',
             data: items.map((i) => i.value),
             barWidth: '46%',
-            itemStyle: { color: '#ffb27a', borderRadius: [5, 5, 0, 0] },
-            emphasis: { itemStyle: { color: '#ff8c42' } },
+            itemStyle: { color: '#4f9f87', borderRadius: [5, 5, 0, 0] },
+            emphasis: { itemStyle: { color: '#14614e' } },
             label: { show: true, position: 'top', color: '#909399', fontSize: 10 },
           },
         ],
@@ -262,8 +262,8 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
             type: 'bar',
             data: items.map((i) => i.value),
             barWidth: 12,
-            itemStyle: { color: '#7ea6f5', borderRadius: [0, 6, 6, 0] },
-            emphasis: { itemStyle: { color: '#5b8def' } },
+            itemStyle: { color: '#4f9f87', borderRadius: [0, 6, 6, 0] },
+            emphasis: { itemStyle: { color: '#14614e' } },
             label: { show: true, position: 'right', color: '#909399', fontSize: 10 },
           },
         ],
@@ -300,8 +300,8 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
             type: 'bar',
             data: items.map((i) => i.amount),
             barWidth: 12,
-            itemStyle: { color: '#ffc48a', borderRadius: [0, 6, 6, 0] },
-            emphasis: { itemStyle: { color: '#ff8c42' } },
+            itemStyle: { color: '#8fc3b0', borderRadius: [0, 6, 6, 0] },
+            emphasis: { itemStyle: { color: '#14614e' } },
             label: {
               show: true,
               position: 'right',
@@ -322,7 +322,7 @@ export function useDashboardCharts({ dashboard, money, fmtInt, refs }) {
     if (!charts.hourly) return
     charts.hourly.setOption(
       {
-        color: ['#ff8c42', '#5b8def'],
+        color: ['#14614e', '#8fc3b0'],
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         legend: { top: 0, right: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 6, textStyle: { color: '#606266', fontSize: 12 } },
         grid: { left: 6, right: 10, top: 34, bottom: 4, containLabel: true },

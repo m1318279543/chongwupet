@@ -38,22 +38,21 @@
     </el-form>
 
     <el-table v-loading="loading" :data="orderList">
-      <el-table-column label="订单号" prop="orderNo" width="190" />
-      <el-table-column label="类型" width="86" align="center">
+      <el-table-column label="订单号" prop="orderNo" width="182" />
+      <el-table-column label="商品" min-width="240">
         <template #default="scope">
-          <el-tag size="small" :type="scope.row.orderType === '2' ? 'danger' : 'info'" effect="plain">
-            {{ scope.row.orderType === '2' ? '宠物单' : '商品单' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="商品" min-width="230">
-        <template #default="scope">
-          <div class="cell-main">{{ firstGoods(scope.row) }}</div>
+          <div class="cell-main">
+            <el-tag v-if="scope.row.orderType === '2'" size="small" type="danger" effect="plain" class="type-tag">宠物单</el-tag>{{ firstGoods(scope.row) }}
+          </div>
           <div class="cell-sub">共 {{ scope.row.itemCount }} 件</div>
         </template>
       </el-table-column>
-      <el-table-column label="下单账号" prop="userName" width="110" />
-      <el-table-column label="门店" prop="storeName" width="130" :show-overflow-tooltip="true" />
+      <el-table-column label="客户 / 门店" width="140">
+        <template #default="scope">
+          <div class="cell-main">{{ scope.row.userName || '—' }}</div>
+          <div class="cell-sub">{{ scope.row.storeName || '—' }}</div>
+        </template>
+      </el-table-column>
       <el-table-column label="金额" width="100">
         <template #default="scope"><span class="money">¥{{ formatMoney(scope.row.payAmount) }}</span></template>
       </el-table-column>
@@ -69,7 +68,7 @@
           <el-tag size="small" :type="statusType(scope.row.status)">{{ statusText(scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="下单时间" width="130">
+      <el-table-column label="下单时间" width="110">
         <template #default="scope">{{ fmt(scope.row.createTime) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="180" fixed="right" class-name="small-padding fixed-width">
@@ -266,8 +265,10 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.cell-main, .cell-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cell-main { font-size: 13px; color: var(--text-1); }
 .cell-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.type-tag { margin-right: 6px; }
 .money { color: var(--brand-700); font-weight: 600; }
 .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;
   .no { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-1); }
