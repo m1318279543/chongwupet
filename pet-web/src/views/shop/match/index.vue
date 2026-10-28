@@ -8,7 +8,8 @@
           <p class="mh-sub">10 个条件 → 六维画像 → 与在售个体逐维扣分。评分只用规则引擎与站内行为，没有黑盒。</p>
         </div>
         <div class="mh-stats">
-          <div><b>{{ candidateCount }}</b><span>在售个体</span></div>
+          <!-- 未测评时 candidateCount 是「—」，弱化成占位符，免得看起来像一条破折线 -->
+          <div><b :class="{ 'mh-pending': candidateCount === '—' }">{{ candidateCount }}</b><span>在售个体</span></div>
           <div><b>{{ totalCount }}</b><span>道题 · 3 组</span></div>
           <div><b>8</b><span>只上限</span></div>
         </div>
@@ -84,6 +85,20 @@
           </div>
         </section>
       </div>
+
+      <!-- 评分说明：呼应标题里的「没有黑盒」，同时填掉问卷下方的大块空白 -->
+      <section class="card score-note" v-show="!result && !loading">
+        <div class="sn-head">
+          <b>评分是怎么算的</b>
+          <span>四步都在服务端完成，结果可复算</span>
+        </div>
+        <div class="sn-grid">
+          <div><b>① 六维画像</b><span>空间 / 运动 / 照料 / 经验 / 噪音 / 预算</span></div>
+          <div><b>② 逐维扣分</b><span>需求高于你的条件才扣，匹配度不虚高</span></div>
+          <div><b>③ 协同过滤</b><span>相似用户的收藏与预约影响排序</span></div>
+          <div><b>④ 人气加权</b><span>全站咨询与点赞热度占 12%</span></div>
+        </div>
+      </section>
 
       <!-- ================= 分析中 ================= -->
       <div v-if="loading" class="analyzing">

@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page ui-page--sm">
+  <div class="ui-page">
     <header class="ui-head">
       <div class="ui-head__main">
         <p class="ui-eyebrow">Support</p>
@@ -22,6 +22,9 @@
     </div>
 
     <template v-else>
+      <!-- 左：提交 + 记录；右：客服须知与门店电话，把原来两侧各空 200px 的窄栏用起来 -->
+      <div class="consult-grid">
+      <div class="consult-main">
       <!-- 提交区：两个字段平铺，字段之间只有留白与 1px 底线 -->
       <section class="ask">
         <div class="ui-sec__head">
@@ -95,6 +98,30 @@
           </div>
         </div>
       </section>
+      </div>
+
+      <aside class="consult-side">
+        <section class="side-card">
+          <h2 class="side-title">回复时间</h2>
+          <ul class="side-list">
+            <li>工作日 09:00–21:00 在线，节假日顺延</li>
+            <li>一般 2 小时内回复，复杂问题会安排门店回电</li>
+            <li>回复会直接出现在左侧「我的咨询」里，可随时回看</li>
+          </ul>
+        </section>
+
+        <section class="side-card" v-if="stores.length">
+          <h2 class="side-title">直接打电话</h2>
+          <ul class="tel-list">
+            <li v-for="s in stores.slice(0, 3)" :key="s.storeId">
+              <b>{{ s.storeName }}</b>
+              <a v-if="s.phone" :href="'tel:' + s.phone">{{ s.phone }}</a>
+              <span v-if="s.businessHours">{{ s.businessHours }}</span>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      </div>
     </template>
   </div>
 </template>
@@ -103,11 +130,21 @@
 import { ref, reactive, computed, inject, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { submitConsult, listMyConsult } from '@/api/pet/petConsult'
+import { listStore } from '@/api/pet/petStore'
 import { useUserStore } from '@/store/modules/user'
 
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
 const isLogged = computed(() => !!userStore.token)
+
+// 右侧栏的门店电话；接口不可用时留空，对应那块自动不渲染
+const stores = ref([])
+async function loadStores() {
+  try {
+    const res = await listStore({})
+    stores.value = res.rows || res.data || []
+  } catch (e) { /* 静默 */ }
+}
 
 const form = reactive({ contact: '', question: '' })
 const submitting = ref(false)
@@ -156,12 +193,54 @@ async function loadMine() {
 }
 
 onMounted(() => {
+  loadStores()
   if (isLogged.value) loadMine()
 })
 </script>
 
 <style scoped lang="scss">
 // 页头 / 表单组 / 行列表 / 空态来自 .ui-* 基元；本页只写「一问一答」的层级关系。
+
+/* 左主右辅：表单与记录在左，客服须知 + 门店电话在右。
+   原来是 640 窄栏居中，1440 下两侧各空 200px 以上。 */
+.consult-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 48px;
+  align-items: start;
+}
+.consult-main { min-width: 0; }
+
+.consult-side {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: 28px;
+}
+.side-card { border-top: var(--rule); padding-top: 18px; }
+.side-title { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--text-1); }
+.side-list {
+  margin: 0; padding-left: 16px;
+  li { font-size: 13px; line-height: 1.8; color: var(--text-2); }
+}
+.tel-list {
+  margin: 0; padding: 0; list-style: none;
+  display: grid; gap: 14px;
+  li {
+    display: grid; gap: 3px;
+    b { font-size: 13.5px; font-weight: 700; color: var(--text-1); }
+    a {
+      font-size: 13px; color: var(--brand-700); text-decoration: none;
+      font-variant-numeric: tabular-nums;
+      &:hover { text-decoration: underline; }
+    }
+    span { font-size: 12px; color: var(--text-3); }
+  }
+}
+@media (max-width: 900px) {
+  .consult-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .consult-side { position: static; }
+}
 
 .ask { padding-top: 24px; }
 .ask__actions {

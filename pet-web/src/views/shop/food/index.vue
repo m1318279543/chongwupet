@@ -13,6 +13,12 @@
     </header>
 
     <nav class="cat-tabs" aria-label="按品类筛选">
+      <!-- 默认「全部」：每品类只有 2 款粮，若一进页面就锁在单个品类，首屏只有两款、下半屏全空 -->
+      <button type="button"
+        class="cat-tab" :class="{ active: active === 'all' }"
+        @click="active = 'all'">
+        <i class="dot" style="background: var(--text-4)"></i>全部
+      </button>
       <!-- 类目随商品接口派生（foodData 只提供名称/配色元数据），后台上下架新品类前台自动跟随 -->
       <button v-for="c in categories" :key="c.id"
         class="cat-tab" :class="{ active: active === c.id }"
@@ -21,7 +27,7 @@
       </button>
     </nav>
 
-    <section class="grid">
+    <section class="grid" :class="{ 'grid--sparse': filtered.length > 0 && filtered.length <= 3 }">
       <article class="card" v-for="(p, i) in filtered" :key="i" @click="openDetail(p)">
         <div class="thumb">
           <img :src="p.image" :alt="p.name" loading="lazy" />
@@ -106,7 +112,7 @@ import { money } from '@/utils/money'
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
 
-const active = ref('cat')
+const active = ref('all')
 
 // 商品目录来自后端（价格与库存都由后台维护），接口不可用时退回静态数据兜底
 const goodsList = ref([])
@@ -136,17 +142,21 @@ function adaptGoods(g) {
 }
 
 async function loadGoods(cat = active.value) {
+  // all 时按全量拉，否则按品类服务端筛选
+  const query = { status: '0', pageNum: 1, pageSize: 50 }
+  if (cat !== 'all') query.cat = cat
   try {
-    // 按品类服务端筛选：每类只取当前页，不再一次拉 200 条全场商品
-    const res = await listGoods({ status: '0', cat, pageNum: 1, pageSize: 50 })
+    const res = await listGoods(query)
     const rows = res.rows || []
-    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST.filter(f => f.cat === cat)
+    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST.filter(f => cat === 'all' || f.cat === cat)
   } catch (e) {
-    goodsList.value = FOOD_LIST.filter(f => f.cat === cat)
+    goodsList.value = FOOD_LIST.filter(f => cat === 'all' || f.cat === cat)
   }
 }
 
-const filtered = computed(() => goodsList.value.filter(p => p.cat === active.value))
+const filtered = computed(() =>
+  active.value === 'all' ? goodsList.value : goodsList.value.filter(p => p.cat === active.value)
+)
 
 // 类目用固定元数据（与后台 pet_goods.cat 词表一致），不再从全量商品里派生
 const CAT_META = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.id, c]))
@@ -214,6 +224,14 @@ function addToCart(p) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(250px, 45%), 1fr));
   gap: 26px 20px;
+}
+/* 单品类的 2 款并排成一行：竖卡 + 16:10 图。
+   单列长条会摊在 1200px 宽里右侧全空；纯竖卡 4:3 又会把图撑到 440 高、页面拉长。 */
+.grid--sparse {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 24px;
+
+  .thumb { aspect-ratio: 16 / 10; }
 }
 .card {
   background: none; border: 0; cursor: pointer; text-align: left;
@@ -287,6 +305,21 @@ function addToCart(p) {
   }
 }
 @media (max-width: 768px) {
+  /* 手机上两列横排卡会挤成一条窄缝，回到「单列 + 竖排大图」 */
+  .grid--sparse {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .grid--sparse .card {
+    display: block;
+    padding: 18px 0;
+    border-bottom: var(--rule-soft);
+  }
+  .grid--sparse .card:first-child { padding-top: 4px; }
+  .grid--sparse .card:last-child { border-bottom: 0; }
+  .grid--sparse .thumb { aspect-ratio: 4 / 3; }
+  .grid--sparse .body { padding: 12px 2px 0; }
+
   .food-detail-dialog .detail { flex-direction: column;
     .detail-left { width: 100%; img { max-height: min(240px, 30vh); } }
   }
