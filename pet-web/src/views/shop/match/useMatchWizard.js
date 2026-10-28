@@ -1,6 +1,6 @@
 // 智能选宠：全部页面逻辑（向导状态、画像计算、提交、收藏、展示工具）
 // index.vue 只保留模板与一行装配，逻辑改动都在这里。
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { recommendPet } from '@/api/pet/petMatch'
@@ -31,6 +31,64 @@ export function useMatchWizard() {
     monthly: '',
     prefer: ''
   })
+
+  /* ---------- 状态持久化 ----------
+     问卷要答 10 题，点进宠物详情再返回时本页组件会重新挂载，
+     不落盘就得从头再答一遍。用 sessionStorage 而不是 Pinia：
+     这份状态只属于「这一次挑选」，关掉标签页就该消失，
+     也不该让隔几天再进选宠页的用户一上来就看见上次的结果还挂在上面。 */
+  const STATE_KEY = 'pet-match-state'
+  const STATE_VER = 1
+
+  function loadState() {
+    try {
+      const raw = sessionStorage.getItem(STATE_KEY)
+      if (!raw) return null
+      const s = JSON.parse(raw)
+      return s && s.v === STATE_VER ? s : null
+    } catch (e) {
+      return null // 数据损坏或隐私模式：按首次进入处理
+    }
+  }
+
+  function saveState() {
+    // 全空时删掉而不是写一条空记录：reset() 先同步删过一次，
+    // 紧接着 watch 又会触发本函数，没有这个判断就会把空状态写回去。
+    const hasAny = Object.values(answers).some(Boolean) || step.value > 0 || result.value
+    try {
+      if (hasAny) {
+        sessionStorage.setItem(STATE_KEY, JSON.stringify({
+          v: STATE_VER,
+          t: Date.now(),
+          answers: { ...answers },
+          step: step.value,
+          result: result.value
+        }))
+      } else {
+        sessionStorage.removeItem(STATE_KEY)
+      }
+    } catch (e) {
+      // 隐私模式或配额超限：只是返回时不恢复，不影响正常答题
+    }
+  }
+
+  // 恢复上次进度：答案、所在步骤、已生成的结果都要带回来
+  const saved = loadState()
+  if (saved) {
+    Object.keys(answers).forEach((k) => {
+      if (typeof saved.answers?.[k] === 'string') answers[k] = saved.answers[k]
+    })
+    if (Number.isInteger(saved.step) && saved.step >= 0 && saved.step < STEPS.length) {
+      step.value = saved.step
+    }
+    if (saved.result && typeof saved.result === 'object') result.value = saved.result
+  }
+
+  // 答案 / 步骤 / 结果任一变就落盘，三个的变化频率都很低
+  watch([answers, step, result], saveState, { deep: true })
+
+  // 返回本页时不管浏览器有没有恢复滚动位置，都回到顶部看结果
+  onMounted(() => window.scrollTo(0, 0))
 
   /* ---------- 进度 ---------- */
   const totalCount = computed(() => STEPS.reduce((n, s) => n + s.questions.length, 0))
@@ -141,6 +199,9 @@ export function useMatchWizard() {
     result.value = null
     step.value = 0
     Object.keys(answers).forEach((k) => (answers[k] = ''))
+    try {
+      sessionStorage.removeItem(STATE_KEY)
+    } catch (e) { /* 同上：清不掉也不阻塞重置 */ }
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
