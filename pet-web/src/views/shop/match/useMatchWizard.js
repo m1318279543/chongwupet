@@ -187,7 +187,7 @@ export function useMatchWizard() {
       answers: { ...answers },
       fresh: true,
       greeting: name
-        ? `你刚才的测评条件我已经带过来了。可以继续问「${name}为什么适合我」，也能让我换条件重筛。`
+        ? `你刚才的测评条件我已经带过来了。可以直接追问${name}哪里适合你，也能让我换条件重筛。`
         : '你刚才的测评条件我已经带过来了，可以直接追问，比如换个大点的房子会推荐谁。',
       message: name ? `为什么「${pet.petName}」适合我？它和其余几只有什么区别？` : ''
     })
