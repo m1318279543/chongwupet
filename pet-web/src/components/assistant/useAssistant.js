@@ -29,6 +29,8 @@ const state = reactive({
   convId: null,
   messages: [],
   loading: false,
+  // 从智能选宠页带入的答卷：带上后每轮对话都按这份条件算，不再让后端用正则重猜
+  answers: null,
   quick: QUICK.shop,
   greeting: GREETING.shop
 })
@@ -59,6 +61,8 @@ export function useAssistant() {
     state.scene = options.scene || 'shop'
     state.bizId = options.bizId || ''
     state.petId = options.petId || null
+    // 换入口时一并换掉答卷条件；不传就清空，避免上一页的条件串到这一页
+    state.answers = options.answers || null
     state.quick = QUICK[state.scene] || QUICK.shop
     state.greeting = options.greeting || GREETING[state.scene] || GREETING.shop
 
@@ -83,6 +87,7 @@ export function useAssistant() {
   function reset() {
     stop()
     state.convId = null
+    state.answers = null
     state.messages = [greetingMessage(state.greeting)]
   }
 
@@ -118,6 +123,7 @@ export function useAssistant() {
       scene: state.scene,
       bizId: state.bizId,
       petId: state.petId,
+      answers: state.answers || undefined,
       message: text
     }, {
       onDelta: (delta) => {

@@ -249,9 +249,10 @@
   }
 }
 
-/* 定高：切换步骤时页面不跳动 */
+/* 定高改为「下限 + 上限」：题少的步骤不再留半屏空白，题多的步骤仍在面板内滚动 */
 .q-body {
-  height: 404px;
+  min-height: 300px;
+  max-height: 404px;
   padding-right: 2px;
   overflow-y: auto;
 }
@@ -982,7 +983,9 @@
   .tp-title h3 { font-size: 20px; }
 
   .tp-act {
-    .btn { flex: 1; }
+    // 窄屏三个动作排成 2 + 1 两行，避免「问 AI 为什么」被挤成两行字
+    flex-wrap: wrap;
+    .btn { flex: 1 1 calc(50% - 4px); }
     .act-note { display: none; }
   }
 

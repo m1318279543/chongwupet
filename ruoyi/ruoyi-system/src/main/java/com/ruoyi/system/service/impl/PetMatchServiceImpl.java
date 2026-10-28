@@ -88,6 +88,10 @@ public class PetMatchServiceImpl implements IPetMatchService
 
         List<Map<String, Object>> pets = matchMapper.selectTraitPets();
         Map<Long, Double> cfScore = cfScores(pf.userId);
+        // CF 是否真的产生了信号：只有存在足够相似的用户、且他们喜欢的宠物能落进来时才非空。
+        // 不能只看"是否登录"——零行为用户虽然登录了，CF 仍为空，若此时走三路加权，
+        // 16% 的 CF 权重恒为 0，权重合计只剩 84%，总分被硬性压到上限 84 分，永远拿不到"非常匹配"。
+        pf.hasHistory = !cfScore.isEmpty();
 
         // 人气原始分 = 交互信号权重 + 点赞数 * 0.5
         Map<Long, Double> popSignal = new HashMap<>();
@@ -234,6 +238,7 @@ public class PetMatchServiceImpl implements IPetMatchService
         result.put("profile", pf.toMap());
         result.put("algorithm", "规则引擎 + 协同过滤 + 人气加权");
         result.put("hasHistory", pf.hasHistory);
+        result.put("loggedIn", pf.loggedIn);
         result.put("candidateCount", pets.size());
         result.put("matchedCount", scored.size());
         result.put("recommendations", scored);
@@ -816,7 +821,10 @@ public class PetMatchServiceImpl implements IPetMatchService
         String companion;
         Long userId;
         String userName;
+        /** 协同过滤是否真的生效（由 cfScore 是否为空决定，不由是否登录决定） */
         boolean hasHistory;
+        /** 是否已登录：用于前端区分"游客"和"登录但零行为"两种口径 */
+        boolean loggedIn;
 
         static Profile of(Map<String, Object> a)
         {
@@ -865,7 +873,8 @@ public class PetMatchServiceImpl implements IPetMatchService
                 p.userId = null;
                 p.userName = "游客";
             }
-            p.hasHistory = p.userId != null;
+            p.hasHistory = false;
+            p.loggedIn = p.userId != null;
             return p;
         }
 
@@ -883,6 +892,7 @@ public class PetMatchServiceImpl implements IPetMatchService
             m.put("prefer", prefer);
             m.put("companion", companion);
             m.put("userName", userName);
+            m.put("loggedIn", loggedIn);
             return m;
         }
 

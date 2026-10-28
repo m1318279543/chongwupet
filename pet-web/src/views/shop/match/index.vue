@@ -152,6 +152,9 @@
               <template v-if="result.hasHistory">
                 已登录，协同过滤生效（内容 72% + 相似用户 16% + 人气 12%）
               </template>
+              <template v-else-if="result.loggedIn">
+                已登录但还没有收藏 / 预约 / 点赞记录，本次按 内容 84% + 人气 16% 计算
+              </template>
               <template v-else>
                 游客模式，不含协同过滤（内容 84% + 人气 16%）
               </template>
@@ -245,6 +248,7 @@
 
               <div class="tp-act">
                 <button type="button" class="btn btn--solid" @click="goDetail(top.petId)">查看详情</button>
+                <button type="button" class="btn btn--line" @click="askAi(top)">问 AI 为什么</button>
                 <button type="button" class="btn btn--line" @click="fav(top)">收藏</button>
                 <span class="act-note">收藏会进入协同过滤，影响下次推荐</span>
               </div>
@@ -275,7 +279,8 @@
               </div>
             </div>
             <p class="foot-note">
-              游客无协同过滤，因此「相似用户」一栏为 —。登录后同一套答案的排序会变。
+              没有相似用户信号时「相似用户」一栏为 —，权重并入内容与人气。产生收藏 / 预约 / 点赞后，
+              同一套答案的排序会变。
             </p>
           </template>
 
@@ -296,7 +301,7 @@ const {
   loading, result, step, analyzeText, answers, STEPS,
   totalCount, doneCount, progress, allDone, curGroup, curLeft, qIndex, groupAll, profileRows,
   recommendations, top, rest, diag, candidateCount, nextBudget,
-  next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, fav,
+  next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, askAi, fav,
   pad, fmt, isImg, genderText, preferName
 } = useMatchWizard()
 </script>

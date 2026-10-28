@@ -314,7 +314,11 @@ public class AssistantService
         sb.append("\n要不要约个时间到店看看？我可以帮你走预约流程。");
         answer.content = sb.toString();
         answer.actions.add(action("link", "立即预约看宠", "/shop/pet/" + petId));
-        answer.actions.add(action("link", "问问是否适合我", "/shop/match"));
+        // 直接在当前对话里追问这只，而不是跳去选宠问卷：跳过去会丢掉刚看的这只
+        Map<String, Object> ask = new LinkedHashMap<>();
+        ask.put("petId", petId);
+        ask.put("message", "这只宠物适合我吗？");
+        answer.actions.add(actionData("ask", "问问是否适合我", ask));
         return answer;
     }
 
@@ -324,6 +328,23 @@ public class AssistantService
         if (answers == null || answers.isEmpty())
         {
             answers = SceneRouter.parseAnswers(message);
+            // 一句话只抽到一两个条件时不硬算：其余维度会落到后端默认档位，
+            // 算出来的匹配度用户根本没参与，等于给一个假精确的数字。
+            if (answers.size() < MIN_MATCH_SLOTS)
+            {
+                return askMoreMatch(answers, answer);
+            }
+        }
+        else
+        {
+            // 带着选宠页的答卷进来时，允许当前这句话覆盖它明确提到的维度，
+            // 否则用户说"换个大点的房子"会用回旧的空间条件，结果原地不动。
+            Map<String, Object> patch = SceneRouter.parseAnswers(message);
+            if (!patch.isEmpty())
+            {
+                answers = new LinkedHashMap<>(answers);
+                answers.putAll(patch);
+            }
         }
         Map<String, Object> result = tools.match(answers);
         answer.tools.add("match.recommend");
@@ -381,6 +402,56 @@ public class AssistantService
             answer.actions.add(action("link", "看完整选宠结果", "/shop/match"));
         }
         answer.content = sb.toString();
+        return answer;
+    }
+
+    /** 对话抽取到的匹配槽位少于这个数就不硬算，改为追问 */
+    private static final int MIN_MATCH_SLOTS = 3;
+
+    /**
+     * 条件不足时的追问：先说清"已经收到哪些"，再列还缺的关键项，最后给一条通往完整测评的路。
+     * 目的是避免用后端默认档位拼出一个用户没参与过的匹配度。
+     */
+    private Answer askMoreMatch(Map<String, Object> answers, Answer answer)
+    {
+        List<String> missing = new ArrayList<>();
+        if (!answers.containsKey("home"))
+        {
+            missing.add("居住空间（小户型 / 普通住宅 / 带院子）");
+        }
+        if (!answers.containsKey("budget"))
+        {
+            missing.add("购宠预算大概多少");
+        }
+        if (!answers.containsKey("experience"))
+        {
+            missing.add("是不是第一次养");
+        }
+        if (!answers.containsKey("time"))
+        {
+            missing.add("每天能陪它多久");
+        }
+        if (!answers.containsKey("prefer"))
+        {
+            missing.add("想养猫、狗还是其他");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(answers.isEmpty()
+                ? "我可以按你的生活情况帮你筛，先告诉我几件事：\n"
+                : "我记下了你的部分条件，再确认几件事就能筛得更准：\n");
+        int shown = 0;
+        for (String item : missing)
+        {
+            if (shown++ >= 3)
+            {
+                break;
+            }
+            sb.append("· ").append(item).append("\n");
+        }
+        sb.append("\n也可以直接做完整测评，10 道题一次选完，结果带七维评分和逐条推荐理由。");
+        answer.content = sb.toString();
+        answer.actions.add(action("link", "做完整测评", "/shop/match"));
         return answer;
     }
 

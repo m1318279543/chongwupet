@@ -6,11 +6,13 @@ import { ElMessage } from 'element-plus'
 import { recommendPet } from '@/api/pet/petMatch'
 import { addPetFavorite } from '@/api/pet/petFavorite'
 import { useUserStore } from '@/store/modules/user'
+import { useAssistant } from '@/components/assistant/useAssistant'
 import { STEPS } from './matchData'
 
 export function useMatchWizard() {
   const router = useRouter()
   const userStore = useUserStore()
+  const { open: openAssistant } = useAssistant()
 
   const loading = ref(false)
   const result = ref(null)
@@ -173,6 +175,24 @@ export function useMatchWizard() {
     router.push('/shop/consult')
   }
 
+  /**
+   * 带着问卷答案继续问 AI。
+   * 答案随 open 存进 useAssistant，后续每轮对话都会把它带给后端，
+   * 这样 AI 用的是用户亲手选的 10 个条件，而不是从一句话里正则猜出来的。
+   */
+  function askAi(pet) {
+    const name = pet?.petName ? `「${pet.petName}」` : ''
+    openAssistant({
+      scene: 'match',
+      answers: { ...answers },
+      fresh: true,
+      greeting: name
+        ? `你刚才的测评条件我已经带过来了。可以继续问「${name}为什么适合我」，也能让我换条件重筛。`
+        : '你刚才的测评条件我已经带过来了，可以直接追问，比如换个大点的房子会推荐谁。',
+      message: name ? `为什么「${pet.petName}」适合我？它和其余几只有什么区别？` : ''
+    })
+  }
+
   async function fav(pet) {
     if (!userStore.token) {
       ElMessage.info('请先登录后再收藏')
@@ -212,7 +232,7 @@ export function useMatchWizard() {
     // 结果
     recommendations, top, rest, diag, candidateCount, nextBudget,
     // 动作
-    next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, fav,
+    next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, askAi, fav,
     // 展示工具
     pad, fmt, isImg, genderText, preferName
   }

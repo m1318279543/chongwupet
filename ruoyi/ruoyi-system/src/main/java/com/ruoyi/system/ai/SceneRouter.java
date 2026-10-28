@@ -31,7 +31,10 @@ public class SceneRouter
     public static final String INTENT_METRIC = "metric";
 
     private static final Pattern ORDER_NO = Pattern.compile("ORD\\d{10,}", Pattern.CASE_INSENSITIVE);
-    private static final Pattern BUDGET = Pattern.compile("(\\d{2,6})\\s*(?:元|块|以内|左右|预算)");
+    // 购宠预算要兼容两种说法：「3000 元 / 3000 以内」和「预算 3000」。
+    // 原正则只认数字在前，导致"预算 3000"（快捷问句里就是这么写的）抽不出来。
+    private static final Pattern BUDGET = Pattern.compile(
+            "(?:预算|价位|不超过|最多|控制在)\\s*(\\d{2,6})|(\\d{2,6})\\s*(?:元|块|以内|左右)");
     private static final Pattern MONTHLY = Pattern.compile("月均.{0,8}?(\\d{2,6})");
 
     /**
@@ -110,30 +113,96 @@ public class SceneRouter
         return INTENT_KNOWLEDGE;
     }
 
-    /** 从自然语言里抽匹配问卷的槽位；抽不到就用中性默认值 */
+    /**
+     * 从自然语言里抽匹配问卷的槽位。
+     *
+     * 只放「用户确实说过」的槽位，不再塞中性默认值。原先对每个槽位都填 apartment / mid / some
+     * 这类兜底，等于把"没说"当成"选了中档"，用户会看到一个自己从未表达过的匹配度。
+     * 抽到的槽位不足时由调用方追问或引导去完整测评页补全。
+     */
     public static Map<String, Object> parseAnswers(String message)
     {
         String text = message == null ? "" : message;
         Map<String, Object> answers = new LinkedHashMap<>();
 
-        answers.put("home", contains(text, "小户型", "合租", "单间", "公寓") ? "small"
-                : contains(text, "大房子", "别墅", "带院", "大平层") ? "house" : "apartment");
-        answers.put("activity", contains(text, "宅", "不爱动", "懒") ? "low"
-                : contains(text, "每天运动", "跑步", "健身", "户外") ? "high" : "mid");
-        answers.put("experience", contains(text, "第一次", "新手", "没养过") ? "none"
-                : contains(text, "养过", "有经验") ? "some"
-                : contains(text, "多年", "老手", "专业") ? "pro" : "some");
-        answers.put("time", contains(text, "加班", "没时间", "出差", "很忙") ? "lt1"
-                : contains(text, "全职", "在家", "很多时间") ? "gt3" : "1to3");
-        answers.put("noise", contains(text, "怕吵", "不能吵", "安静", "隔音") ? "low"
-                : contains(text, "无所谓", "不介意", "吵一点") ? "high" : "mid");
-        answers.put("kids", contains(text, "孩子", "宝宝", "小孩", "儿童") ? "yes" : "no");
-        answers.put("companion", text.length() > 60 ? text.substring(0, 60) : text);
+        if (contains(text, "小户型", "合租", "单间", "公寓", "小点的", "小一点"))
+        {
+            answers.put("home", "small");
+        }
+        else if (contains(text, "大房子", "别墅", "带院", "大平层", "大点的", "大一点"))
+        {
+            answers.put("home", "house");
+        }
+
+        if (contains(text, "宅", "不爱动", "懒得动"))
+        {
+            answers.put("activity", "low");
+        }
+        else if (contains(text, "每天运动", "跑步", "健身", "户外", "爬山"))
+        {
+            answers.put("activity", "high");
+        }
+
+        // 顺序要紧：「多年」必须比「养过」先判。原实现 some 在前，"多年养过"被 some 抢走，
+        // pro 分支永远不可达。
+        if (contains(text, "第一次", "新手", "没养过", "没养过宠物"))
+        {
+            answers.put("experience", "none");
+        }
+        else if (contains(text, "多年", "老手", "专业", "资深"))
+        {
+            answers.put("experience", "pro");
+        }
+        else if (contains(text, "养过", "有经验"))
+        {
+            answers.put("experience", "some");
+        }
+
+        if (contains(text, "只能陪", "陪不了", "加班", "没时间", "出差", "很忙"))
+        {
+            answers.put("time", "lt1");
+        }
+        else if (contains(text, "全职", "在家", "很多时间", "时间充裕"))
+        {
+            answers.put("time", "gt3");
+        }
+
+        if (contains(text, "怕吵", "不能吵", "安静", "隔音"))
+        {
+            answers.put("noise", "low");
+        }
+        else if (contains(text, "无所谓", "不介意", "吵一点"))
+        {
+            answers.put("noise", "high");
+        }
+
+        // 否定形式要先判，否则"没有孩子"会因为含"孩子"被错判成有小孩
+        if (contains(text, "没有孩子", "没孩子", "无孩", "一个人住", "独居"))
+        {
+            answers.put("kids", "no");
+        }
+        else if (contains(text, "孩子", "宝宝", "小孩", "儿童"))
+        {
+            answers.put("kids", "yes");
+        }
+
+        // 后端拿 traits.contains("粘人") / contains("独立") 做精确匹配，
+        // 所以这里只能传这两个词；原先塞整句话永远匹配不上，这条规则等于没生效。
+        if (contains(text, "粘人", "黏人"))
+        {
+            answers.put("companion", "clingy");
+        }
+        else if (contains(text, "独立", "省心", "不粘"))
+        {
+            answers.put("companion", "independent");
+        }
 
         Matcher budget = BUDGET.matcher(text);
         if (budget.find())
         {
-            answers.put("budget", budget.group(1));
+            // 两个分支各一个捕获组，取命中的那个
+            String value = budget.group(1) != null ? budget.group(1) : budget.group(2);
+            answers.put("budget", value);
         }
         Matcher monthly = MONTHLY.matcher(text);
         if (monthly.find())
@@ -142,7 +211,10 @@ public class SceneRouter
         }
 
         int prefer = prefer(text);
-        answers.put("prefer", prefer > 0 ? String.valueOf(prefer) : "0");
+        if (prefer > 0)
+        {
+            answers.put("prefer", String.valueOf(prefer));
+        }
         return answers;
     }
 

@@ -179,6 +179,14 @@ async function handleAction(action) {
   }
   if (action.type === 'appointment_create') {
     await createAppointment(action.data)
+    return
+  }
+  // 「这只适不适合我」：留在详情页把当前宠物丢进对话继续问。
+  // 原来跳到 /shop/match 会让人从头再做 10 题，刚看的那只反而丢了。
+  if (action.type === 'ask' && action.data) {
+    state.scene = 'detail'
+    if (action.data.petId) state.petId = action.data.petId
+    if (action.data.message) send(action.data.message)
   }
 }
 
