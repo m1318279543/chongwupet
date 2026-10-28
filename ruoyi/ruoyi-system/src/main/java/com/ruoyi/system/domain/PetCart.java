@@ -34,6 +34,12 @@ public class PetCart extends BaseEntity
     /** SKU ID */
     private Long skuId;
 
+    /** 明细类型：'1' 商品（宠物粮等），'2' 宠物（与订单明细 itemType 同口径） */
+    private String itemType;
+
+    /** 宠物行对应的宠物 id（itemType='2' 时必填） */
+    private Long petId;
+
     /** 用户名（关联 sys_user 查询展示用，非本表字段） */
     @Excel(name = "用户名")
     private String userName;
@@ -98,6 +104,12 @@ public class PetCart extends BaseEntity
 
     public Long getSkuId() { return skuId; }
     public void setSkuId(Long skuId) { this.skuId = skuId; }
+
+    public String getItemType() { return itemType; }
+    public void setItemType(String itemType) { this.itemType = itemType; }
+
+    public Long getPetId() { return petId; }
+    public void setPetId(Long petId) { this.petId = petId; }
 
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }

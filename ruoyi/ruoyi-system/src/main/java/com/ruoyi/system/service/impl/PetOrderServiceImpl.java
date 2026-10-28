@@ -89,7 +89,6 @@ public class PetOrderServiceImpl implements IPetOrderService
 
         PetOrder order = new PetOrder();
         order.setOrderNo(orderNo);
-        order.setOrderType("1");
         order.setUserId(userId);
         order.setUserName(userName);
         order.setCustomerId(customer == null ? null : customer.getCustomerId());
@@ -102,36 +101,76 @@ public class PetOrderServiceImpl implements IPetOrderService
         List<PetOrderItem> lines = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
         int count = 0;
+        boolean hasPet = false;
         for (PetCart row : items)
         {
-            PetGoods goods = resolveGoods(row);
-            if (goods == null)
+            PetOrderItem line;
+            BigDecimal amount;
+            int qty;
+            if ("2".equals(row.getItemType()))
             {
-                throw new ServiceException("「" + row.getGoodsName() + "」已下架或不存在，请移除后重新下单");
-            }
-            if ("1".equals(goods.getStatus()))
-            {
-                throw new ServiceException("「" + goods.getGoodsName() + "」已下架，请移除后重新下单");
-            }
-            PetGoodsSku sku = row.getSkuId() == null ? null : petGoodsService.selectSkuById(row.getSkuId());
-            if (sku != null && !goods.getGoodsId().equals(sku.getGoodsId()))
-            {
-                sku = null;
-            }
-            BigDecimal price = petGoodsService.resolvePrice(goods, sku);
-            int qty = row.getQty() == null || row.getQty() < 1 ? 1 : row.getQty();
-            BigDecimal amount = price.multiply(BigDecimal.valueOf(qty)).setScale(2, RoundingMode.HALF_UP);
+                // 宠物行：与「立即购买」同一条链路 —— 在售校验 + CAS 锁定，一只一条、数量固定 1
+                if (row.getPetId() == null)
+                {
+                    throw new ServiceException("「" + row.getGoodsName() + "」缺少宠物标识，请移除后重新加入购物车");
+                }
+                PetInfo pet = petInfoMapper.selectPetInfoByPetId(row.getPetId());
+                if (pet == null)
+                {
+                    throw new ServiceException("「" + row.getGoodsName() + "」不存在或已下架，请移除后重新下单");
+                }
+                if (!"0".equals(pet.getStatus()))
+                {
+                    throw new ServiceException("「" + pet.getPetName() + "」已经被订走了，请把它移出购物车");
+                }
+                if (petInfoMapper.lockPet(pet.getPetId()) == 0)
+                {
+                    throw new ServiceException("手慢了，「" + pet.getPetName() + "」刚被其他人订走，请把它移出购物车");
+                }
+                hasPet = true;
+                qty = 1;
+                amount = pet.getPrice() == null ? BigDecimal.ZERO : pet.getPrice();
 
-            PetOrderItem line = new PetOrderItem();
-            line.setOrderNo(orderNo);
-            line.setItemType("1");
-            line.setGoodsId(goods.getGoodsId());
-            line.setSkuId(sku == null ? null : sku.getSkuId());
-            line.setGoodsName(goods.getGoodsName());
-            line.setGoodsImage(goods.getImage());
-            line.setGoodsSpec(sku != null && StringUtils.isNotBlank(sku.getSpec()) ? sku.getSpec() : goods.getSpec());
-            line.setPrice(price);
-            line.setQty(qty);
+                line = new PetOrderItem();
+                line.setOrderNo(orderNo);
+                line.setItemType("2");
+                line.setPetId(pet.getPetId());
+                line.setGoodsName(pet.getPetName());
+                line.setGoodsImage(pet.getImage());
+                line.setGoodsSpec(pet.getBreed());
+                line.setPrice(amount);
+            }
+            else
+            {
+                PetGoods goods = resolveGoods(row);
+                if (goods == null)
+                {
+                    throw new ServiceException("「" + row.getGoodsName() + "」已下架或不存在，请移除后重新下单");
+                }
+                if ("1".equals(goods.getStatus()))
+                {
+                    throw new ServiceException("「" + goods.getGoodsName() + "」已下架，请移除后重新下单");
+                }
+                PetGoodsSku sku = row.getSkuId() == null ? null : petGoodsService.selectSkuById(row.getSkuId());
+                if (sku != null && !goods.getGoodsId().equals(sku.getGoodsId()))
+                {
+                    sku = null;
+                }
+                BigDecimal price = petGoodsService.resolvePrice(goods, sku);
+                qty = row.getQty() == null || row.getQty() < 1 ? 1 : row.getQty();
+                amount = price.multiply(BigDecimal.valueOf(qty)).setScale(2, RoundingMode.HALF_UP);
+
+                line = new PetOrderItem();
+                line.setOrderNo(orderNo);
+                line.setItemType("1");
+                line.setGoodsId(goods.getGoodsId());
+                line.setSkuId(sku == null ? null : sku.getSkuId());
+                line.setGoodsName(goods.getGoodsName());
+                line.setGoodsImage(goods.getImage());
+                line.setGoodsSpec(sku != null && StringUtils.isNotBlank(sku.getSpec()) ? sku.getSpec() : goods.getSpec());
+                line.setPrice(price);
+                line.setQty(qty);
+            }
             line.setAmount(amount);
             lines.add(line);
 
@@ -139,6 +178,8 @@ public class PetOrderServiceImpl implements IPetOrderService
             count += qty;
         }
 
+        // 含宠物的订单按「宠物单」口径：到店交付为主任务，取消时逐行释放宠物/回补库存
+        order.setOrderType(hasPet ? "2" : "1");
         order.setItemCount(count);
         order.setTotalAmount(total);
         order.setPayAmount(total);
@@ -148,8 +189,11 @@ public class PetOrderServiceImpl implements IPetOrderService
         {
             line.setOrderId(order.getOrderId());
             petOrderMapper.insertPetOrderItem(line);
-            // 下单即占用库存，不足则整单回滚
-            petGoodsService.deductForOrder(line.getGoodsId(), line.getSkuId(), line.getQty(), orderNo, userName);
+            // 下单即占用库存，不足则整单回滚；宠物行在上方锁定时已占位，不占商品库存
+            if (!"2".equals(line.getItemType()))
+            {
+                petGoodsService.deductForOrder(line.getGoodsId(), line.getSkuId(), line.getQty(), orderNo, userName);
+            }
         }
         order.setItems(lines);
         return order;

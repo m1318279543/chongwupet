@@ -157,7 +157,7 @@ function go() {
   } else if (props.block.type === 'goods') {
     router.push('/shop/food')
   } else if (props.block.type === 'order') {
-    router.push('/shop/order')
+    router.push('/shop/cart')
   } else if (props.block.type === 'appointment') {
     router.push('/shop/appointment')
   }

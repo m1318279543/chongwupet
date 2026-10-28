@@ -129,10 +129,10 @@ async function openItem(n) {
       total.value = Math.max(0, total.value - 1)
     } catch (e) {}
   }
-  // 订单类跳到我的订单，预约类跳到我的预约
+  // 订单类跳到购物车的下单记录，预约类跳到我的预约
   if (props.morePath === '') return
   if (n.type === 'order') {
-    router.push('/shop/order')
+    router.push('/shop/cart')
     close()
   } else if (n.type === 'appointment') {
     router.push('/shop/appointment')

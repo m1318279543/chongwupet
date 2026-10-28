@@ -29,7 +29,7 @@
 
         <div class="user-area">
           <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
-          <NotificationBell v-if="isLogged" more-path="/shop/order" />
+          <NotificationBell v-if="isLogged" more-path="/shop/cart" />
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
           <router-link to="/shop/cart" class="m-cart" aria-label="购物车">
             <!-- 与导航/底栏同一族自绘线性图标（1.8 描边），不混用 Element 图标 -->
@@ -54,7 +54,7 @@
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="/shop/order">我的订单</el-dropdown-item>
+                  <el-dropdown-item command="/shop/cart">购物车</el-dropdown-item>
                   <el-dropdown-item command="/shop/mypet">我的宠物</el-dropdown-item>
                   <el-dropdown-item command="/shop/appointment">我的预约</el-dropdown-item>
                   <el-dropdown-item command="/shop/favorite">我的收藏</el-dropdown-item>
@@ -70,21 +70,7 @@
       <!-- 手机端下拉菜单 -->
       <transition name="m-drop">
         <div v-if="menuOpen" class="m-menu">
-          <router-link to="/shop/home" class="m-item" @click="closeMenu">首页</router-link>
-          <router-link to="/shop/pets" class="m-item" @click="closeMenu">在售宠物</router-link>
-          <router-link to="/shop/food" class="m-item" @click="closeMenu">宠物粮</router-link>
-          <router-link to="/shop/match" class="m-item m-ai" @click="closeMenu">
-            智能选宠<span class="m-tag">智能推荐</span>
-          </router-link>
-
-          <router-link to="/shop/cart" class="m-item" @click="closeMenu">
-            购物车
-            <span class="cart-badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</span>
-          </router-link>
-
           <template v-if="isLogged">
-            <div class="m-divider"></div>
-            <router-link to="/shop/order" class="m-item" @click="closeMenu">我的订单</router-link>
             <router-link to="/shop/mypet" class="m-item" @click="closeMenu">我的宠物</router-link>
             <router-link to="/shop/appointment" class="m-item" @click="closeMenu">我的预约</router-link>
             <router-link to="/shop/favorite" class="m-item" @click="closeMenu">我的收藏</router-link>
@@ -100,7 +86,6 @@
             </div>
           </template>
           <template v-else>
-            <div class="m-divider"></div>
             <div class="m-auth">
               <!-- 注册入口暂不开放，同桌面端 -->
               <button type="button" class="m-btn m-btn-primary" @click="openAuthFromMenu('login')">登录</button>
@@ -120,46 +105,15 @@
       </router-view>
     </main>
 
-    <!-- 页脚 -->
-    <footer class="footer">
-      <div class="foot-inner">
-        <div class="foot-grid">
-          <div class="foot-brand">
-            <div class="fb-logo">
-              <span class="logo" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M7.2 10.2c1.2-1.5 1.6-3.4.9-4.3-.7-.9-2.1-.5-3.1.9s-1.2 3.2-.3 4c.6.5 1.6.3 2.5-.6zM16.8 10.2c-1.2-1.5-1.6-3.4-.9-4.3.7-.9 2.1-.5 3.1.9s1.2 3.2.3 4c-.6.5-1.6.3-2.5-.6zM12 10.6c1.6 0 3-.9 3.6-2 .7-1.3.2-2.9-1.1-3.5-1.5-.7-3.5-.7-5 0-1.3.6-1.8 2.2-1.1 3.5.6 1.1 2 2 3.6 2zM5.3 13.6c1.4-.5 2.3-1.6 2-2.6-.3-1-1.7-1.4-3.1-.9-1.4.5-2.3 1.6-2 2.6.3 1 1.7 1.4 3.1.9zM18.7 13.6c-1.4-.5-2.3-1.6-2-2.6.3-1 1.7-1.4 3.1-.9 1.4.5 2.3 1.6 2 2.6-.3 1-1.7 1.4-3.1.9zM12 12c-2.6 0-5.6 2.2-5.6 5 0 1.9 1.3 3.2 3 3.2 1 0 1.8-.5 2.6-.5s1.6.5 2.6.5c1.7 0 3-1.3 3-3.2 0-2.8-3-5-5.6-5z"/></svg>
-              </span>
-              <strong>宠物之家</strong>
-            </div>
-            <p>重庆本地宠物直营门店，提供选宠、看宠与养护咨询的一站式服务。每一只在售宠物都有可查的健康记录。</p>
-          </div>
-          <div class="foot-col">
-            <h6>选购</h6>
-            <router-link to="/shop/home">在售宠物</router-link>
-            <router-link to="/shop/food">宠物粮</router-link>
-            <router-link to="/shop/match">智能选宠</router-link>
-            <router-link to="/shop/cart">购物车</router-link>
-          </div>
-          <div class="foot-col">
-            <h6>售后与联系</h6>
-            <router-link to="/shop/order">我的订单 / 退款</router-link>
-            <router-link to="/shop/consult">联系客服</router-link>
-            <a href="tel:02388880001">客服 023-8888 0001</a>
-            <router-link to="/shop/home">门店地址</router-link>
-          </div>
-        </div>
-        <div class="foot-bot">
-          <span>© {{ year }} 宠物之家 · 重庆</span>
-          <span>让每一只宠物找到温暖的家</span>
-        </div>
-      </div>
-    </footer>
-
-    <!-- 手机端底部标签栏：核心任务一击可达，桌面端隐藏 -->
+    <!-- 手机端底部标签栏：顺序与桌面主导航保持同一心智模型（首页→在售→粮→选宠），桌面端隐藏 -->
     <nav class="tabbar" aria-label="快捷导航">
       <router-link to="/shop/home" class="tab" :class="{ on: homeActive }">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11L12 4l8.5 7"/><path d="M5.8 10.2V20h12.4v-9.8"/></svg>
         <span>首页</span>
+      </router-link>
+      <router-link to="/shop/pets" class="tab" :class="{ on: petsActive }">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z"/></svg>
+        <span>在售</span>
       </router-link>
       <router-link to="/shop/food" class="tab">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16a8 8 0 01-16 0z"/><path d="M9 7.5c0-1 1-1.5 1-2.5M13 7.5c0-1 1-1.5 1-2.5"/></svg>
@@ -168,10 +122,6 @@
       <router-link to="/shop/match" class="tab">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
         <span>选宠</span>
-      </router-link>
-      <router-link to="/shop/pets" class="tab" :class="{ on: petsActive }">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z"/></svg>
-        <span>在售</span>
       </router-link>
       <button type="button" class="tab" :class="{ on: route.path.startsWith('/shop/profile') }" @click="goMine">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>
@@ -205,7 +155,6 @@ const userStore = useUserStore()
 const cartStore = useCartStore()
 const assistant = useAssistant()
 const authRef = ref()
-const year = new Date().getFullYear()
 
 // 触屏设备下拉改 click 触发（hover 不可靠）
 // 折叠断点与样式保持一致：768 以下收起主导航、显示汉堡与底部标签栏。
@@ -459,32 +408,29 @@ function handleCommand(cmd) {
     .m-cart { display: inline-flex; }
     .hamburger { display: inline-flex; }
 
+    // 窄卡片菜单：挂在汉堡按钮下方右对齐，宽度固定，不再全宽铺满屏幕
     .m-menu {
-      display: block; position: absolute; top: 100%; left: 0; right: 0; z-index: 101;
-      background: #fff; border-top: 1px solid var(--border-1);
+      display: block; position: absolute; top: calc(100% + 8px); right: 12px; z-index: 101;
+      width: min(264px, calc(100vw - 24px));
+      background: #fff; border: 1px solid var(--border-1); border-radius: var(--radius-md);
       box-shadow: 0 16px 28px rgba(22, 25, 23, .14);
-      max-height: calc(100vh - 64px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+      max-height: calc(100vh - 64px - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
       padding: 6px 0 14px;
     }
     .m-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 13px 20px; font-size: 16px; color: var(--text-1); text-decoration: none;
+      padding: 13px 16px; font-size: 16px; color: var(--text-1); text-decoration: none;
       background: transparent; border: 0; width: 100%; text-align: left; font-family: inherit;
       line-height: 1.3; box-sizing: border-box;
       &.router-link-active { color: var(--brand-700); background: var(--brand-50); font-weight: 700; }
       &:active { background: var(--bg-page); }
     }
-    .m-ai { color: var(--brand-700); font-weight: 700;
-      .m-tag { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--brand-700);
-        background: var(--brand-50); border-radius: var(--radius-md); padding: 2px 8px; }
-    }
-    .m-divider { height: 8px; background: var(--bg-sunken); margin: 6px 0; }
-    .m-user { padding: 4px 20px 0;
+    .m-user { padding: 4px 16px 0;
       .m-user-info { display: flex; align-items: center; gap: 10px; padding: 10px 0 12px; }
       .m-uname { font-size: 16px; color: var(--text-1); font-weight: 700; }
       .m-user-actions { display: flex; gap: 10px; }
     }
-    .m-auth { display: flex; gap: 10px; padding: 4px 20px 0; }
+    .m-auth { display: flex; gap: 10px; padding: 4px 16px 0; }
     .m-btn { flex: 1; height: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-1); background: #fff;
       color: var(--text-1); font-size: 16px; font-family: inherit; cursor: pointer;
       &:active { background: var(--bg-sunken); }
@@ -505,51 +451,9 @@ function handleCommand(cmd) {
 .content { flex: 1; display: flex; flex-direction: column; }
 .content > * { flex: 1 0 auto; min-width: 0; }
 
-/* ===== 页脚 ===== */
-.footer {
-  background: var(--text-1); color: rgba(255, 255, 255, .82); padding: 56px 0 0;
-  .foot-inner { max-width: var(--container-lg); margin: 0 auto; padding: 0 24px; }
-  .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 48px; }
-  .foot-brand {
-    .fb-logo { display: flex; align-items: center; gap: 10px; }
-    .logo {
-      width: 34px; height: 34px; border-radius: var(--radius-md); display: grid; place-items: center;
-      background: var(--grad-brand);
-      svg { width: 19px; height: 19px; fill: #fff; }
-    }
-    strong { font-size: 16px; font-weight: 700; color: #fff; }
-    p { margin-top: 16px; font-size: 13px; line-height: 1.85; color: rgba(255, 255, 255, .68); max-width: 24em; }
-  }
-  .foot-col {
-    display: flex; flex-direction: column; gap: 10px;
-    h6 { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; letter-spacing: .02em; }
-    a { font-size: 13px; color: rgba(255, 255, 255, .68); transition: color .16s;
-      &:hover { color: #fff; } }
-  }
-  .foot-bot {
-    margin-top: 48px; border-top: 1px solid rgba(255, 255, 255, .09); padding: 20px 0;
-    // 右侧留出 AI 浮标（44px + 26px 边距）的位置，避免压住版权行右半句
-    padding-right: 96px;
-    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-    font-size: 12px; color: rgba(255, 255, 255, .68);
-  }
-}
-
-@media (max-width: 1000px) {
-  .footer {
-    .foot-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
-    .foot-brand p { max-width: none; }
-  }
-}
+/* 给手机端固定底栏让位，避免 tabbar 盖住页面最后一行 */
 @media (max-width: 768px) {
-  .footer {
-    padding: 40px 0 0;
-    .foot-inner { padding: 0 16px; }
-    .foot-grid { grid-template-columns: 1fr; gap: 24px; }
-    .foot-bot { margin-top: 24px; font-size: 12px; }
-    /* 给固定底栏让位，避免最后一行被盖住 */
-    padding-bottom: calc(66px + env(safe-area-inset-bottom));
-  }
+  .content { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
 }
 
 /* ===== 手机端底部标签栏 ===== */

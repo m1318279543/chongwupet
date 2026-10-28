@@ -60,10 +60,10 @@ const routes = [
       { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
       // 宠物粮专区（覆盖全部 7 类宠物）
       { path: 'food', component: () => import('@/views/shop/food/index.vue'), meta: { title: '宠物粮' } },
-      // 购物车 / 结算（游客可浏览，结算时要求登录）
+      // 购物车 / 结算 / 下单记录（游客可浏览，结算与下单记录要求登录）
       { path: 'cart', component: () => import('@/views/shop/cart/index.vue'), meta: { title: '购物车' } },
-      // 我的订单（结算后查看下单记录与创建时间，游客可进页面内提示登录）
-      { path: 'order', component: () => import('@/views/shop/order/index.vue'), meta: { title: '我的订单', perm: 'pet:order:list', icon: 'Tickets' } },
+      // 原「我的订单」已并入购物车页，老链接统一重定向
+      { path: 'order', redirect: '/shop/cart' },
       // 个人资料（头像 / 昵称自定义，需登录）
       { path: 'profile', component: () => import('@/views/shop/profile/index.vue'), meta: { title: '个人资料' } }
     ]
@@ -84,8 +84,8 @@ const router = createRouter({
 })
 
 // 路由守卫：登录态 + 用户信息加载
-// 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约（页面内提示登录）
-const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/order']
+// 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约、购物车（页面内提示登录）
+const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment']
 function isGuestAllowed(path) {
   if (guestList.includes(path)) return true
   if (path.startsWith('/shop/pet/')) return true  // 宠物详情页游客可看
