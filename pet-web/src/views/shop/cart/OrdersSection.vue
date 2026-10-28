@@ -111,7 +111,8 @@ const refundingNo = ref(null)
 
 // 状态标签栏：计数从 groups 派生，不再多请求一次
 const filter = ref(props.fixedFilter || 'all')
-watch(() => props.fixedFilter, (v) => { if (v) filter.value = v })
+// 顶部标签切换（已支付 ↔ 已取消）时回到第 1 页，别把另一个分区的页码带过来
+watch(() => props.fixedFilter, (v) => { if (v) { filter.value = v; page.value = 1 } })
 const tabs = computed(() => [
   { key: 'all', label: '全部', count: props.groups.length },
   { key: 'paid', label: '已支付', count: props.groups.filter((g) => g.paid && !g.canceled).length },
@@ -264,8 +265,33 @@ function onImgErr(e) {
 }
 .tab.on .tab__n { color: var(--brand-600); }
 
-/* ---------- 订单区块 ---------- */
-.orders-sec .order-box { margin-top: 0; }
+/* ---------- 订单区块：撑满定高面板，翻页条压到面板最底 ---------- */
+// 与「购物车」标签同一套路：面板是 flex 列，列表区随内容自然生长、装不下才收缩内滚，
+// 翻页条靠 margin-top:auto 吸到面板底部，不再悬在页面中间
+.orders-sec {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.orders-sec .order-box {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+// 桌面端一页 3 单放得下，不会出现内部滚动条；只有短视口/手机端才收缩出滚动
+.orders-sec .order-box .ui-box__body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+// 计数 + 翻页：吸到面板最底（对应购物车标签的结算条位置）
+.orders-sec .order-box .ui-box__foot {
+  margin-top: auto;
+  flex-shrink: 0;
+}
 .order {
   padding: 22px 0;
   border-bottom: 1px solid var(--border-2);

@@ -519,12 +519,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   min-height: 560px;
+  // 吸收页面剩余高度，结算条才落到底部而不是停在半空（页脚已移除，没有别的收束元素）
+  flex: 1;
 }
-// 订单列表超出面板高度时内部滚动，翻页条始终留在底部不被顶出
-.tab-panel :deep(.order-box .ui-box__body) {
-  max-height: 470px;
-  overflow-y: auto;
-}
+// 已支付/已取消的订单区在 OrdersSection 内部用 flex 撑满面板，翻页条自行吸底
 
 .checkout {
   margin-top: auto;
