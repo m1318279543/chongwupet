@@ -43,12 +43,21 @@
             <button type="button" class="btn btn-ghost" @click="scrollToPets">先随便逛逛</button>
           </div>
 
-          <div class="trust">
-            <div><strong class="num">{{ petCats || 7 }}</strong><span>大品类覆盖</span></div>
-            <div><strong class="num">{{ stores.length || 3 }}</strong><span>重庆直营门店</span></div>
-            <div><strong class="num">100<i>%</i></strong><span>健康筛查记录</span></div>
-            <div><strong class="num">7<i> 天</i></strong><span>健康观察期</span></div>
-          </div>
+          <!-- 最近门店：给"到店看宠"一个具体落点，也把文案区中段填实 -->
+          <router-link v-if="nearestStore" class="hero-store" to="/shop/appointment">
+            <span class="hs-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            </span>
+            <span class="hs-main">
+              <b>{{ nearestStore.storeName }}</b>
+              <em>{{ [nearestStore.city, nearestStore.address].filter(Boolean).join('') }}</em>
+            </span>
+            <span class="hs-time" v-if="nearestStore.businessHours">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              {{ nearestStore.businessHours }}
+            </span>
+            <span class="hs-go">预约<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
+          </router-link>
         </div>
 
         <!-- 图集：从在售宠物里取猫 / 狗 / 小宠各一张 -->
@@ -63,6 +72,16 @@
               <span>疫苗、驱虫、体检记录随宠物交付</span>
             </span>
           </div>
+        </div>
+      </div>
+
+      <!-- 首屏底部数据带：通栏压底把首屏框住，大屏下不再四周空荡 -->
+      <div class="hero-stats">
+        <div class="hst-inner">
+          <div><strong class="num">{{ petCats || 7 }}</strong><span>大品类覆盖</span></div>
+          <div><strong class="num">{{ stores.length || 3 }}</strong><span>重庆直营门店</span></div>
+          <div><strong class="num">100<i>%</i></strong><span>健康筛查记录</span></div>
+          <div><strong class="num">7<i> 天</i></strong><span>健康观察期</span></div>
         </div>
       </div>
     </section>
@@ -248,6 +267,9 @@ const heroPets = computed(() => {
   return (pick.length >= 3 ? pick : withImg).slice(0, 3)
 })
 
+// 首屏门店条：取列表第一家（后端已按排序返回，第一家即主推门店）
+const nearestStore = computed(() => stores.value[0] || null)
+
 // 首页只放精选 12 只，完整列表（含品类筛选）在宠物售卖页
 const HOME_COUNT = 12
 const gridPets = computed(() => featured.value.slice(0, HOME_COUNT))
@@ -355,12 +377,26 @@ onMounted(() => {
     radial-gradient(760px 380px at 82% 4%, var(--brand-100) 0%, rgba(255, 255, 255, 0) 70%),
     linear-gradient(180deg, var(--brand-50) 0%, var(--bg-page) 100%);
   border-bottom: 1px solid var(--border-1);
+  /* 首屏 = 视口 − 吸顶导航。竖排结构：内容区 flex:1，数据带压在最底部。
+     超高视口（1080 及以上）把高度夹到 900，否则内容会被居中拉到半空、四周全空。 */
+  display: flex;
+  flex-direction: column;
+  min-height: min(calc(100vh - 72px), 900px);
+}
+/* 移动端地址栏会收缩视口，用 svh 取「稳定高度」，避免首屏被截 */
+@supports (height: 100svh) {
+  .hero { min-height: min(calc(100svh - 72px), 900px); }
 }
 .hero-inner {
-  max-width: var(--container-lg); margin: 0 auto; padding: 64px 24px 72px;
+  flex: 1;
+  width: 100%; max-width: var(--container-lg); margin: 0 auto; padding: 56px 24px 48px;
   display: grid; grid-template-columns: 1.02fr .98fr; gap: 64px; align-items: center;
 }
+/* 竖排方便后续在文案列里增删区块 */
+.hero-copy { display: flex; flex-direction: column; }
 .hero-badge {
+  /* flex 列里的 inline-flex 会被 stretch 拉满整行，必须显式靠左 */
+  align-self: flex-start;
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px 6px 10px; background: var(--bg-card);
   border: 1px solid var(--border-1); border-radius: var(--radius-pill);
@@ -410,6 +446,42 @@ h1 {
 }
 
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+
+/* 最近门店条：与搜索框同宽，把文案区中段填实，也给"到店看宠"一个具体落点 */
+.hero-store {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 11px 14px;
+  max-width: 520px; min-height: 58px;
+  background: var(--bg-card); border: 1px solid var(--border-1);
+  border-radius: var(--radius-md); text-decoration: none;
+  transition: border-color .16s, background .16s;
+
+  &:hover { border-color: var(--brand-300); background: var(--brand-50); }
+
+  .hs-ico {
+    width: 32px; height: 32px; border-radius: var(--radius-md);
+    background: var(--brand-50); display: grid; place-items: center; flex-shrink: 0;
+    svg { width: 16px; height: 16px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; }
+  }
+  .hs-main {
+    min-width: 0; flex: 1;
+    b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text-1);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    em { display: block; margin-top: 2px; font-style: normal; font-size: 12px; color: var(--text-3);
+         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  }
+  .hs-time {
+    display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+    font-size: 12px; color: var(--text-3);
+    svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+  }
+  .hs-go {
+    display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;
+    font-size: 12.5px; font-weight: 700; color: var(--brand-700);
+    svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+  }
+}
+
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 48px; padding: 0 22px; border-radius: var(--radius-md);
@@ -427,8 +499,18 @@ h1 {
 }
 .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-md); }
 
-.trust {
-  display: flex; gap: 32px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-1);
+/* 首屏底部数据带：通栏 + 淡底，把首屏下沿封住 */
+.hero-stats {
+  border-top: 1px solid var(--border-1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .62));
+}
+.hst-inner {
+  max-width: var(--container-lg); margin: 0 auto; padding: 18px 24px 20px;
+  /* 通栏里四项均分整行，细竖线分栏，避免全挤在左侧 */
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  div { padding-left: 28px; }
+  div:first-child { padding-left: 0; }
+  div + div { border-left: 1px solid var(--border-1); }
   div strong {
     display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em;
     line-height: 1.3; color: var(--text-1); font-variant-numeric: tabular-nums;
@@ -439,7 +521,8 @@ h1 {
 
 .hero-media {
   display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: 1fr 1fr;
-  gap: 14px; height: 470px; position: relative;
+  /* 图集加高吃满列高，并在列内垂直居中；上限 640 防止 1920 下变成过窄的长条 */
+  gap: 14px; height: clamp(460px, 62vh, 640px); align-self: center; position: relative;
   figure {
     overflow: hidden; border-radius: var(--radius-md); background: var(--bg-sunken);
     margin: 0;
@@ -561,7 +644,8 @@ h1 {
 
 /* ===== 响应式 ===== */
 @media (max-width: 1240px) {
-  .hero-media { height: 420px; }
+  /* 容器变窄后 62vh 会显得过高，降到 500 保持与文案列的比例 */
+  .hero-media { height: 500px; }
 }
 @media (max-width: 1000px) {
   .hero-inner { grid-template-columns: 1fr; gap: 32px; padding: 48px 24px 56px; }
@@ -575,32 +659,80 @@ h1 {
   .cta-band { padding: 0 0 64px; }
 }
 @media (max-width: 768px) {
-  .hero-inner { padding: 32px 16px 40px; }
+  /* ============ 首屏：一屏装下「一句话 + 搜索 + 两个入口 + 数据 + 一张主图」 ============
+     版面改成竖向流：文案按自然高度排，主图用 flex:1 吃掉剩余空间，
+     有多少给多少。这样既不会「内容比一屏高」，也不会「上满下空」。 */
+  .hero {
+    min-height: calc(100vh - 64px);
+    align-items: stretch;
+    // 底部标签栏 66px 固定，给图留出让位，图仍贴着标签栏上沿
+    padding-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+  @supports (height: 100svh) {
+    .hero { min-height: calc(100svh - 64px); }
+  }
+  .hero-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 18px 16px 0;
+    gap: 0;
+  }
   .sec-inner { padding: 0 16px; }
-  h1 { font-size: 24px; }
-  .hero-sub { font-size: 14px; }
-  .hero-search { height: 52px; border-radius: var(--radius-md); margin-top: 24px;
-    .s-go { padding: 0 16px; font-size: 14px; } }
-  .hero-cta { margin-top: 20px; }
-  .hero-cta .btn { flex: 1; min-width: 0; padding: 0 12px; font-size: 14px; height: 46px; }
-  /* 信任数据压成一行，给首屏腾出「本周值得一看」的位置 */
-  .trust { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px; margin-top: 28px; padding-top: 20px; }
-  .trust div strong { font-size: 16px; }
-  .trust div span { font-size: 12px; line-height: 1.4; }
 
-  /* 图集改为主图横幅 + 两张并排 */
+  .hero-copy { display: flex; flex-direction: column; min-height: 0; }
+  .hero-badge { align-self: flex-start; padding: 5px 10px 5px 9px; font-size: 12px; gap: 6px;
+    svg { width: 12px; height: 12px; } }
+  h1 { margin-top: 14px; font-size: 25px; line-height: 1.18; }
+  .hero-sub { margin-top: 12px; font-size: 13.5px; line-height: 1.72; }
+  .hero-search { height: 48px; margin-top: 18px; border-radius: var(--radius-md);
+    .s-go { height: 36px; padding: 0 16px; font-size: 14px; } }
+
+  /* 两个入口并排：次要操作不再和主操作同宽同高，省下约 60px 给首图 */
+  .hero-cta {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .hero-cta .btn { width: 100%; height: 44px; padding: 0 10px; font-size: 14px; gap: 6px; }
+
+  /* 门店条只在桌面出现：移动端首屏本来就排满，再塞会挤掉首图高度 */
+  .hero-store { display: none; }
+
+  /* 数据带：四列一行，窄屏不画竖线（每列只有 80px，加了会挤）；
+     右侧留 58px 给固定悬浮球，否则第 4 项会被压住 */
+  .hst-inner { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px; padding: 14px 58px 16px 16px; }
+  .hst-inner div { padding-left: 0; }
+  .hst-inner div + div { border-left: 0; }
+  .hst-inner div strong { font-size: 16px; }
+  .hst-inner div span { font-size: 11.5px; line-height: 1.35; }
+
+  /* 图集：只留主图，高度交给剩余空间，不再用固定比例把页面撑高 */
   .hero-media {
-    height: auto; aspect-ratio: auto; gap: 10px;
-    grid-template-columns: 1fr 1fr; grid-template-rows: auto auto;
-    .m-main { grid-row: auto; grid-column: 1 / -1; aspect-ratio: 16 / 9; border-radius: var(--radius-md); }
-    figure:not(.m-main) { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
+    flex: 1 1 auto;
+    min-height: 148px;
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+    .m-main {
+      grid-row: auto; grid-column: auto;
+      height: 100%; aspect-ratio: auto;
+      border-radius: var(--radius-md);
+      img { object-position: center 34%; }
+    }
+    figure:not(.m-main) { display: none; }
   }
   .media-badge { display: none; }
 
   .sec { padding: 48px 0; }
-  .sec-head { h2 { font-size: 20px; } p { margin-top: 4px; font-size: 12.5px; } }
-  .more { font-size: 13px; }
+  .sec-head { flex-wrap: wrap; gap: 8px 12px;
+    h2 { font-size: 20px; } p { margin-top: 4px; font-size: 12.5px; } }
+  // 窄屏标题换行后，「查看全部」落到第二行也要靠右
+  .more { margin-left: auto; font-size: 13px; }
   .grid, .food-grid { gap: 18px 10px; }
   .food-card .thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
   .cta-inner h3 { font-size: 16px; }
@@ -608,7 +740,11 @@ h1 {
     .btn { flex: 1; padding: 0 12px; font-size: 14px; } }
 }
 @media (max-width: 480px) {
-  .hero-cta { flex-direction: column; }
-  .hero-cta .btn { width: 100%; }
+  /* 360–390 这类窄屏：入口保持并排，只收字号与间距 */
+  h1 { font-size: 23px; }
+  .hero-cta { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hero-cta .btn { padding: 0 8px; font-size: 13px; }
+  .hero-search { .s-go { padding: 0 14px; } }
+  .hst-inner div span { font-size: 11px; }
 }
 </style>
