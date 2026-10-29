@@ -38,6 +38,14 @@ async function apiLogin(username, password) {
   return res.token
 }
 
+// 查库：远端走 ssh_run.py，本地走本机 mysql
+function dbq(sql) {
+  try {
+    if (IS_REMOTE) return execSync(`python deploy/ssh_run.py "mysql -N -upet -pPetShop2026 --default-character-set=utf8mb4 ry-pet -e \\"${sql}\\""`, { encoding: 'utf8' })
+    return execSync(`"C:/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe" -uroot -p123456 -N --default-character-set=utf8mb4 ry-pet -e "${sql}"`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  } catch (e) { return '' }
+}
+
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cdp-pv2-'))
 const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--mute-audio',
   '--ignore-certificate-errors', '--window-size=1380,960',
@@ -81,9 +89,9 @@ async function newTab() { for (const m of ['PUT', 'GET']) { try { const r = awai
   await goto(BASE + '/shop/food')
   await ev(`document.querySelector('.quick-cart')?.click()`)
   await sleep(1500)
-  const serverItems = await ev(`fetch('${API}/pet/shopcart/items', { headers: { 'Authorization': 'Bearer ' + (document.cookie.match(/Shop-Token=([^;]+)/) || [])[1] } })
-    .then(r => r.json()).then(d => (d.data || []).length).catch(() => -1)`)
-  check('加入购物车已落库（服务端有明细）', (serverItems || 0) >= 1, 'items=' + serverItems)
+  // 直接查库确认落库（页面内 fetch 会因 cookie 过期/鉴权方式不同而误判）
+  const cnt = Number(dbq(`SELECT COUNT(*) FROM pet_cart_item WHERE user_id = (SELECT user_id FROM sys_user WHERE user_name='ry')`).trim() || 0)
+  check('加入购物车已落库（pet_cart_item 有明细）', cnt >= 1, 'rows=' + cnt)
 
   // ③ 购物车页（pv2 新版：分区标签 + 订单记录）
   await goto(BASE + '/shop/cart')
