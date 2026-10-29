@@ -11,7 +11,7 @@ const API = IS_REMOTE ? BASE + '/dev-api' : 'http://127.0.0.1:8081'
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = 9486
 const MYSQL = IS_REMOTE
-  ? (sql) => execSync(`python deploy/ssh_run.py "mysql -upet -pPetShop2026 --default-character-set=utf8mb4 -N -B pet -e \\"${sql}\\""`, { encoding: 'utf8' }).trim()
+  ? (sql) => execSync(`${PY} deploy/ssh_run.py "mysql -upet -pPetShop2026 --default-character-set=utf8mb4 -N -B ry-pet -e \\"${sql}\\""`, { encoding: 'utf8' }).trim()
   : (sql) => execSync(`"C:/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe" -uroot -p123456 --default-character-set=utf8mb4 -N -B ry-pet -e "${sql}"`, { encoding: 'utf8' }).trim()
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let pass = 0, fail = 0
@@ -26,7 +26,7 @@ async function apiLogin(username, password) {
   for (let i = 0; i < 15; i++) {
     try {
       code = IS_REMOTE
-        ? (() => { const raw = execSync(`python deploy/ssh_run.py "redis-cli GET captcha_codes:${cap.uuid}"`, { encoding: 'utf8' }).trim(); return raw.replace(/^"|"$/g, '').split('\n').pop().trim() })()
+        ? (() => { const raw = execSync(`${PY} deploy/ssh_run.py "redis-cli GET captcha_codes:${cap.uuid}"`, { encoding: 'utf8' }).trim(); return raw.replace(/^"|"$/g, '').split('\n').pop().trim() })()
         : execSync(`D:/Redis/redis-cli.exe GET captcha_codes:${cap.uuid}`, { encoding: 'utf8' }).trim().replace(/"/g, '')
       if (code) break
     } catch {}
@@ -41,6 +41,7 @@ async function apiLogin(username, password) {
   return res.token
 }
 
+const PY = String.raw`C:\Users\asus\.workbuddy\binaries\python\versions\3.13.12\python.exe`
 const PHONE = '1390000' + String(Date.now()).slice(-4)
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cdp-booking-'))
 const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--mute-audio',
@@ -169,14 +170,14 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
     body: JSON.stringify({ cancelReason: 'E2E 退款校验' })
   }).then(r => r.json())
   check('已支付预约可取消', rc.code === 200, JSON.stringify(rc.msg))
-  const stPaid = MYSQL(`SELECT CONCAT_WS('|', status, IFNULL(cancel_reason,'')) FROM pet_service_order WHERE service_id=${paidId}`)
-  check('取消后写入状态与原因', stPaid.startsWith('4|'), stPaid)
+  const stPaid = MYSQL(`SELECT CONCAT_WS('##', status, IFNULL(cancel_reason,'')) FROM pet_service_order WHERE service_id=${paidId}`)
+  check('取消后写入状态与原因', stPaid.startsWith('4##'), stPaid)
   const balAfter = Number(MYSQL(`SELECT balance FROM pet_wallet WHERE user_id=${userId}`))
   check('取消退款回到平台余额', Math.abs(balAfter - (balBefore + paidAmt)) < 0.001, `${balBefore} -> ${balAfter} (+${paidAmt})`)
 
   // 落库校验：不绑定宠物、地址/联系人/金额齐全
-  const row = MYSQL(`SELECT CONCAT_WS('|', IFNULL(pet_id,'NULL'), service_mode, contact_phone, total_amount, pay_status, IFNULL(pay_method,''), IFNULL(address,'')) FROM pet_service_order WHERE contact_phone='${PHONE}' ORDER BY service_id DESC LIMIT 1`)
-  const [petId, mode, phone, total, payStatus, payMethod, address] = row.split('|')
+  const row = MYSQL(`SELECT CONCAT_WS('##', IFNULL(pet_id,'NULL'), service_mode, contact_phone, total_amount, pay_status, IFNULL(pay_method,''), IFNULL(address,'')) FROM pet_service_order WHERE contact_phone='${PHONE}' ORDER BY service_id DESC LIMIT 1`)
+  const [petId, mode, phone, total, payStatus, payMethod, address] = row.split('##')
   check('预约单未绑定宠物（pet_id 为空）', petId === 'NULL', 'petId=' + petId)
   check('服务方式=上门', mode === '2', 'mode=' + mode)
   check('联系人手机落库', phone === PHONE, phone)
@@ -201,8 +202,8 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
     const no = r1.data?.serviceNo
     const r2 = await fetch(`${API}/pet/service/order/pay/${no}`, { method: 'POST', headers: H, body: JSON.stringify({ payMethod: 'free' }) }).then(r => r.json())
     check('免费项目免支付直接确认', r2.code === 200 && r2.data?.payStatus === '1', JSON.stringify(r2.data?.payMethod))
-    const row2 = MYSQL(`SELECT CONCAT_WS('|', service_mode, IFNULL(NULLIF(address,''),'NULL'), total_amount, pay_status, IFNULL(pay_method,'')) FROM pet_service_order WHERE service_no='${no}'`)
-    check('免费单落库：到店/无地址/0元/免费', row2 === '1|NULL|0.00|1|free', row2)
+    const row2 = MYSQL(`SELECT CONCAT_WS('##', service_mode, IFNULL(NULLIF(address,''),'NULL'), total_amount, pay_status, IFNULL(pay_method,'')) FROM pet_service_order WHERE service_no='${no}'`)
+    check('免费单落库：到店/无地址/0元/免费', row2 === '1##NULL##0.00##1##free', row2)
     const r3 = await fetch(`${API}/pet/service/order/cancel/${r1.data.serviceId}`, { method: 'POST', headers: H, body: JSON.stringify({ cancelReason: 'E2E 清理' }) }).then(r => r.json())
     check('客户可取消自己的到店预约', r3.code === 200, JSON.stringify(r3.msg))
     const st = MYSQL(`SELECT status FROM pet_service_order WHERE service_no='${no}'`)
