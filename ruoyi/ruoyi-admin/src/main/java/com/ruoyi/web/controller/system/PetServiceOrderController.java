@@ -86,6 +86,74 @@ public class PetServiceOrderController extends BaseController
         return success(list);
     }
 
+    /**
+     * 客户自助预约下单：选项目 + 时间 + 联系方式，直接生成独立的服务单（不绑定宠物）。
+     * 到店服务不用填地址，上门服务必须填地址。
+     */
+    @PostMapping("/booking")
+    public AjaxResult createBooking(@RequestBody PetServiceOrder body)
+    {
+        Long userId = SecurityUtils.getUserId();
+        PetServiceOrder order = petServiceOrderService.createBooking(body, userId, SecurityUtils.getUsername());
+        String modeText = "2".equals(order.getServiceMode()) ? "上门服务" : "到店服务";
+        petNotificationService.push(userId, null, "service", "预约提交成功",
+                "「" + order.getItemName() + "」" + modeText + " 预约已受理，单号 " + order.getServiceNo()
+                        + "，请在预约时间前完成支付。", order.getServiceId());
+        AjaxResult ajax = success(order);
+        ajax.put("modeText", modeText);
+        return ajax;
+    }
+
+    /** 按服务单号查预约详情（收银台恢复用） */
+    @GetMapping("/booking/{serviceNo}")
+    public AjaxResult bookingInfo(@PathVariable("serviceNo") String serviceNo)
+    {
+        PetServiceOrder order = petServiceOrderService.selectByNo(serviceNo);
+        if (order == null)
+        {
+            return error("预约单不存在");
+        }
+        if (!SecurityUtils.isAdmin() && (order.getUserId() == null || !order.getUserId().equals(SecurityUtils.getUserId())))
+        {
+            return error("只能查看自己的预约单");
+        }
+        return success(order);
+    }
+
+    /** 预约单支付：支付宝 / 微信 / 平台余额 */
+    @PostMapping("/pay/{serviceNo}")
+    public AjaxResult payBooking(@PathVariable("serviceNo") String serviceNo, @RequestBody(required = false) PetServiceOrder body)
+    {
+        Long userId = SecurityUtils.getUserId();
+        String payMethod = body == null ? null : body.getPayMethod();
+        java.util.Map<String, Object> result = petServiceOrderService.payBooking(serviceNo, payMethod, userId);
+        petNotificationService.push(userId, null, "service", "预约支付成功",
+                "预约单 " + serviceNo + " 已支付 ¥" + result.get("amount") + "（" + result.get("payMethodText") + "），请按约定时间到店/等待上门。", null);
+        return success(result);
+    }
+
+    /** 客户取消自己的预约单，已支付的金额退回平台余额 */
+    @PostMapping("/cancel/{serviceId}")
+    public AjaxResult cancelBooking(@PathVariable("serviceId") Long serviceId,
+                                    @RequestBody(required = false) PetServiceOrder body)
+    {
+        Long userId = SecurityUtils.getUserId();
+        String reason = body == null ? null : body.getCancelReason();
+        PetServiceOrder origin = petServiceOrderService.selectPetServiceOrderById(serviceId);
+        if (origin == null)
+        {
+            return error("预约单不存在");
+        }
+        int rows = petServiceOrderService.cancelBooking(serviceId, userId, reason);
+        if (rows > 0)
+        {
+            petNotificationService.push(userId, null, "service", "预约已取消",
+                    "预约单「" + origin.getServiceNo() + "」已取消"
+                            + (StringUtils.isNotBlank(reason) ? "，原因：" + reason : "") + "。", serviceId);
+        }
+        return toAjax(rows);
+    }
+
     /** 今日经营概览 */
     @PreAuthorize("@ss.hasPermi('pet:service:list')")
     @GetMapping("/stats")

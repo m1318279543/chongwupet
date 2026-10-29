@@ -17,6 +17,28 @@ export function listMyServiceOrders() {
   return request({ url: '/pet/service/order/mine', method: 'get' })
 }
 
+// ---------------- 客户自助预约（独立服务单，不绑定宠物） ----------------
+
+// 提交预约：itemId + serviceMode(1到店/2上门) + appointTime + contactName/Phone + address
+export function createServiceBooking(data) {
+  return request({ url: '/pet/service/order/booking', method: 'post', data })
+}
+
+// 预约详情（按服务单号）
+export function getServiceBooking(serviceNo) {
+  return request({ url: '/pet/service/order/booking/' + serviceNo, method: 'get' })
+}
+
+// 预约支付：alipay / wechat / balance
+export function payServiceBooking(serviceNo, payMethod) {
+  return request({ url: '/pet/service/order/pay/' + serviceNo, method: 'post', data: { payMethod } })
+}
+
+// 客户取消预约（已支付金额退回平台余额）
+export function cancelServiceBooking(serviceId, cancelReason) {
+  return request({ url: '/pet/service/order/cancel/' + serviceId, method: 'post', data: { cancelReason } })
+}
+
 // 今日概览
 export function getServiceStats() {
   return request({ url: '/pet/service/order/stats', method: 'get' })

@@ -64,9 +64,33 @@ public class PetServiceOrder extends BaseEntity
     /** 项目类型名称（关联查询，非本表字段） */
     private String itemTypeName;
 
-    /** 成交价（快照） */
+    /** 服务方式（1到店 2上门） */
+    @Excel(name = "服务方式", readConverterExp = "1=到店,2=上门")
+    private String serviceMode;
+
+    /** 联系人 */
+    @Excel(name = "联系人")
+    private String contactName;
+
+    /** 联系电话 */
+    @Excel(name = "联系电话")
+    private String contactPhone;
+
+    /** 上门地址（上门服务必填） */
+    @Excel(name = "服务地址")
+    private String address;
+
+    /** 成交价（快照，单价） */
     @Excel(name = "成交价")
     private BigDecimal price;
+
+    /** 数量 */
+    @Excel(name = "数量")
+    private Integer qty;
+
+    /** 应付总额（单价 × 数量） */
+    @Excel(name = "应付总额")
+    private BigDecimal totalAmount;
 
     /** 执行员工ID */
     private Long staffId;
@@ -96,6 +120,16 @@ public class PetServiceOrder extends BaseEntity
     @Excel(name = "收费", readConverterExp = "0=未收,1=已收")
     private String payStatus;
 
+    /** 支付方式（alipay/wechat/balance） */
+    private String payMethod;
+
+    /** 支付时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date payTime;
+
+    /** 取消原因 */
+    private String cancelReason;
+
     /** 客户评分 */
     private Integer score;
 
@@ -110,6 +144,33 @@ public class PetServiceOrder extends BaseEntity
 
     /** 查询辅助：日期（yyyy-MM-dd） */
     private String queryDate;
+
+    public String getServiceMode() { return serviceMode; }
+    public void setServiceMode(String serviceMode) { this.serviceMode = serviceMode; }
+
+    public String getContactName() { return contactName; }
+    public void setContactName(String contactName) { this.contactName = contactName; }
+
+    public String getContactPhone() { return contactPhone; }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+
+    public Integer getQty() { return qty; }
+    public void setQty(Integer qty) { this.qty = qty; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public String getPayMethod() { return payMethod; }
+    public void setPayMethod(String payMethod) { this.payMethod = payMethod; }
+
+    public Date getPayTime() { return payTime; }
+    public void setPayTime(Date payTime) { this.payTime = payTime; }
+
+    public String getCancelReason() { return cancelReason; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
 
     public Long getServiceId() { return serviceId; }
     public void setServiceId(Long serviceId) { this.serviceId = serviceId; }

@@ -17,6 +17,24 @@ public interface IPetServiceOrderService
 
     public PetServiceOrder selectPetServiceOrderById(Long serviceId);
 
+    /** 按服务单号查询 */
+    public PetServiceOrder selectByNo(String serviceNo);
+
+    /**
+     * 客户自助预约下单（独立服务单，不绑定宠物）
+     * 只创建待支付单，金额 = 项目单价 × 数量
+     */
+    public PetServiceOrder createBooking(PetServiceOrder booking, Long userId, String userName);
+
+    /**
+     * 预约单支付（支付宝/微信/余额）
+     * 余额支付走钱包原子扣款，失败写失败流水并抛出业务异常
+     */
+    public Map<String, Object> payBooking(String serviceNo, String payMethod, Long userId);
+
+    /** 客户取消自己的预约单（已支付的原路退回余额） */
+    public int cancelBooking(Long serviceId, Long userId, String reason);
+
     /** 预约提交后自动生成到店接待工单 */
     public Long createFromAppointment(PetAppointment appointment);
 

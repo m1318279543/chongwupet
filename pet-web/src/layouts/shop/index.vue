@@ -58,7 +58,7 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="/shop/order">我的订单</el-dropdown-item>
-                  <el-dropdown-item command="/shop/appointment">我的预约</el-dropdown-item>
+                  <el-dropdown-item command="/shop/appointment">服务预约</el-dropdown-item>
                   <el-dropdown-item command="/shop/favorite">我的收藏</el-dropdown-item>
                   <el-dropdown-item command="/shop/profile" divided>个人资料</el-dropdown-item>
                   <el-dropdown-item command="logout">退出登录</el-dropdown-item>
@@ -87,7 +87,7 @@
           <template v-if="isLogged">
             <div class="m-divider"></div>
             <router-link to="/shop/order" class="m-item" @click="closeMenu">我的订单</router-link>
-            <router-link to="/shop/appointment" class="m-item" @click="closeMenu">我的预约</router-link>
+            <router-link to="/shop/appointment" class="m-item" @click="closeMenu">服务预约</router-link>
             <router-link to="/shop/favorite" class="m-item" @click="closeMenu">我的收藏</router-link>
             <div class="m-user">
               <div class="m-user-info">

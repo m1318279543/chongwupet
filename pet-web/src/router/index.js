@@ -54,7 +54,7 @@ const routes = [
       { path: 'match', component: () => import('@/views/shop/match/index.vue'), meta: { title: '智能选宠', perm: 'pet:match:list', icon: 'MagicStick' } },
       { path: 'pet/:id', component: () => import('@/views/shop/pet/detail.vue'), meta: { title: '宠物详情' } },
       { path: 'favorite', component: () => import('@/views/shop/favorite/index.vue'), meta: { title: '我的收藏', perm: 'pet:favorite:list', icon: 'Star' } },
-      { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '我的预约', perm: 'pet:appointment:list', icon: 'Calendar' } },
+      { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '服务预约', perm: 'pet:appointment:list', icon: 'Calendar' } },
       { path: 'mypet', component: () => import('@/views/shop/mypet/index.vue'), meta: { title: '我的宠物' } },
       // 联系客服 / 我的咨询
       { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服', perm: 'pet:consult:list', icon: 'ChatDotRound' } },

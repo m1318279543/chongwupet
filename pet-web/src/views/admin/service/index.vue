@@ -26,6 +26,18 @@
       <el-form-item label="到店日期" prop="queryDate">
         <el-date-picker v-model="queryParams.queryDate" type="date" value-format="YYYY-MM-DD" placeholder="全部日期" style="width: 150px" />
       </el-form-item>
+      <el-form-item label="服务方式" prop="serviceMode">
+        <el-select v-model="queryParams.serviceMode" placeholder="全部方式" clearable style="width: 120px">
+          <el-option label="到店服务" value="1" />
+          <el-option label="上门服务" value="2" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="支付状态" prop="payStatus">
+        <el-select v-model="queryParams.payStatus" placeholder="全部" clearable style="width: 110px">
+          <el-option label="已支付" value="1" />
+          <el-option label="待支付" value="0" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 130px">
           <el-option v-for="s in STATUS" :key="s.value" :label="s.label" :value="s.value" />
@@ -45,15 +57,31 @@
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="客户 / 宠物" min-width="150">
+      <el-table-column label="客户 / 宠物" min-width="170">
         <template #default="scope">
-          <div class="cell-main">{{ scope.row.customerName || '—' }}</div>
-          <div class="ui-cell-sub">{{ scope.row.petName || '—' }}</div>
+          <div class="cell-main">{{ scope.row.contactName || scope.row.customerName || '—' }}</div>
+          <div class="ui-cell-sub">
+            <span v-if="scope.row.contactPhone">{{ scope.row.contactPhone }}</span>
+            <span v-if="scope.row.petName"> · {{ scope.row.petName }}</span>
+            <span v-if="scope.row.serviceMode === '2' && scope.row.address" class="addr" :title="scope.row.address"> · {{ scope.row.address }}</span>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column label="服务项目" prop="itemName" min-width="130" :show-overflow-tooltip="true" />
+      <el-table-column label="服务项目" min-width="130" :show-overflow-tooltip="true">
+        <template #default="scope">
+          <span>{{ scope.row.itemName }}</span>
+          <span v-if="Number(scope.row.qty) > 1" class="muted"> ×{{ scope.row.qty }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="方式" width="82">
+        <template #default="scope">
+          <el-tag size="small" :type="scope.row.serviceMode === '2' ? 'warning' : 'info'" effect="plain">
+            {{ scope.row.serviceMode === '2' ? '上门' : '到店' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="门店" prop="storeName" width="120" :show-overflow-tooltip="true" />
-      <el-table-column label="到店时间" width="140">
+      <el-table-column label="预约时间" width="140">
         <template #default="scope">{{ fmtShort(scope.row.appointTime) }}</template>
       </el-table-column>
       <el-table-column label="执行人" width="92">
@@ -61,9 +89,16 @@
           <span :class="{ muted: !scope.row.staffName }">{{ scope.row.staffName || '未指派' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="金额" width="88">
+      <el-table-column label="应付" width="96">
         <template #default="scope">
-          <span class="ui-money">¥{{ money(scope.row.price, 2) }}</span>
+          <span class="ui-money">¥{{ money(totalOf(scope.row), 2) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="收款" width="96">
+        <template #default="scope">
+          <el-tag size="small" :type="scope.row.payStatus === '1' ? 'success' : 'info'" effect="plain">
+            {{ scope.row.payStatus === '1' ? '已支付' : '待支付' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="96">
@@ -122,14 +157,26 @@
           <el-tag :type="statusType(detail.status)">{{ enumText(STATUS, detail.status) }}</el-tag>
         </div>
         <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="客户">{{ detail.customerName || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="宠物">{{ detail.petName || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="到店时间">{{ fmtShort(detail.appointTime) }}</el-descriptions-item>
+          <el-descriptions-item label="服务方式">
+            <el-tag size="small" :type="detail.serviceMode === '2' ? 'warning' : 'info'" effect="plain">
+              {{ detail.serviceMode === '2' ? '上门服务' : '到店服务' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="联系人">{{ detail.contactName || detail.customerName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ detail.contactPhone || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="宠物">{{ detail.petName || '未绑定（到店补录）' }}</el-descriptions-item>
+          <el-descriptions-item label="预约时间">{{ fmtShort(detail.appointTime) }}</el-descriptions-item>
           <el-descriptions-item label="执行人">{{ detail.staffName || '未指派' }}</el-descriptions-item>
-          <el-descriptions-item label="金额">¥{{ money(detail.price, 2) }}</el-descriptions-item>
-          <el-descriptions-item label="收费">{{ detail.payStatus === '1' ? '已收' : '未收' }}</el-descriptions-item>
+          <el-descriptions-item label="单价">¥{{ money(detail.price, 2) }}</el-descriptions-item>
+          <el-descriptions-item label="数量">{{ detail.qty || 1 }}</el-descriptions-item>
+          <el-descriptions-item label="应付总额">¥{{ money(totalOf(detail), 2) }}</el-descriptions-item>
+          <el-descriptions-item label="支付状态">{{ detail.payStatus === '1' ? '已支付' : '待支付' }}</el-descriptions-item>
+          <el-descriptions-item label="支付方式">{{ payText(detail.payMethod) }}</el-descriptions-item>
+          <el-descriptions-item label="支付时间">{{ detail.payTime ? fmtShort(detail.payTime) : '—' }}</el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ fmtShort(detail.startTime) }}</el-descriptions-item>
           <el-descriptions-item label="完成时间">{{ fmtShort(detail.finishTime) }}</el-descriptions-item>
+          <el-descriptions-item label="上门地址" :span="2">{{ detail.address || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="取消原因" :span="2" v-if="detail.cancelReason">{{ detail.cancelReason }}</el-descriptions-item>
           <el-descriptions-item label="客户评价" :span="2">
             <el-rate v-if="detail.score" :model-value="detail.score" disabled size="small" />
             <span class="muted" v-if="detail.comment">　{{ detail.comment }}</span>
@@ -205,10 +252,23 @@ const data = reactive({
     appointmentId: undefined,
     storeId: undefined,
     status: undefined,
+    serviceMode: undefined,
+    payStatus: undefined,
     queryDate: undefined
   }
 })
 const { queryParams } = toRefs(data)
+
+// 应付金额：优先取冗余的 total_amount，老数据回退到单价 × 数量
+function totalOf(row) {
+  const total = Number(row.totalAmount)
+  if (total > 0) return total
+  return (Number(row.price) || 0) * (Number(row.qty) || 1)
+}
+
+function payText(m) {
+  return { alipay: '支付宝', wechat: '微信支付', balance: '平台余额' }[m] || '—'
+}
 
 function statusType(s) {
   return { 0: 'warning', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger' }[s] || 'info'
@@ -344,6 +404,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .cell-main { font-size: var(--fs-4); color: var(--text-1); }
 .muted { color: var(--text-3); }
+.addr { display: inline-block; max-width: 150px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; vertical-align: bottom; }
 .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;
   .no { margin: 0; font-size: var(--fs-6); font-weight: 600; color: var(--text-1); }
   .sub { margin: 4px 0 0; font-size: var(--fs-2); color: var(--text-3); }

@@ -17,6 +17,9 @@ public interface PetServiceOrderMapper
 
     public PetServiceOrder selectPetServiceOrderById(Long serviceId);
 
+    /** 按服务单号查询（预约独立下单） */
+    public PetServiceOrder selectPetServiceOrderByNo(String serviceNo);
+
     public int insertPetServiceOrder(PetServiceOrder order);
 
     public int updatePetServiceOrder(PetServiceOrder order);
