@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -55,6 +56,21 @@ public class PetGoodsController extends BaseController
             return error("商品已下架");
         }
         return success(goods);
+    }
+
+    /** 首页宠物粮精选：每个品类一款，免登录 */
+    @GetMapping("/featured")
+    public AjaxResult featured(@RequestParam(value = "limit", defaultValue = "4") int limit)
+    {
+        return success(petGoodsService.selectFeaturedGoods(limit));
+    }
+
+    /** 后台商品概览：总数 / 在售 / 低库存 / 库存合计 */
+    @PreAuthorize("@ss.hasPermi('pet:goods:list')")
+    @GetMapping("/stats")
+    public AjaxResult stats()
+    {
+        return success(petGoodsService.selectGoodsStats());
     }
 
     /** 后台商品详情 */

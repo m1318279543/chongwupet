@@ -1,44 +1,44 @@
 <template>
   <div class="app-container">
     <!-- 搜索栏 -->
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="门店名称" prop="storeName">
-        <el-input v-model="queryParams.storeName" placeholder="请输入门店名称" clearable style="width: 220px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="类型" prop="storeType">
-        <el-select v-model="queryParams.storeType" placeholder="门店类型" clearable style="width: 150px">
-          <el-option label="直营" value="0" />
-          <el-option label="加盟" value="1" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="营业状态" clearable style="width: 150px">
-          <el-option label="营业" value="0" />
-          <el-option label="停业" value="1" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <el-card shadow="never" class="ui-toolbar-card">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+        <el-form-item label="门店名称" prop="storeName">
+          <el-input v-model="queryParams.storeName" placeholder="请输入门店名称" clearable style="width: 220px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="类型" prop="storeType">
+          <el-select v-model="queryParams.storeType" placeholder="门店类型" clearable style="width: 150px">
+            <el-option label="直营" value="0" />
+            <el-option label="加盟" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="营业状态" clearable style="width: 150px">
+            <el-option label="营业" value="0" />
+            <el-option label="停业" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <!-- 操作栏 -->
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:store:add']">新增门店</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['pet:store:edit']">修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:store:remove']">删除</el-button>
-      </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="ui-card-head">
+          <div class="head-actions">
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:store:add']">新增门店</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['pet:store:edit']">修改</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:store:remove']">删除</el-button>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+        </div>
+      </template>
 
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="storeList" @selection-change="handleSelectionChange">
+      <!-- 表格 -->
+      <el-table v-loading="loading" :data="storeList" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="编码" align="center" prop="storeCode" width="90" />
       <el-table-column label="门店名称" align="center" prop="storeName" min-width="150" :show-overflow-tooltip="true" />
@@ -73,7 +73,10 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <div class="ui-pager">
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </el-card>
 
     <!-- 新增/修改 -->
     <el-dialog :title="title" v-model="open" width="680px" append-to-body>
@@ -311,4 +314,5 @@ onMounted(getList)
 
 <style scoped>
 .metric { font-variant-numeric: tabular-nums; color: var(--text-2); }
+.head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 </style>

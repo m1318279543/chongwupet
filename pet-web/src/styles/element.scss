@@ -15,7 +15,69 @@
   --el-color-primary-light-9: #e7efed;
   --el-color-primary-dark-2: #104e3e;
 
-  --el-border-radius-base: var(--radius-sm);
+  // ---- 语义色接管：EP 默认的 success #67c23a 白底仅 2.2:1，
+  //      warning #e6a23c 1.9:1，都不能承载文字。这里全部换成
+  //      tokens.scss 里按白底 4.5:1 校准过的一套。
+  --el-color-success: var(--success-500);
+  --el-color-success-light-3: #5ba677;
+  --el-color-success-light-5: #8abf9e;
+  --el-color-success-light-7: #b9d9c5;
+  --el-color-success-light-8: #d0e6d8;
+  --el-color-success-light-9: #e8f2ec;
+  --el-color-success-dark-2: #116631;
+
+  --el-color-warning: var(--warning-500);
+  --el-color-warning-light-3: #ca8753;
+  --el-color-warning-light-5: #d9a984;
+  --el-color-warning-light-7: #e8cbb5;
+  --el-color-warning-light-8: #f0ddce;
+  --el-color-warning-light-9: #f7eee6;
+  --el-color-warning-dark-2: #8f4207;
+
+  --el-color-danger: var(--danger-500);
+  --el-color-danger-light-3: #e76767;
+  --el-color-danger-light-5: #ee9292;
+  --el-color-danger-light-7: #f5bebe;
+  --el-color-danger-light-8: #f8d4d4;
+  --el-color-danger-light-9: #fce9e9;
+  --el-color-danger-dark-2: #b01e1e;
+
+  // EP 2.x 将 danger 更名为 error，两套变量同值——error 直接引用 danger，不再逐行重复
+  --el-color-error: var(--el-color-danger);
+  --el-color-error-light-3: var(--el-color-danger-light-3);
+  --el-color-error-light-5: var(--el-color-danger-light-5);
+  --el-color-error-light-7: var(--el-color-danger-light-7);
+  --el-color-error-light-8: var(--el-color-danger-light-8);
+  --el-color-error-light-9: var(--el-color-danger-light-9);
+
+  --el-color-info: var(--info-500);
+  --el-color-info-light-3: #939eae;
+  --el-color-info-light-5: #b2bac5;
+  --el-color-info-light-7: #d1d5dc;
+  --el-color-info-light-8: #e0e3e8;
+  --el-color-info-light-9: #f0f1f3;
+  --el-color-info-dark-2: #505d6f;
+
+  // ---- 文字色接到中性色 token：删掉 #606266 / #909399 这套冷灰 ----
+  --el-text-color-primary: var(--text-1);
+  --el-text-color-regular: var(--text-2);
+  --el-text-color-secondary: var(--text-3);
+  --el-text-color-placeholder: var(--text-4);
+  --el-text-color-disabled: var(--text-4);
+
+  // ---- 描边 / 底色同温 ----
+  --el-border-color: var(--border-1);
+  --el-border-color-light: var(--border-2);
+  --el-border-color-lighter: var(--border-2);
+  --el-border-color-extra-light: var(--border-2);
+  --el-fill-color-blank: var(--bg-card);
+  --el-bg-color: var(--bg-card);
+  --el-bg-color-page: var(--bg-page);
+  --el-bg-color-overlay: var(--bg-card);
+
+  --el-border-radius-base: var(--radius-md);
+  --el-border-radius-small: var(--radius-sm);
+  --el-border-radius-round: var(--radius-pill);
   --el-font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'Microsoft YaHei', sans-serif);
 }

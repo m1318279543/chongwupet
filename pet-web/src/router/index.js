@@ -22,6 +22,7 @@ const routes = [
       { path: 'goods', component: () => import('@/views/admin/goods/index.vue'), meta: { title: '商品与库存', perm: 'pet:goods:list', icon: 'ShoppingCart' } },
       { path: 'order', component: () => import('@/views/admin/order/index.vue'), meta: { title: '订单管理', perm: 'pet:order:list', icon: 'Tickets' } },
       { path: 'payment', component: () => import('@/views/admin/payment/index.vue'), meta: { title: '支付流水', perm: 'pet:payment:list', icon: 'Wallet' } },
+      { path: 'knowledge', component: () => import('@/views/admin/knowledge/index.vue'), meta: { title: 'AI 知识库', perm: 'pet:knowledge:list', icon: 'Reading' } },
       { path: 'refund', component: () => import('@/views/admin/refund/index.vue'), meta: { title: '退款管理', perm: 'pet:refund:list', icon: 'Money' } },
       { path: 'purchase', component: () => import('@/views/admin/purchase/index.vue'), meta: { title: '采购管理', perm: 'pet:purchase:list', icon: 'Van' } },
       { path: 'like', component: () => import('@/views/admin/like/index.vue'), meta: { title: '点赞管理', perm: 'pet:like:list', icon: 'Pointer' } },
@@ -54,6 +55,7 @@ const routes = [
       { path: 'pet/:id', component: () => import('@/views/shop/pet/detail.vue'), meta: { title: '宠物详情' } },
       { path: 'favorite', component: () => import('@/views/shop/favorite/index.vue'), meta: { title: '我的收藏', perm: 'pet:favorite:list', icon: 'Star' } },
       { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '我的预约', perm: 'pet:appointment:list', icon: 'Calendar' } },
+      { path: 'mypet', component: () => import('@/views/shop/mypet/index.vue'), meta: { title: '我的宠物' } },
       // 联系客服 / 我的咨询
       { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
       // 宠物粮专区（覆盖全部 7 类宠物）

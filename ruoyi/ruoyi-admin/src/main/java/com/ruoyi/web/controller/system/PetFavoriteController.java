@@ -63,6 +63,16 @@ public class PetFavoriteController extends BaseController
     }
 
     /**
+     * 我的收藏 petId 集合：前台列表页打红心用，只回一列。
+     * 替代前端 pageSize=1000 拉整行收藏记录。
+     */
+    @GetMapping("/mine/ids")
+    public AjaxResult myFavoriteIds()
+    {
+        return success(petFavoriteService.selectPetIdsByUserId(SecurityUtils.getUserId()));
+    }
+
+    /**
      * 收藏详情：普通用户只能查看属于自己的记录
      */
     @GetMapping(value = "/{favoriteId}")

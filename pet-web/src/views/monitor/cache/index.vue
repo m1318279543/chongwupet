@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-5);
 }
 .chart-box {
   height: 380px;

@@ -2,6 +2,7 @@ package com.ruoyi.system.mapper;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.PetMatchRecord;
 
 /**
@@ -16,6 +17,9 @@ public interface PetMatchMapper
 
     /** 用户历史行为信号：user_id / pet_id / weight（收藏、预约、点赞） */
     public List<Map<String, Object>> selectInteractionSignals();
+
+    /** 单只宠物的月均养护成本估算 */
+    public Integer selectMonthlyCost(@Param("petId") Long petId);
 
     /** 新增匹配记录 */
     public int insertPetMatchRecord(PetMatchRecord record);

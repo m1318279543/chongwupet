@@ -1,6 +1,6 @@
 <template>
   <div class="consult-admin">
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="never" class="ui-toolbar-card">
       <el-form :model="queryParams" inline>
         <el-form-item label="用户名">
           <el-input v-model="queryParams.userName" placeholder="请输入" clearable style="width: 160px" @keyup.enter="handleQuery" />
@@ -19,7 +19,7 @@
 
     <el-card shadow="never" class="table-card">
       <template #header>
-        <div class="card-head">
+        <div class="ui-card-head">
           <span>共 {{ total }} 条咨询</span>
           <el-button type="success" @click="handleQuery">刷新</el-button>
         </div>
@@ -42,7 +42,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
+      <div class="ui-pager">
         <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize"
           :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper"
           @size-change="getList" @current-change="getList" />
@@ -55,6 +55,10 @@
         <el-descriptions-item label="联系方式">{{ replyRow.contact || '—' }}</el-descriptions-item>
         <el-descriptions-item label="咨询内容">{{ replyRow.question }}</el-descriptions-item>
       </el-descriptions>
+      <div class="draft-bar">
+        <el-button size="small" :loading="drafting" @click="aiDraft">AI 起草</el-button>
+        <span class="draft-hint">依据知识库与客户订单生成，发送前请核对</span>
+      </div>
       <el-input v-model="replyText" type="textarea" :rows="4" maxlength="800" show-word-limit placeholder="请输入回复内容" />
       <template #footer>
         <el-button @click="open = false">取消</el-button>
@@ -68,12 +72,14 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPetConsult, replyConsult, delPetConsult } from '@/api/pet/petConsult'
+import { draftConsultReply } from '@/api/pet/petAssistant'
 
 const list = ref([])
 const total = ref(0)
 const loading = ref(false)
 const open = ref(false)
 const submitting = ref(false)
+const drafting = ref(false)
 const replyRow = ref({})
 const replyText = ref('')
 
@@ -91,6 +97,20 @@ async function getList() {
 function handleQuery() { queryParams.pageNum = 1; getList() }
 function resetQuery() { queryParams.userName = ''; queryParams.status = ''; handleQuery() }
 function handleReply(row) { replyRow.value = row; replyText.value = row.reply || ''; open.value = true }
+
+async function aiDraft() {
+  if (!replyRow.value?.consultId) return
+  drafting.value = true
+  try {
+    const res = await draftConsultReply(replyRow.value.consultId)
+    replyText.value = res.data?.draft || ''
+    ElMessage.success('已生成草稿，请核对后发送')
+  } catch (e) {
+    ElMessage.error(e?.message || '生成失败')
+  } finally {
+    drafting.value = false
+  }
+}
 async function submitReply() {
   if (!replyText.value.trim()) { ElMessage.warning('请填写回复内容'); return }
   submitting.value = true
@@ -112,7 +132,15 @@ onMounted(getList)
 
 <style scoped lang="scss">
 .consult-admin { padding: 4px; }
-.search-card { margin-bottom: 14px; }
-.table-card .card-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--text-2); }
-.pager { display: flex; justify-content: flex-end; margin-top: 16px; }
+.draft-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.draft-hint {
+  font-size: var(--fs-2);
+  color: var(--text-3, #8a8f8c);
+}
+
 </style>

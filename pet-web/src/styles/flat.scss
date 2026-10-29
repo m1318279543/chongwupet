@@ -19,25 +19,27 @@
 // ============================================================
 
 :root {
-  // ---- 圆角：3 档封顶 8px ----
-  --r-1: 4px; // 标签、角标
-  --r-2: 6px; // 输入框、按钮、缩略图
-  --r-3: 8px; // 唯一允许的面板圆角（硬上限）
+  // ---- 圆角：直接引用 tokens.scss，避免两套值互相矛盾 ----
+  --r-1: var(--radius-xs); // 4px 标签、角标
+  --r-2: var(--radius-sm); // 6px 输入框、缩略图
+  --r-3: var(--radius-md); // 8px 按钮、面板（硬上限）
 
   // ---- 分割线：全站只有两种 ----
   --rule: 1px solid var(--border-1); // 区块级（章节、表头）
   --rule-soft: 1px solid var(--border-2); // 行级（列表行、表格行）
 
-  // ---- 斑马纹 / 悬停底：用极浅底色划分区块，替代悬浮卡片 ----
-  --zebra: #f9faf9;
-  --row-hover: #f6f9f7;
+  // ---- 斑马纹 / 悬停底：别名指向 tokens.scss，不再自建一套 ----
+  --zebra: var(--bg-zebra);
+  --row-hover: var(--bg-row-hover);
 
-  // ---- 垂直节奏 ----
-  --gap-1: 6px;
-  --gap-2: 12px;
-  --gap-3: 20px;
-  --gap-4: 32px;
-  --gap-5: 48px;
+  // ---- 垂直节奏：别名指向 --sp-*，不再自建一套 ----
+  --gap-1: var(--sp-2); // 8
+  --gap-2: var(--sp-3); // 12
+  --gap-3: var(--sp-5); // 24
+  --gap-4: var(--sp-6); // 32
+  --gap-5: var(--sp-7); // 48
+  --gap-6: var(--sp-8); // 64
+  --gap-7: var(--sp-9); // 96
 }
 
 /* ============================================================
@@ -69,23 +71,23 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: var(--fs-2);
+  font-weight: 700;
   letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--text-3);
 }
 .ui-title {
   margin: 0;
-  font-size: 26px;
+  font-size: var(--fs-9);
   line-height: 1.25;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: -.01em;
   color: var(--text-1);
 }
 .ui-sub {
   margin: 6px 0 0;
-  font-size: 14px;
+  font-size: var(--fs-5);
   line-height: 1.65;
   color: var(--text-3);
 }
@@ -98,14 +100,14 @@
   padding-bottom: 2px;
 }
 .ui-count {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
   white-space: nowrap;
 }
 .ui-count b {
   margin-right: 3px;
-  font-size: 20px;
-  font-weight: 650;
+  font-size: var(--fs-8);
+  font-weight: 700;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
 }
@@ -122,13 +124,13 @@
   border-bottom: var(--rule);
 }
 .ui-sec__title {
-  font-size: 15px;
-  font-weight: 650;
+  font-size: var(--fs-6);
+  font-weight: 700;
   letter-spacing: .01em;
   color: var(--text-1);
 }
 .ui-sec__hint {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
 }
 .ui-sec__aside {
@@ -161,8 +163,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-6);
+  font-weight: 700;
   color: var(--text-1);
   line-height: 1.4;
 }
@@ -172,7 +174,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px 0;
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
   line-height: 1.6;
 }
@@ -207,13 +209,13 @@
 .ui-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-5);
   text-align: left;
 }
 .ui-table th {
   padding: 0 12px 10px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2);
+  font-weight: 700;
   letter-spacing: .04em;
   color: var(--text-3);
   white-space: nowrap;
@@ -246,12 +248,12 @@
   border-bottom: var(--rule-soft);
 }
 .ui-kv dt {
-  font-size: 13px;
+  font-size: var(--fs-4);
   color: var(--text-3);
 }
 .ui-kv dd {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-5);
   color: var(--text-1);
   line-height: 1.65;
   overflow-wrap: anywhere;
@@ -284,8 +286,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-4);
+  font-weight: 700;
   color: var(--text-1);
 }
 .ui-label em {
@@ -294,7 +296,7 @@
   color: var(--danger-500);
 }
 .ui-help {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   line-height: 1.6;
   color: var(--text-3);
 }
@@ -334,20 +336,20 @@
 }
 .ui-stat:first-child { padding-left: 0; border-left: 0; }
 .ui-stat__label {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
 }
 .ui-stat__value {
   margin-top: 6px;
-  font-size: 24px;
-  font-weight: 650;
+  font-size: var(--fs-9);
+  font-weight: 700;
   letter-spacing: -.01em;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
 }
 .ui-stat__unit {
   margin-left: 3px;
-  font-size: 13px;
+  font-size: var(--fs-4);
   font-weight: 500;
   color: var(--text-3);
 }
@@ -360,24 +362,26 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 42px;
-  padding: 0 22px;
+  height: 40px;
+  padding: 0 20px;
   border: 1px solid transparent;
-  border-radius: var(--r-2);
+  border-radius: var(--r-3);
   background: transparent;
   font: inherit;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--fs-5);
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color .16s ease, color .16s ease, border-color .16s ease;
 }
-.ui-btn--solid { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+.ui-btn--solid { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-accent); }
 .ui-btn--solid:hover { background: var(--brand-700); border-color: var(--brand-700); }
 .ui-btn--solid[disabled] { background: var(--border-1); border-color: var(--border-1); color: var(--text-4); cursor: not-allowed; }
 .ui-btn--line { border-color: var(--text-1); color: var(--text-1); }
-.ui-btn--line:hover { background: var(--text-1); color: #fff; }
-.ui-btn--sm { height: 34px; padding: 0 14px; font-size: 13px; }
+.ui-btn--line:hover { background: var(--text-1); color: var(--on-accent); }
+// 三级高度：32（表格行内）/ 40（默认）/ 48（首屏主行动）
+.ui-btn--sm { height: 32px; padding: 0 12px; font-size: var(--fs-4); }
+.ui-btn--lg { height: 48px; padding: 0 24px; font-size: var(--fs-6); }
 
 .ui-linkbtn {
   appearance: none;
@@ -385,7 +389,7 @@
   background: none;
   padding: 0;
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-4);
   color: var(--brand-700);
   cursor: pointer;
   display: inline-flex;
@@ -396,7 +400,8 @@
 .ui-linkbtn:hover { text-decoration: underline; text-underline-offset: 3px; }
 .ui-linkbtn--muted { color: var(--text-3); }
 .ui-linkbtn--muted:hover { color: var(--text-1); }
-.ui-linkbtn--danger:hover { color: var(--danger-500); }
+.ui-linkbtn--danger { color: var(--danger-500); }
+.ui-linkbtn--brand { font-weight: 700; }
 .ui-linkbtn[disabled] { color: var(--text-4); cursor: not-allowed; text-decoration: none; }
 
 /* ============================================================
@@ -409,8 +414,8 @@
   padding: 0 8px;
   border: 1px solid var(--border-1);
   border-radius: var(--r-1);
-  background: #fff;
-  font-size: 12px;
+  background: var(--bg-card);
+  font-size: var(--fs-2);
   line-height: 1;
   color: var(--text-2);
   white-space: nowrap;
@@ -421,17 +426,24 @@
 .ui-chip--ok { border-color: var(--success-100); background: var(--success-50); color: var(--success-500); }
 
 /* ============================================================
-   12. 价格 / 数字
+   12. 价格 / 数字：三档字号 16 / 20 / 28，全站金额唯一写法
+   —— 千分位由 formatPrice 负责，这里只管字形与层级
    ============================================================ */
 .ui-price {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 16px;
-  font-weight: 650;
+  font-size: var(--fs-8);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.01em;
   color: var(--price);
   white-space: nowrap;
 }
-.ui-price small { font-size: 12px; font-weight: 500; }
+.ui-price small { font-size: var(--fs-2); font-weight: 500; margin-right: 1px; }
+.ui-price--sm { font-size: var(--fs-6); }
+.ui-price--sm small { font-size: var(--fs-1); }
+.ui-price--lg { font-size: var(--fs-10); }
+.ui-price--lg small { font-size: var(--fs-5); }
 .ui-num { font-variant-numeric: tabular-nums; }
 
 /* ============================================================
@@ -455,29 +467,52 @@
   display: block;
 }
 .ui-thumb__ph {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-4);
 }
 .ui-thumb--lg { width: 104px; height: 104px; }
 
 /* ============================================================
-   14. 空态：居中文案 + 一个主操作，不做插图卡片
+   14. 空态：居中文案 + 一个实心主操作，不做插图卡片
+   —— 高度统一为 min(46vh, 380px)，购物车 / 订单 / 收藏的空页不再各留一大块空白
    ============================================================ */
 .ui-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 80px 0;
+  min-height: min(46vh, 380px);
+  padding: 40px 0;
   text-align: center;
 }
 .ui-empty__title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-6);
+  font-weight: 700;
   color: var(--text-1);
 }
+/* 空态图标：品牌色圆片 + 线性图标，跟随现有扁平语言（不做插图卡片） */
+.ui-empty__ico {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--brand-50);
+  color: var(--brand-600);
+  svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
 .ui-empty__desc {
-  font-size: 13.5px;
+  font-size: var(--fs-4);
   line-height: 1.7;
   color: var(--text-3);
   max-width: 32em;
@@ -515,7 +550,7 @@
   border-top: var(--rule);
 }
 .ui-box__count {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -535,7 +570,7 @@
   .el-pager li.is-active {
     background: transparent;
     color: var(--text-1);
-    font-weight: 650;
+    font-weight: 700;
   }
   .btn-prev,
   .btn-next {
@@ -556,13 +591,66 @@
 .ui-muted { color: var(--text-3); }
 
 /* ============================================================
+   15.5 通用单元（原各页面重复定义的样式，收编为全站基元）
+   ============================================================ */
+
+/* 金额：品牌绿加粗 + 等宽数字（7 个后台页曾各写一份；客户页漏了品牌色，
+   金额显示成深灰——统一收编后该视觉不一致即修复） */
+.ui-money { color: var(--brand-700); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* 表格单元格副标题：12px 弱化文字（订单/采购/退款/工单/健康档案 5 页同值） */
+.ui-cell-sub { font-size: var(--fs-2); color: var(--text-3); margin-top: 2px; }
+
+/* 后台列表三件套：搜索卡 / 卡片头 / 翻页条
+   （客服管理/宠物喜好/健康档案/AI知识库 4 页逐字重复，收编后页面只留差异部分） */
+.ui-toolbar-card { margin-bottom: 14px; }
+.ui-card-head { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-5); color: var(--text-2); }
+.ui-pager { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+/* 宠物信息单元：40px 头像/表情 + 名称（评论/客户/健康/喜好/点赞 5 页 3 种变体归一） */
+.ui-pet-cell { display: flex; align-items: center; gap: 8px; }
+.ui-pet-cell__img {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover;
+}
+.ui-pet-cell__emoji {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-sm);
+  background: var(--brand-50); display: flex; align-items: center; justify-content: center; font-size: var(--fs-8);
+}
+
+/* 文本标签栏：计数 + 选中态 2px 下划线（购物车分区标签；订单归档区的同款定义已随死代码删除） */
+.ui-tabs {
+  display: flex; gap: 26px; border-bottom: 1px solid var(--border-1);
+  overflow-x: auto; scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+.ui-tab {
+  position: relative; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 0 12px; border: 0; background: none; font: inherit; font-size: var(--fs-5);
+  color: var(--text-3); cursor: pointer; transition: color .16s ease;
+  &:hover { color: var(--text-1); }
+  &.on {
+    color: var(--text-1); font-weight: 700;
+    &::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--text-1); }
+  }
+}
+.ui-tab__n { font-size: var(--fs-2); color: var(--text-4); font-variant-numeric: tabular-nums; }
+.ui-tab.on .ui-tab__n { color: var(--brand-600); }
+
+/* 提示注记：左侧 2px 色线（我的收藏/我的预约两页完全相同） */
+.ui-note {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  margin: 22px 0 0; padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--brand-300); font-size: var(--fs-4); color: var(--text-2);
+}
+
+/* ============================================================
    16. 响应式：断点只用 768 一档（其余交给 Grid 自适应）
    ============================================================ */
 @media (max-width: 768px) {
   .ui-page { padding: 24px 14px 56px; }
   .ui-head { flex-wrap: wrap; align-items: flex-start; gap: 12px; }
-  .ui-title { font-size: 21px; }
-  .ui-sub { font-size: 13px; }
+  .ui-title { font-size: var(--fs-8); }
+  .ui-sub { font-size: var(--fs-4); }
   .ui-head__aside { width: 100%; gap: 14px; }
 
   .ui-sec { padding-top: 28px; }
@@ -588,7 +676,7 @@
 
   .ui-stats { flex-wrap: nowrap; overflow-x: auto; }
   .ui-stat { min-width: 104px; padding: 14px 14px; }
-  .ui-stat__value { font-size: 20px; }
+  .ui-stat__value { font-size: var(--fs-8); }
 
   .ui-toolbar { gap: 10px; }
   .ui-toolbar__end { margin-left: 0; width: 100%; }

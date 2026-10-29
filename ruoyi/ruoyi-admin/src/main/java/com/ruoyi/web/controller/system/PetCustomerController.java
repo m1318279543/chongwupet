@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.system;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.domain.PetCustomer;
 import com.ruoyi.system.service.IPetCustomerService;
 import com.ruoyi.system.service.IPetScopeService;
@@ -76,6 +78,19 @@ public class PetCustomerController extends BaseController
             petScopeService.assertStoreAccessible(customer.getStoreId());
         }
         return success(petCustomerService.selectPetsByCustomerId(customerId));
+    }
+
+    /** 当前登录用户名下的宠物（前台「我的宠物」，无需后台权限） */
+    @GetMapping("/myPets")
+    public AjaxResult myPets()
+    {
+        Long userId = SecurityUtils.getUserId();
+        PetCustomer customer = petCustomerService.selectPetCustomerByUserId(userId);
+        if (customer == null)
+        {
+            return success(new ArrayList<>());
+        }
+        return success(petCustomerService.selectPetsByCustomerId(customer.getCustomerId()));
     }
 
     /** 新增客户 */

@@ -250,6 +250,61 @@ public class PetCartController extends BaseController
     }
 
     /**
+     * 批量支付：购物车勾选的待支付订单（含本次新下的单）一次性结清
+     * body: { orderNos: ["ORD..."], payMethod: "alipay|wechat|balance" }
+     */
+    @Log(title = "订单支付", businessType = BusinessType.UPDATE)
+    @PostMapping("/pay-batch")
+    @SuppressWarnings("unchecked")
+    public AjaxResult payBatch(@RequestBody Map<String, Object> body)
+    {
+        Object nos = body.get("orderNos");
+        if (!(nos instanceof List) || ((List<String>) nos).isEmpty())
+        {
+            return error("未选择要支付的订单");
+        }
+        List<String> orderNos = (List<String>) nos;
+        String payMethod = body.get("payMethod") == null ? "alipay" : String.valueOf(body.get("payMethod"));
+        Long userId = SecurityUtils.getUserId();
+        int paid = 0;
+        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+        for (String orderNo : orderNos)
+        {
+            PetOrder order = petOrderService.selectPetOrderByNo(orderNo);
+            if (order == null)
+            {
+                continue;
+            }
+            if (!SecurityUtils.isAdmin() && (order.getUserId() == null || !order.getUserId().equals(userId)))
+            {
+                return error("只能支付自己的订单");
+            }
+            int rows = petOrderService.payOrder(orderNo, payMethod, SecurityUtils.getUsername());
+            if (rows > 0)
+            {
+                paid++;
+                total = total.add(order.getPayAmount() == null ? java.math.BigDecimal.ZERO : order.getPayAmount());
+                StringBuilder names = new StringBuilder();
+                for (PetOrderItem item : order.getItems())
+                {
+                    if (names.length() > 0) names.append("、");
+                    names.append(item.getGoodsName());
+                }
+                String method = "wechat".equals(payMethod) ? "微信支付" : "balance".equals(payMethod) ? "余额支付" : "支付宝";
+                petNotificationService.push(order.getUserId(), order.getUserName(), "order",
+                        "订单支付成功",
+                        "订单 " + orderNo + " 已通过" + method + "支付成功，共 ¥" + order.getPayAmount()
+                                + "（" + names + "），我们会尽快为你安排发货。",
+                        order.getOrderId());
+            }
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("paid", paid);
+        data.put("total", total);
+        return AjaxResult.success("支付成功", data);
+    }
+
+    /**
      * 取消订单：登录用户只能取消自己的订单，并写入取消记录供后台查看
      */
     @Log(title = "购物车管理", businessType = BusinessType.UPDATE)

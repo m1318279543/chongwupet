@@ -1,40 +1,38 @@
 <template>
   <div class="app-container">
     <!-- 搜索栏 -->
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="分类名称" prop="categoryName">
-        <el-input v-model="queryParams.categoryName" placeholder="请输入分类名称" clearable style="width: 240px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="分类状态" clearable style="width: 200px">
-          <el-option v-for="dict in pet_status" :key="dict.value" :label="dict.label" :value="dict.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <el-card shadow="never" class="ui-toolbar-card">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+        <el-form-item label="分类名称" prop="categoryName">
+          <el-input v-model="queryParams.categoryName" placeholder="请输入分类名称" clearable style="width: 240px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="分类状态" clearable style="width: 200px">
+            <el-option v-for="dict in pet_status" :key="dict.value" :label="dict.label" :value="dict.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <!-- 操作栏 -->
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:category:add']">新增</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['pet:category:edit']">修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:category:remove']">删除</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['pet:category:export']">导出</el-button>
-      </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="ui-card-head">
+          <div class="head-actions">
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:category:add']">新增</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['pet:category:edit']">修改</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:category:remove']">删除</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['pet:category:export']">导出</el-button>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+        </div>
+      </template>
 
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="categoryList" @selection-change="handleSelectionChange">
+      <!-- 表格 -->
+      <el-table v-loading="loading" :data="categoryList" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="分类ID" align="center" prop="categoryId" width="100" />
       <el-table-column label="分类名称" align="center" prop="categoryName" :show-overflow-tooltip="true" />
@@ -60,7 +58,10 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <div class="ui-pager">
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </el-card>
 
     <!-- 新增/修改对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
@@ -227,3 +228,7 @@ function cancel() {
 
 getList();
 </script>
+
+<style scoped lang="scss">
+.head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+</style>

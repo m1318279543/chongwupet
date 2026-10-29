@@ -150,7 +150,7 @@ async function serveStatic(req, res) {
   if (urlPath.includes('\0')) { res.writeHead(400); return res.end('Bad Request') }
 
   const resolved = path.resolve(ARGS.root, '.' + urlPath)
-  if (!resolved.startsWith(ARGS.root)) { res.writeHead(403); return res.end('Forbidden') }
+  if (resolved !== ARGS.root && !resolved.startsWith(ARGS.root + path.sep)) { res.writeHead(403); return res.end('Forbidden') }
 
   let filePath = resolved
   let st = await statSafe(filePath)

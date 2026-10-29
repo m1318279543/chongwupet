@@ -25,12 +25,12 @@ export function createPetOrder(petId) {
   return request({ url: '/pet/order/pet/' + petId, method: 'post' })
 }
 
-// 支付（幂等）
+// 取消订单（前台用户取消自己的待支付订单、后台取消订单共用，后端会写入取消记录）
+// 支付订单（收银台：支付宝/微信/余额，余额通道由后端真实扣减）
 export function payOrder(orderNo, payMethod) {
   return request({ url: '/pet/order/pay/' + orderNo, method: 'post', params: { payMethod } })
 }
 
-// 取消订单
 export function cancelOrder(orderNo, reason) {
   return request({ url: '/pet/order/cancel/' + orderNo, method: 'post', params: { reason } })
 }

@@ -1,44 +1,51 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="80px">
-      <el-form-item label="用户" prop="userName">
-        <el-input v-model="queryParams.userName" placeholder="用户名 / 游客" clearable style="width: 150px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="匹配结果" prop="matchStatus">
-        <el-select v-model="queryParams.matchStatus" placeholder="全部" clearable style="width: 120px" @change="handleQuery">
-          <el-option label="已匹配" value="0" />
-          <el-option label="无匹配" value="1" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="时间范围">
-        <el-date-picker
-          v-model="dateRange"
-          type="daterange"
-          value-format="YYYY-MM-DD"
-          range-separator="-"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          style="width: 240px"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <el-card shadow="never" class="ui-toolbar-card">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="80px">
+        <el-form-item label="用户" prop="userName">
+          <el-input v-model="queryParams.userName" placeholder="用户名 / 游客" clearable style="width: 150px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="匹配结果" prop="matchStatus">
+          <el-select v-model="queryParams.matchStatus" placeholder="全部" clearable style="width: 120px" @change="handleQuery">
+            <el-option label="已匹配" value="0" />
+            <el-option label="无匹配" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="时间范围">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            range-separator="-"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 240px"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5"><el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button></el-col>
-      <el-col :span="1.5"><el-button type="danger" plain icon="Delete" @click="handleClean">清空</el-button></el-col>
-      <el-col :span="10" style="line-height: 32px; color: #909399; font-size: 13px">
-        累计智能匹配 <b style="color: var(--brand-600)">{{ stat.total }}</b> 次 ·
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="ui-card-head">
+          <div class="head-actions">
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button>
+            <el-button type="danger" plain icon="Delete" @click="handleClean">清空</el-button>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+        </div>
+      </template>
+      <p class="stat-line">
+        累计智能匹配 <b class="stat-strong">{{ stat.total }}</b> 次 ·
         其中无匹配 <b class="stat-empty">{{ stat.empty }}</b> 次（{{ stat.emptyRate }}%）·
-        今日 <b>{{ stat.today }}</b> 次
-      </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+        今日 <b class="stat-strong">{{ stat.today }}</b> 次
+      </p>
 
-    <el-table v-loading="loading" :data="recordList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" :data="recordList" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="ID" align="center" prop="recordId" width="70" />
       <el-table-column label="用户" align="center" width="120">
@@ -82,7 +89,10 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <div class="ui-pager">
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </el-card>
 
     <!-- 详情 -->
     <el-dialog v-model="viewVisible" title="智能匹配详情" width="720px" append-to-body>
@@ -318,8 +328,12 @@ loadStat();
 </script>
 
 <style scoped>
+.head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stat-line { margin: 0 0 12px; font-size: var(--fs-4); color: var(--text-3);
+  .stat-strong { color: var(--brand-600); }
+}
 .sub-id {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-4);
 }
 .portrait {
@@ -328,10 +342,10 @@ loadStat();
   gap: 5px;
 }
 .p-tag {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-2);
   background: var(--bg-page);
-  border-radius: 10px;
+  border-radius: var(--radius-xs);
   padding: 2px 8px;
   line-height: 18px;
 }
@@ -340,7 +354,7 @@ loadStat();
   color: var(--text-1);
 }
 .result-text {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3);
 }
 .detail-box {
@@ -355,12 +369,12 @@ loadStat();
   margin-bottom: 16px;
 }
 .d-user {
-  font-size: 15px;
+  font-size: var(--fs-6);
   font-weight: 600;
   color: var(--text-1);
 }
 .d-time {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-4);
   margin-top: 4px;
 }
@@ -368,7 +382,7 @@ loadStat();
   margin-bottom: 18px;
 }
 .d-title {
-  font-size: 13px;
+  font-size: var(--fs-4);
   font-weight: 600;
   color: var(--text-1);
   margin-bottom: 10px;
@@ -381,9 +395,9 @@ loadStat();
 .d-answer {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: var(--fs-4);
   background: var(--bg-page);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 8px 12px;
 }
 .a-key {
@@ -398,8 +412,8 @@ loadStat();
   align-items: center;
   gap: 12px;
   padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-4);
   background: var(--bg-page);
   margin-bottom: 6px;
 }
@@ -412,7 +426,7 @@ loadStat();
   border-radius: 50%;
   background: #eef0f3;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: var(--fs-2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,7 +434,7 @@ loadStat();
 }
 .rank.first {
   background: var(--brand-600);
-  color: #fff;
+  color: var(--on-accent);
 }
 .t-name {
   font-weight: 600;
@@ -438,7 +452,7 @@ loadStat();
 }
 .t-reason {
   color: var(--success-500);
-  font-size: 12px;
+  font-size: var(--fs-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -448,7 +462,7 @@ loadStat();
 }
 .empty-reason {
   color: var(--danger-500);
-  font-size: 12px;
+  font-size: var(--fs-2);
 }
 .diag-grid {
   display: grid;
@@ -459,22 +473,22 @@ loadStat();
 .diag-cell {
   background: #fef4f4;
   border: 1px solid #fde2e2;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 .diag-cell span {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3);
 }
 .diag-cell b {
-  font-size: 17px;
+  font-size: var(--fs-7);
   color: var(--danger-500);
 }
 .diag-tip {
-  font-size: 13px;
+  font-size: var(--fs-4);
   color: var(--text-2);
   line-height: 1.9;
 }

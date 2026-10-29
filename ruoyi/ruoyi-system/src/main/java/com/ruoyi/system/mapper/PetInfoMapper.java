@@ -1,6 +1,8 @@
 package com.ruoyi.system.mapper;
 
 import java.util.List;
+import java.util.Map;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.PetInfo;
 
 /**
@@ -11,6 +13,15 @@ import com.ruoyi.system.domain.PetInfo;
 public interface PetInfoMapper
 {
     public List<PetInfo> selectPetInfoList(PetInfo petInfo);
+
+    /** 首页精选：在售优先，猫狗兔优先，取前 N 条 */
+    public List<PetInfo> selectFeaturedPets(@Param("limit") int limit);
+
+    /** 总量统计：总数 / 在售数 / 覆盖分类数 */
+    public Map<String, Object> selectPetInfoCounts();
+
+    /** 各分类在售数量，供列表页品类快筛显示 */
+    public List<Map<String, Object>> selectPetCountByCategory();
 
     public PetInfo selectPetInfoByPetId(Long petId);
 

@@ -5,9 +5,14 @@ export function listGoods(query) {
   return request({ url: '/pet/goods/list', method: 'get', params: query })
 }
 
-// 前台商品详情
-export function getShopGoods(goodsId) {
-  return request({ url: '/pet/goods/shop/' + goodsId, method: 'get' })
+// 首页宠物粮精选：每个品类一款（免登录）
+export function listFeaturedGoods(limit = 4) {
+  return request({ url: '/pet/goods/featured', method: 'get', params: { limit } })
+}
+
+// 后台商品概览：总数 / 在售 / 低库存 / 库存合计
+export function getGoodsStats() {
+  return request({ url: '/pet/goods/stats', method: 'get' })
 }
 
 // 后台商品详情

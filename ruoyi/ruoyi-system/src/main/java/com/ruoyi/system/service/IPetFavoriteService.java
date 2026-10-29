@@ -12,6 +12,9 @@ public interface IPetFavoriteService
 {
     public List<PetFavorite> selectPetFavoriteList(PetFavorite petFavorite);
 
+    /** 我的收藏 petId 集合 */
+    public List<Long> selectPetIdsByUserId(Long userId);
+
     public PetFavorite selectPetFavoriteByFavoriteId(Long favoriteId);
 
     public int insertPetFavorite(PetFavorite petFavorite);

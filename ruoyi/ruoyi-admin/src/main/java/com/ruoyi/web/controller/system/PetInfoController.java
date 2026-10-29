@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -58,6 +59,20 @@ public class PetInfoController extends BaseController
         startPage();
         List<PetInfo> list = petInfoService.selectPetInfoList(petInfo);
         return getDataTable(list);
+    }
+
+    /**
+     * 首页与列表页的聚合数据：总数、在售数、分类数、各分类计数、精选 N 只。
+     * 对游客开放；用一条请求替代前端 pageSize=1000 的全量拉取。
+     */
+    @GetMapping("/overview")
+    public AjaxResult overview(@RequestParam(value = "limit", defaultValue = "12") int limit)
+    {
+        AjaxResult ajax = AjaxResult.success();
+        ajax.put("counts", petInfoService.selectPetInfoCounts());
+        ajax.put("byCategory", petInfoService.selectPetCountByCategory());
+        ajax.put("featured", petInfoService.selectFeaturedPets(limit));
+        return ajax;
     }
 
     @PreAuthorize("@ss.hasPermi('pet:info:export')")

@@ -32,6 +32,8 @@
           </router-link>
           <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
           <NotificationBell v-if="isLogged" more-path="/shop/order" />
+          <!-- AI 助手入口（来自 platform-v2：点开右侧全高抽屉） -->
+          <AssistantEntry scene="shop" />
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
           <router-link to="/shop/cart" class="m-cart" aria-label="购物车">
             <el-icon :size="21"><ShoppingCart /></el-icon>
@@ -181,6 +183,8 @@
 
     <!-- 登录注册对话框 -->
     <AuthDialog ref="authRef" @success="onAuthSuccess" />
+    <!-- AI 助手抽屉（platform-v2）：入口在顶栏 AssistantEntry，这里只挂抽屉本体 -->
+    <AssistantDock :show-launcher="false" />
   </div>
 </template>
 
@@ -193,9 +197,18 @@ import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import AuthDialog from '@/components/AuthDialog.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
+import AssistantDock from '@/components/assistant/AssistantDock.vue'
+import AssistantEntry from '@/components/assistant/AssistantEntry.vue'
+import { useAssistant } from '@/components/assistant/useAssistant'
 
 const route = useRoute()
 const router = useRouter()
+const assistant = useAssistant()
+
+// 其他页面（详情页「问 AI」等）通过 window 事件唤起助手
+function onAssistantOpen(event) {
+  assistant.open({ ...(event?.detail || {}), fresh: true })
+}
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const authRef = ref()
@@ -280,11 +293,13 @@ onMounted(() => {
   mql.addEventListener('change', onMqlChange)
   document.addEventListener('visibilitychange', refreshUserInfo)
   window.addEventListener('focus', refreshUserInfo)
+  window.addEventListener('pet-assistant-open', onAssistantOpen)
 })
 onBeforeUnmount(() => {
   mql.removeEventListener('change', onMqlChange)
   document.removeEventListener('visibilitychange', refreshUserInfo)
   window.removeEventListener('focus', refreshUserInfo)
+  window.removeEventListener('pet-assistant-open', onAssistantOpen)
   lockBody(false)
 })
 // 头像后端存的是 /profile/xxx 相对路径，需拼 API 前缀

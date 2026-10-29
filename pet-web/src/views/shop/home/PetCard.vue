@@ -1,8 +1,12 @@
 <template>
   <!-- 宠物卡：首页网格共用，首页只负责取数 -->
-  <article class="pet-card" @click="$emit('open', pet.petId)">
+  <article class="pet-card" :class="{ 'is-sold': pet.status === '1' }" @click="$emit('open', pet.petId)">
     <div class="pet-media" :style="isImage(pet.image) ? null : { background: gradient }">
-      <img v-if="isImage(pet.image)" :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy" />
+      <img
+        v-if="isImage(pet.image)"
+        :src="pet.image" :alt="pet.petName" class="pet-photo" loading="lazy"
+        :style="imageVars(pet.petId)"
+      />
       <span v-else class="pet-emoji">暂无图片</span>
 
       <span class="pet-flag" :class="{ sold: pet.status === '1' }">
@@ -26,7 +30,7 @@
         {{ metaText }}<template v-if="rating"> · <el-icon class="star"><Star /></el-icon>{{ rating.avg }}</template>
       </p>
       <div class="pet-foot">
-        <span class="pet-price num" v-if="pet.price > 0"><i>¥</i>{{ formatPrice(pet.price) }}</span>
+        <span class="pet-price num" v-if="pet.price > 0"><i>¥</i>{{ money(pet.price) }}</span>
         <span class="pet-price free" v-else>协商领养</span>
         <span class="pet-link">
           详情
@@ -39,6 +43,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { money } from '@/utils/money'
+import { imageVars } from './imageTuning'
+import { isImage } from '@/utils/petDisplay'
 
 const props = defineProps({
   pet: { type: Object, required: true },
@@ -48,15 +55,8 @@ const props = defineProps({
 })
 defineEmits(['open', 'fav'])
 
-function isImage(s) {
-  return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0)
-}
 function genderText(g) {
   return g === '0' ? '公' : g === '1' ? '母' : ''
-}
-// 价格加千分位，¥ 与数字分离便于分层字号
-function formatPrice(p) {
-  return Number(p).toLocaleString('zh-CN')
 }
 // 品种 · 性别 · 月龄 合并成一行，不再堆三枚灰色标签
 const metaText = computed(() => {
@@ -86,47 +86,68 @@ const metaText = computed(() => {
     background: linear-gradient(to top, rgba(22, 33, 29, .07), rgba(22, 33, 29, 0));
   }
 
-  .pet-emoji { font-size: 13px; color: var(--text-3); }
+  .pet-emoji { font-size: var(--fs-4); color: var(--text-3); }
   .pet-photo {
     width: 100%; height: 100%; object-fit: cover; display: block;
+    // 归一化：焦点与缩放出 imageTuning.js，缺省居中偏上、不缩放
+    object-position: var(--img-pos, 50% 45%);
+    transform: scale(var(--img-zoom, 1));
     transition: transform .5s cubic-bezier(.2, .7, .3, 1);
   }
-  .pet-card:hover & .pet-photo { transform: scale(1.05); }
+  // hover 在归一化基础上再放大 5%，避免把调好的缩放覆盖掉
+  .pet-card:hover & .pet-photo { transform: scale(calc(var(--img-zoom, 1) * 1.05)); }
 }
 
 .pet-flag {
-  position: absolute; top: 10px; left: 10px; z-index: 2;
+  position: absolute; top: 10px; left: 10px; z-index: var(--z-badge);
   display: inline-flex; align-items: center; gap: 5px;
-  height: 24px; padding: 0 9px; border-radius: 7px;
+  height: 24px; padding: 0 9px; border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, .94); backdrop-filter: blur(4px);
-  font-size: 11.5px; font-weight: 600; color: var(--text-1);
+  font-size: var(--fs-2); font-weight: 700; color: var(--text-1);
   box-shadow: 0 1px 3px rgba(22, 25, 23, .12);
 
   .d { width: 5px; height: 5px; border-radius: 50%; background: var(--success-500); }
-  &.sold { background: rgba(22, 25, 23, .72); color: #fff;
-    .d { background: #a8a29e; } }
+  &.sold { background: rgba(22, 25, 23, .72); color: var(--on-accent);
+    .d { background: var(--text-4); } }
 }
 
 .fav {
-  position: absolute; top: 9px; right: 9px; z-index: 2;
-  width: 30px; height: 30px; border-radius: 50%; border: 0;
-  background: rgba(255, 255, 255, .94); display: grid; place-items: center;
-  box-shadow: 0 1px 3px rgba(22, 25, 23, .14); cursor: pointer;
-  transition: transform .16s, background .16s;
+  position: absolute; top: 8px; right: 8px; z-index: var(--z-badge);
+  // 触控热区 40×40（图标仍 15px，视觉不变）
+  width: 40px; height: 40px; border-radius: 50%; border: 0;
+  background: transparent; display: grid; place-items: center;
+  cursor: pointer;
+  transition: transform .16s;
 
-  svg { width: 15px; height: 15px; stroke: var(--text-2); fill: none; stroke-width: 1.8; }
-  &:hover { transform: scale(1.08); background: #fff; }
+  // 视觉底片单独一层，避免 40px 的点击区变成一块大白圆
+  &::before {
+    content: ''; position: absolute; width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255, 255, 255, .94); box-shadow: 0 1px 3px rgba(22, 25, 23, .14);
+    transition: background .16s;
+  }
+  svg { position: relative; width: 15px; height: 15px; stroke: var(--text-2); fill: none; stroke-width: 1.8; }
+  &:hover { transform: scale(1.06); }
+  &:hover::before { background: var(--bg-card); }
   &[aria-pressed="true"] svg { stroke: var(--brand-600); fill: var(--brand-600); }
+}
+
+/* 已售卡降权：不隐藏、不置灰到看不清，只把注意力让给在售的 */
+.pet-card.is-sold {
+  .pet-photo { filter: saturate(.55) brightness(.99); }
+  .pet-name { color: var(--text-2); }
+  .pet-price { color: var(--text-3); }
+  // 已经降低图片饱和度来表达「已售」，角标本身要保持可读，不再减淡
+  .pet-flag.sold { background: rgba(22, 25, 23, .72); }
 }
 
 .pet-body { padding: 12px 2px 0; }
 
 .pet-name {
-  font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--text-1);
+  font-size: var(--fs-6); font-weight: 700; line-height: 1.4; color: var(--text-1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pet-meta {
-  margin-top: 3px; font-size: 12.5px; line-height: 1.5; color: var(--text-3);
+  margin-top: 3px; font-size: var(--fs-3); line-height: 1.5; color: var(--text-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pet-foot {
@@ -134,26 +155,30 @@ const metaText = computed(() => {
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-2);
 }
 .pet-price {
-  font-size: 20px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; color: var(--price);
-  i { font-style: normal; font-size: 12.5px; font-weight: 600; margin-right: 1px; }
-  &.free { font-size: 14px; font-weight: 600; color: var(--brand-700); }
+  font-family: var(--font-num); font-size: var(--fs-8); font-weight: 700; line-height: 1.1;
+  letter-spacing: -.02em; color: var(--price); font-variant-numeric: tabular-nums;
+  i { font-style: normal; font-size: var(--fs-3); font-weight: 700; margin-right: 1px; }
+  &.free { font-family: var(--font-sans); font-size: var(--fs-5); font-weight: 700; color: var(--brand-700); }
 }
 .pet-link {
   display: inline-flex; align-items: center; gap: 3px; padding-bottom: 2px;
-  font-size: 12.5px; font-weight: 600; color: var(--text-3); transition: color .16s;
+  font-size: var(--fs-3); font-weight: 700; color: var(--text-3); transition: color .16s;
   svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
   .pet-card:hover & { color: var(--brand-700); }
 }
 
 @media (max-width: 768px) {
   .pet-media { aspect-ratio: 1 / 1; border-radius: var(--radius-sm);
-    .pet-emoji { font-size: 12px; } }
+    .pet-emoji { font-size: var(--fs-2); } }
   .pet-body { padding: 9px 1px 0; }
-  .pet-name { font-size: 13.5px; }
-  .pet-meta { font-size: 11.5px; }
+  .pet-name { font-size: var(--fs-5); }
+  .pet-meta { font-size: var(--fs-2); }
   .pet-foot { margin-top: 9px; padding-top: 9px; }
-  .pet-price { font-size: 17px;
-    i { font-size: 11px; } }
-  .pet-link { display: none; }
+  .pet-price { font-size: var(--fs-6);
+    i { font-size: var(--fs-1); } }
+  // 窄屏保留「价格 / 详情」的左右结构，与桌面同一套阅读顺序
+  .pet-link { font-size: var(--fs-2);
+    svg { width: 11px; height: 11px; } }
+  .fav { top: 6px; right: 6px; width: 40px; height: 40px; }
 }
 </style>

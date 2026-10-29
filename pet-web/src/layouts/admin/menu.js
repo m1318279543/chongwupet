@@ -42,6 +42,12 @@ export const MENU_GROUPS = [
     ]
   },
   {
+    key: 'ai',
+    title: 'AI 助手',
+    icon: 'MagicStick',
+    items: ['/admin/knowledge']
+  },
+  {
     key: 'sys',
     title: '系统管理',
     icon: 'Setting',

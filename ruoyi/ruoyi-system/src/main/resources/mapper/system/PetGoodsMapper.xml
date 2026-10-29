@@ -94,6 +94,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by sort asc, goods_id asc
     </select>
 
+    <!-- 首页宠物粮精选：每个品类一款，避免前端拉 200 条自己挑 -->
+    <select id="selectFeaturedGoods" resultMap="PetGoodsResult">
+        select * from (
+            select g.*, row_number() over (partition by g.cat order by g.sort asc, g.goods_id asc) as rn
+            from pet_goods g
+            where g.del_flag = '0' and g.status = '0'
+        ) t
+        where t.rn = 1
+        order by t.sort asc, t.goods_id asc
+        limit #{limit}
+    </select>
+
+    <!-- 商品概览：一条 SQL 出四个统计值，替代前端 pageSize=500 自己汇总 -->
+    <select id="selectGoodsStats" resultType="java.util.HashMap">
+        select count(*) as total,
+               sum(case when status = '0' then 1 else 0 end) as onSale,
+               sum(case when stock &lt;= 10 then 1 else 0 end) as low,
+               sum(stock) as stock
+        from pet_goods
+        where del_flag = '0'
+    </select>
+
     <select id="selectPetGoodsById" parameterType="Long" resultMap="PetGoodsResult">
         <include refid="selectPetGoodsVo"/>
         where goods_id = #{goodsId}

@@ -1,17 +1,17 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import { ElLoadingDirective } from 'element-plus'
 import './styles/tokens.scss'
 import './styles/element.scss'
 import './styles/index.scss'
 // 极简排版基元（.ui-*）：只新增类名，不覆盖既有样式
 import './styles/flat.scss'
-import locale from 'element-plus/es/locale/lang/zh-cn'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import setupDirectives from './permission'
+// 图标按需注册：只注册项目实际用到的图标（全量注册会把 293 个图标全部打包）
+import setupIcons from './plugins/icons'
 
 // ---- RuoYi 能力对齐：后台管理复用 RuoYi 的组件与全局工具 ----
 import { useDict } from '@/utils/dict'
@@ -28,10 +28,8 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 
-// 注册所有 Element Plus 图标为全局组件
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
-}
+// 按需注册 Element Plus 图标（清单见 src/plugins/icons.js）
+setupIcons(app)
 
 // 全局组件（与 RuoYi 保持一致）
 app.component('Pagination', Pagination)
@@ -50,7 +48,8 @@ app.config.globalProperties.selectDictLabels = selectDictLabels
 app.config.globalProperties.$modal = modal
 app.config.globalProperties.$download = downloadPlugin
 
-app.use(ElementPlus, { locale })
+// v-loading 指令按需注册（组件本身由 unplugin 按需引入，见 vite.config.js）
+app.directive('loading', ElLoadingDirective)
 setupDirectives(app)
 
 app.mount('#app')

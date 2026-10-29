@@ -1,48 +1,48 @@
 <template>
   <div class="app-container">
     <!-- 搜索栏 -->
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="客户" prop="customerName">
-        <el-input v-model="queryParams.customerName" placeholder="姓名 / 手机号" clearable style="width: 200px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="门店" prop="storeId">
-        <el-select v-model="queryParams.storeId" placeholder="全部门店" clearable style="width: 180px">
-          <el-option v-for="s in stores" :key="s.storeId" :label="s.storeName" :value="s.storeId" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="等级" prop="level">
-        <el-select v-model="queryParams.level" placeholder="全部等级" clearable style="width: 130px">
-          <el-option v-for="l in LEVELS" :key="l" :label="l" :value="l" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 130px">
-          <el-option label="正常" value="0" />
-          <el-option label="流失" value="1" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <el-card shadow="never" class="ui-toolbar-card">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+        <el-form-item label="客户" prop="customerName">
+          <el-input v-model="queryParams.customerName" placeholder="姓名 / 手机号" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="门店" prop="storeId">
+          <el-select v-model="queryParams.storeId" placeholder="全部门店" clearable style="width: 180px">
+            <el-option v-for="s in stores" :key="s.storeId" :label="s.storeName" :value="s.storeId" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="等级" prop="level">
+          <el-select v-model="queryParams.level" placeholder="全部等级" clearable style="width: 130px">
+            <el-option v-for="l in LEVELS" :key="l" :label="l" :value="l" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 130px">
+            <el-option label="正常" value="0" />
+            <el-option label="流失" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <!-- 操作栏 -->
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:customer:add']">新增客户</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['pet:customer:edit']">修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:customer:remove']">删除</el-button>
-      </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="ui-card-head">
+          <div class="head-actions">
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:customer:add']">新增客户</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate" v-hasPermi="['pet:customer:edit']">修改</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:customer:remove']">删除</el-button>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+        </div>
+      </template>
 
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="customerList" @selection-change="handleSelectionChange">
+      <!-- 表格 -->
+      <el-table v-loading="loading" :data="customerList" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="编号" align="center" prop="customerCode" width="110" />
       <el-table-column label="客户" align="center" prop="customerName" width="90" />
@@ -62,7 +62,7 @@
       <el-table-column label="订单" align="center" prop="orderCount" width="60" />
       <el-table-column label="累计消费" align="center" width="100">
         <template #default="scope">
-          <span class="money">¥{{ formatAmount(scope.row.totalAmount) }}</span>
+          <span class="ui-money">¥{{ formatAmount(scope.row.totalAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="最近成交" align="center" width="104">
@@ -82,7 +82,10 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <div class="ui-pager">
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </el-card>
 
     <!-- 新增/修改 -->
     <el-dialog :title="title" v-model="open" width="640px" append-to-body>
@@ -183,8 +186,9 @@
         <el-table :data="pets" size="small">
           <el-table-column label="宠物" min-width="120">
             <template #default="scope">
-              <div class="pet-cell">
-                <span class="pet-avatar">{{ isImage(scope.row.image) ? '' : (scope.row.image || '—') }}</span>
+              <div class="ui-pet-cell">
+                <img v-if="isImage(scope.row.image)" :src="scope.row.image" class="ui-pet-cell__img" :alt="scope.row.petName" />
+                <span v-else class="ui-pet-cell__emoji">{{ scope.row.image || '—' }}</span>
                 <span>{{ scope.row.petName }}</span>
               </div>
             </template>
@@ -212,6 +216,7 @@
 import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
 import { listCustomer, getCustomer, addCustomer, updateCustomer, delCustomer } from '@/api/pet/petCustomer'
 import { storeOptions } from '@/api/pet/petStore'
+import { isImage } from '@/utils/petDisplay'
 
 const { proxy } = getCurrentInstance()
 
@@ -259,10 +264,6 @@ function levelType(level) {
 function formatAmount(v) {
   const n = Number(v || 0)
   return n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-}
-
-function isImage(s) {
-  return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0)
 }
 
 function getList() {
@@ -365,11 +366,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.money { font-variant-numeric: tabular-nums; color: var(--text-1); }
-.pets-title { margin: 18px 0 10px; font-size: 14px; font-weight: 600; color: var(--text-1); }
-.pet-cell { display: flex; align-items: center; gap: 8px; }
-.pet-avatar {
-  width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
-  background: var(--brand-50); border-radius: 8px; font-size: 14px;
-}
+.pets-title { margin: 18px 0 10px; font-size: var(--fs-5); font-weight: 600; color: var(--text-1); }
+.head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 </style>

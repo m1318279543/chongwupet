@@ -2,7 +2,7 @@
   <div class="app-container">
     <StatCards :items="[
       { label: '待入库', value: stats.pending || 0, tone: 'warn', onClick: () => filterStatus('0') },
-      { label: '今日入库额', value: formatMoney(stats.inboundAmount), prefix: '¥', tone: 'money' },
+      { label: '今日入库额', value: money(stats.inboundAmount, 2), prefix: '¥', tone: 'money' },
       { label: '已入库单数', value: stats.inboundCount || 0, tone: 'success', onClick: () => filterStatus('1') },
       { label: '低库存商品（≤10）', value: stats.lowStock || 0, tone: 'danger', onClick: () => handleCreate(true) }
     ]" />
@@ -37,22 +37,22 @@
       <el-table-column label="商品" min-width="200">
         <template #default="scope">
           <div class="cell-main">{{ firstGoods(scope.row) }}</div>
-          <div class="cell-sub">{{ scope.row.itemCount }} 种 · {{ scope.row.totalQty }} 件</div>
+          <div class="ui-cell-sub">{{ scope.row.itemCount }} 种 · {{ scope.row.totalQty }} 件</div>
         </template>
       </el-table-column>
       <el-table-column label="采购金额" width="110">
-        <template #default="scope"><span class="money">¥{{ formatMoney(scope.row.totalAmount) }}</span></template>
+        <template #default="scope"><span class="ui-money">¥{{ money(scope.row.totalAmount, 2) }}</span></template>
       </el-table-column>
       <el-table-column label="状态" width="96">
         <template #default="scope">
-          <el-tag size="small" :type="statusType(scope.row.status)">{{ statusText(scope.row.status) }}</el-tag>
+          <el-tag size="small" :type="statusType(scope.row.status)">{{ enumText(STATUS, scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="建单时间" width="120">
-        <template #default="scope">{{ fmt(scope.row.createTime) }}</template>
+        <template #default="scope">{{ fmtShort(scope.row.createTime) }}</template>
       </el-table-column>
       <el-table-column label="入库时间" width="120">
-        <template #default="scope">{{ fmt(scope.row.inboundTime) }}</template>
+        <template #default="scope">{{ fmtShort(scope.row.inboundTime) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="170" fixed="right" class-name="small-padding fixed-width">
         <template #default="scope">
@@ -100,7 +100,8 @@
         <el-table :data="form.items" size="small" border empty-text="点「按低库存带出」或「添加一行」">
           <el-table-column label="商品" min-width="230">
             <template #default="scope">
-              <el-select v-model="scope.row.goodsId" filterable placeholder="选择商品" style="width: 100%"
+              <el-select v-model="scope.row.goodsId" filterable remote :remote-method="loadGoods"
+                         placeholder="输入名称或编码搜索" style="width: 100%"
                          @change="(v) => onGoodsChange(scope.row, v)">
                 <el-option v-for="g in goodsOptions" :key="g.goodsId"
                            :label="`${g.goodsName}${g.spec ? ' · ' + g.spec : ''}`" :value="g.goodsId" />
@@ -122,7 +123,7 @@
             </template>
           </el-table-column>
           <el-table-column label="小计" width="96" align="right">
-            <template #default="scope">¥{{ formatMoney(lineAmount(scope.row)) }}</template>
+            <template #default="scope">¥{{ money(lineAmount(scope.row), 2) }}</template>
           </el-table-column>
           <el-table-column label="" width="52" align="center">
             <template #default="scope">
@@ -133,7 +134,7 @@
 
         <p class="total-line">
           共 {{ form.items.length }} 种 · {{ totalQty }} 件，合计
-          <b>¥{{ formatMoney(totalAmount) }}</b>
+          <b>¥{{ money(totalAmount, 2) }}</b>
         </p>
       </el-form>
 
@@ -151,17 +152,17 @@
             <p class="no">{{ detail.purchaseNo }}</p>
             <p class="sub">{{ detail.supplier || '—' }} · {{ detail.storeName || '—' }}</p>
           </div>
-          <el-tag :type="statusType(detail.status)">{{ statusText(detail.status) }}</el-tag>
+          <el-tag :type="statusType(detail.status)">{{ enumText(STATUS, detail.status) }}</el-tag>
         </div>
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="商品种数">{{ detail.itemCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="采购件数">{{ detail.totalQty || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="采购金额">¥{{ formatMoney(detail.totalAmount) }}</el-descriptions-item>
+          <el-descriptions-item label="采购金额">¥{{ money(detail.totalAmount, 2) }}</el-descriptions-item>
           <el-descriptions-item label="预计到货">{{ fmtDate(detail.expectTime) }}</el-descriptions-item>
           <el-descriptions-item label="建单人">{{ detail.createBy || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="建单时间">{{ fmt(detail.createTime) }}</el-descriptions-item>
+          <el-descriptions-item label="建单时间">{{ fmtShort(detail.createTime) }}</el-descriptions-item>
           <el-descriptions-item label="入库人">{{ detail.inboundBy || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="入库时间">{{ fmt(detail.inboundTime) }}</el-descriptions-item>
+          <el-descriptions-item label="入库时间">{{ fmtShort(detail.inboundTime) }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.remark" label="备注" :span="2">{{ detail.remark }}</el-descriptions-item>
         </el-descriptions>
 
@@ -170,15 +171,15 @@
           <el-table-column label="商品" min-width="170">
             <template #default="scope">
               <div class="cell-main">{{ scope.row.goodsName }}</div>
-              <div class="cell-sub">{{ scope.row.spec }}</div>
+              <div class="ui-cell-sub">{{ scope.row.spec }}</div>
             </template>
           </el-table-column>
           <el-table-column label="进价" width="90" align="right">
-            <template #default="scope">¥{{ formatMoney(scope.row.costPrice) }}</template>
+            <template #default="scope">¥{{ money(scope.row.costPrice, 2) }}</template>
           </el-table-column>
           <el-table-column label="数量" prop="qty" width="66" align="center" />
           <el-table-column label="小计" width="96" align="right">
-            <template #default="scope"><span class="money">¥{{ formatMoney(scope.row.amount) }}</span></template>
+            <template #default="scope"><span class="ui-money">¥{{ money(scope.row.amount, 2) }}</span></template>
           </el-table-column>
           <el-table-column label="入库前库存" width="96" align="center">
             <template #default="scope">{{ scope.row.stockBefore != null ? scope.row.stockBefore : '—' }}</template>
@@ -195,6 +196,7 @@ import { ref, reactive, computed, toRefs, getCurrentInstance, onMounted } from '
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPurchases, getPurchase, purchaseStats, addPurchase, inboundPurchase, cancelPurchase } from '@/api/pet/petPurchase'
 import { listGoods, getLowStock } from '@/api/pet/petGoods'
+import { money, fmtShort, enumText } from '@/utils/format'
 
 const { proxy } = getCurrentInstance()
 
@@ -230,17 +232,8 @@ const { queryParams } = toRefs(data)
 const totalQty = computed(() => form.items.reduce((s, i) => s + (Number(i.qty) || 0), 0))
 const totalAmount = computed(() => form.items.reduce((s, i) => s + lineAmount(i), 0))
 
-function statusText(s) {
-  return (STATUS.find((x) => x.value === s) || {}).label || '未知'
-}
 function statusType(s) {
   return { 0: 'warning', 1: 'success', 2: 'info' }[s] || 'info'
-}
-function formatMoney(v) {
-  return Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-function fmt(v) {
-  return v ? String(v).replace('T', ' ').slice(5, 16) : '—'
 }
 function fmtDate(v) {
   return v ? String(v).slice(0, 10) : '—'
@@ -271,9 +264,19 @@ function getStats() {
   purchaseStats().then((res) => { stats.value = res.data || {} }).catch(() => {})
 }
 
-function loadGoods() {
-  listGoods({ pageNum: 1, pageSize: 500 }).then((res) => {
-    goodsOptions.value = res.rows || []
+// 商品下拉：初始只取 20 条，输入关键词走后端模糊查询。
+// 已选中的商品始终保留在选项里，否则搜索换词后已选行会显示成一个裸 id。
+function mergeGoodsOptions(rows) {
+  const selectedIds = new Set((form.items || []).map((i) => i.goodsId))
+  const keep = goodsOptions.value.filter((g) => selectedIds.has(g.goodsId))
+  const seen = new Set(keep.map((g) => g.goodsId))
+  for (const g of rows || []) if (!seen.has(g.goodsId)) { keep.push(g); seen.add(g.goodsId) }
+  goodsOptions.value = keep
+}
+
+function loadGoods(keyword = '') {
+  listGoods({ pageNum: 1, pageSize: 20, keyword: keyword || undefined }).then((res) => {
+    mergeGoodsOptions(res.rows || [])
   }).catch(() => {})
 }
 
@@ -329,6 +332,8 @@ function fillFromLowStock() {
       return
     }
     form.items = rows
+    // 带出的商品要进下拉选项，否则「商品」列只显示一个裸 id
+    mergeGoodsOptions(res.data || [])
     if (!form.supplier) form.supplier = '宠乐供应链'
     ElMessage.success(`已带出 ${rows.length} 个低库存商品`)
   }).catch(() => {}).finally(() => { lowLoading.value = false })
@@ -401,17 +406,15 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.cell-main { font-size: 13px; color: var(--text-1); }
-.cell-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
-.money { color: var(--brand-700); font-weight: 600; }
+.cell-main { font-size: var(--fs-4); color: var(--text-1); }
 .line-head {
   display: flex; justify-content: space-between; align-items: center;
-  margin: 6px 0 10px; font-size: 14px; font-weight: 600; color: var(--text-1);
+  margin: 6px 0 10px; font-size: var(--fs-5); font-weight: 600; color: var(--text-1);
 }
-.total-line { text-align: right; margin: 10px 0 0; color: var(--text-2); b { color: var(--brand-700); font-size: 18px; } }
+.total-line { text-align: right; margin: 10px 0 0; color: var(--text-2); b { color: var(--brand-700); font-size: var(--fs-7); } }
 .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;
-  .no { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-1); }
-  .sub { margin: 4px 0 0; font-size: 12px; color: var(--text-3); }
+  .no { margin: 0; font-size: var(--fs-6); font-weight: 600; color: var(--text-1); }
+  .sub { margin: 4px 0 0; font-size: var(--fs-2); color: var(--text-3); }
 }
-.section-title { margin: 20px 0 10px; font-size: 14px; font-weight: 600; color: var(--text-1); }
+.section-title { margin: 20px 0 10px; font-size: var(--fs-5); font-weight: 600; color: var(--text-1); }
 </style>

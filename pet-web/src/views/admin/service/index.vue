@@ -7,13 +7,16 @@
       { label: '服务中', value: stats.serving || 0, tone: 'brand', onClick: () => filterStatus('2') },
       { label: '已完成', value: stats.finished || 0, tone: 'success', onClick: () => filterStatus('3') },
       { label: '取消 / 爽约', value: (stats.canceled || 0) + (stats.missed || 0) },
-      { label: '今日服务营收', value: formatMoney(stats.revenue), prefix: '¥', tone: 'money' }
+      { label: '今日服务营收', value: money(stats.revenue, 2), prefix: '¥', tone: 'money' }
     ]" />
 
     <!-- 搜索 -->
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="80px">
       <el-form-item label="关键词" prop="petName">
         <el-input v-model="queryParams.petName" placeholder="工单号 / 客户 / 宠物" clearable style="width: 210px" @keyup.enter="handleQuery" />
+      </el-form-item>
+      <el-form-item label="预约ID" prop="appointmentId">
+        <el-input v-model="queryParams.appointmentId" placeholder="按来源预约筛选" clearable style="width: 130px" @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="门店" prop="storeId" v-if="stores.length > 1">
         <el-select v-model="queryParams.storeId" placeholder="全部门店" clearable style="width: 160px">
@@ -36,16 +39,22 @@
 
     <el-table v-loading="loading" :data="orderList">
       <el-table-column label="工单号" prop="serviceNo" width="180" />
+      <el-table-column label="来源预约" prop="appointmentId" width="100">
+        <template #default="scope">
+          <span v-if="scope.row.appointmentId">#{{ scope.row.appointmentId }}</span>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="客户 / 宠物" min-width="150">
         <template #default="scope">
           <div class="cell-main">{{ scope.row.customerName || '—' }}</div>
-          <div class="cell-sub">{{ scope.row.petName || '—' }}</div>
+          <div class="ui-cell-sub">{{ scope.row.petName || '—' }}</div>
         </template>
       </el-table-column>
       <el-table-column label="服务项目" prop="itemName" min-width="130" :show-overflow-tooltip="true" />
       <el-table-column label="门店" prop="storeName" width="120" :show-overflow-tooltip="true" />
       <el-table-column label="到店时间" width="140">
-        <template #default="scope">{{ fmt(scope.row.appointTime) }}</template>
+        <template #default="scope">{{ fmtShort(scope.row.appointTime) }}</template>
       </el-table-column>
       <el-table-column label="执行人" width="92">
         <template #default="scope">
@@ -54,12 +63,12 @@
       </el-table-column>
       <el-table-column label="金额" width="88">
         <template #default="scope">
-          <span class="money">¥{{ formatMoney(scope.row.price) }}</span>
+          <span class="ui-money">¥{{ money(scope.row.price, 2) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="96">
         <template #default="scope">
-          <el-tag size="small" :type="statusType(scope.row.status)">{{ statusText(scope.row.status) }}</el-tag>
+          <el-tag size="small" :type="statusType(scope.row.status)">{{ enumText(STATUS, scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="230" fixed="right" class-name="small-padding fixed-width">
@@ -110,17 +119,17 @@
             <p class="no">{{ detail.serviceNo }}</p>
             <p class="sub">{{ detail.storeName }} · {{ detail.itemName }}</p>
           </div>
-          <el-tag :type="statusType(detail.status)">{{ statusText(detail.status) }}</el-tag>
+          <el-tag :type="statusType(detail.status)">{{ enumText(STATUS, detail.status) }}</el-tag>
         </div>
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="客户">{{ detail.customerName || '—' }}</el-descriptions-item>
           <el-descriptions-item label="宠物">{{ detail.petName || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="到店时间">{{ fmt(detail.appointTime) }}</el-descriptions-item>
+          <el-descriptions-item label="到店时间">{{ fmtShort(detail.appointTime) }}</el-descriptions-item>
           <el-descriptions-item label="执行人">{{ detail.staffName || '未指派' }}</el-descriptions-item>
-          <el-descriptions-item label="金额">¥{{ formatMoney(detail.price) }}</el-descriptions-item>
+          <el-descriptions-item label="金额">¥{{ money(detail.price, 2) }}</el-descriptions-item>
           <el-descriptions-item label="收费">{{ detail.payStatus === '1' ? '已收' : '未收' }}</el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ fmt(detail.startTime) }}</el-descriptions-item>
-          <el-descriptions-item label="完成时间">{{ fmt(detail.finishTime) }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{ fmtShort(detail.startTime) }}</el-descriptions-item>
+          <el-descriptions-item label="完成时间">{{ fmtShort(detail.finishTime) }}</el-descriptions-item>
           <el-descriptions-item label="客户评价" :span="2">
             <el-rate v-if="detail.score" :model-value="detail.score" disabled size="small" />
             <span class="muted" v-if="detail.comment">　{{ detail.comment }}</span>
@@ -133,10 +142,10 @@
         <el-timeline>
           <el-timeline-item
             v-for="log in logs" :key="log.logId"
-            :timestamp="fmt(log.createTime)" placement="top"
+            :timestamp="fmtShort(log.createTime)" placement="top"
             :type="log.toStatus === '3' ? 'success' : (log.toStatus === '4' ? 'danger' : 'primary')"
           >
-            <span class="log-title">{{ statusText(log.toStatus) }}</span>
+            <span class="log-title">{{ enumText(STATUS, log.toStatus) }}</span>
             <span class="muted">　{{ log.operator }}</span>
             <p class="log-remark" v-if="log.remark">{{ log.remark }}</p>
           </el-timeline-item>
@@ -150,12 +159,14 @@
 <script setup>
 import StatCards from '@/components/StatCards.vue'
 import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listServiceOrder, getServiceOrder, getServiceStats,
   dispatchServiceOrder, startServiceOrder, finishServiceOrder, cancelServiceOrder
 } from '@/api/pet/petService'
 import { storeOptions, listStoreStaff } from '@/api/pet/petStore'
+import { money, fmtShort, enumText } from '@/utils/format'
 
 const { proxy } = getCurrentInstance()
 
@@ -191,6 +202,7 @@ const data = reactive({
     pageNum: 1,
     pageSize: 10,
     petName: undefined,
+    appointmentId: undefined,
     storeId: undefined,
     status: undefined,
     queryDate: undefined
@@ -198,18 +210,8 @@ const data = reactive({
 })
 const { queryParams } = toRefs(data)
 
-function statusText(s) {
-  return (STATUS.find((x) => x.value === s) || {}).label || '未知'
-}
 function statusType(s) {
   return { 0: 'warning', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger' }[s] || 'info'
-}
-function fmt(v) {
-  if (!v) return '—'
-  return String(v).replace('T', ' ').slice(5, 16)
-}
-function formatMoney(v) {
-  return Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
 function getList() {
@@ -326,6 +328,12 @@ function openDetail(row) {
   }).catch(() => { detailLoading.value = false })
 }
 
+// 从预约管理页「关联工单」跳过来时，URL 带 appointmentId，直接按来源预约过滤
+const route = useRoute()
+if (route.query.appointmentId) {
+  queryParams.value.appointmentId = route.query.appointmentId
+}
+
 onMounted(() => {
   getList()
   getStats()
@@ -334,15 +342,13 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.cell-main { font-size: 13px; color: var(--text-1); }
-.cell-sub { font-size: 12px; color: var(--text-3); }
+.cell-main { font-size: var(--fs-4); color: var(--text-1); }
 .muted { color: var(--text-3); }
-.money { color: var(--brand-700); font-weight: 600; }
 .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;
-  .no { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-1); }
-  .sub { margin: 4px 0 0; font-size: 12px; color: var(--text-3); }
+  .no { margin: 0; font-size: var(--fs-6); font-weight: 600; color: var(--text-1); }
+  .sub { margin: 4px 0 0; font-size: var(--fs-2); color: var(--text-3); }
 }
-.section-title { margin: 22px 0 12px; font-size: 14px; font-weight: 600; color: var(--text-1); }
-.log-title { font-size: 13px; color: var(--text-1); }
-.log-remark { margin: 2px 0 0; font-size: 12px; color: var(--text-3); }
+.section-title { margin: 22px 0 12px; font-size: var(--fs-5); font-weight: 600; color: var(--text-1); }
+.log-title { font-size: var(--fs-4); color: var(--text-1); }
+.log-remark { margin: 2px 0 0; font-size: var(--fs-2); color: var(--text-3); }
 </style>

@@ -1,37 +1,40 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="项目名" prop="itemName">
-        <el-input v-model="queryParams.itemName" placeholder="项目名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="类型" prop="itemType">
-        <el-select v-model="queryParams.itemType" placeholder="全部类型" clearable style="width: 130px">
-          <el-option v-for="t in TYPES" :key="t.value" :label="t.label" :value="t.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 120px">
-          <el-option label="上架" value="0" />
-          <el-option label="下架" value="1" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <el-card shadow="never" class="ui-toolbar-card">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+        <el-form-item label="项目名" prop="itemName">
+          <el-input v-model="queryParams.itemName" placeholder="项目名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="类型" prop="itemType">
+          <el-select v-model="queryParams.itemType" placeholder="全部类型" clearable style="width: 130px">
+            <el-option v-for="t in TYPES" :key="t.value" :label="t.label" :value="t.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 120px">
+            <el-option label="上架" value="0" />
+            <el-option label="下架" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:serviceitem:edit']">新增项目</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="danger" plain icon="Delete" :disabled="!ids.length" @click="handleDelete" v-hasPermi="['pet:serviceitem:edit']">删除</el-button>
-      </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="ui-card-head">
+          <div class="head-actions">
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['pet:serviceitem:edit']">新增项目</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="!ids.length" @click="handleDelete" v-hasPermi="['pet:serviceitem:edit']">删除</el-button>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+        </div>
+      </template>
 
-    <el-table v-loading="loading" :data="itemList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" :data="itemList" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="项目名称" prop="itemName" min-width="160" />
       <el-table-column label="类型" width="96">
@@ -43,7 +46,7 @@
         <template #default="scope">{{ scope.row.storeName || '全门店通用' }}</template>
       </el-table-column>
       <el-table-column label="标准价" width="100">
-        <template #default="scope"><span class="money">¥{{ formatMoney(scope.row.price) }}</span></template>
+        <template #default="scope"><span class="ui-money">¥{{ money(scope.row.price) }}</span></template>
       </el-table-column>
       <el-table-column label="时长" width="90">
         <template #default="scope">{{ scope.row.duration }} 分钟</template>
@@ -63,7 +66,10 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <div class="ui-pager">
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </el-card>
 
     <el-dialog :title="title" v-model="open" width="560px" append-to-body>
       <el-form ref="itemRef" :model="form" :rules="rules" label-width="90px">
@@ -120,6 +126,7 @@
 </template>
 
 <script setup>
+import { money } from '@/utils/money'
 import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { listServiceItem, getServiceItem, addServiceItem, updateServiceItem, delServiceItem } from '@/api/pet/petService'
@@ -162,9 +169,7 @@ function typeText(t) {
 function typeTag(t) {
   return { 1: 'primary', 2: 'warning', 3: 'success', 4: 'danger', 5: 'info', 6: '' }[t] || ''
 }
-function formatMoney(v) {
-  return Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-}
+
 
 function getList() {
   loading.value = true
@@ -248,5 +253,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.money { color: var(--brand-700); font-weight: 600; }
+.head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 </style>

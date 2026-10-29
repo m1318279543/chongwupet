@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page ui-page--md">
+  <div class="ui-page">
     <header class="ui-head">
       <div class="ui-head__main">
         <p class="ui-eyebrow">Profile</p>
@@ -102,7 +102,7 @@ const form = reactive({ nickName: '', phonenumber: '', email: '', avatar: '' })
 
 const apiBase = import.meta.env.VITE_APP_BASE_API || '/dev-api'
 const avatarAction = apiBase + '/system/user/profile/avatar'
-const uploadHeaders = { Authorization: 'Bearer ' + getToken() }
+const uploadHeaders = computed(() => ({ Authorization: 'Bearer ' + getToken() }))
 const avatarUrl = computed(() => resolveImg(userStore.avatar))
 const initial = computed(() => (form.nickName || userInfo.userName || 'U').charAt(0).toUpperCase())
 
@@ -228,7 +228,7 @@ onMounted(loadProfile)
 .avatar__img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar__text {
   font-size: 38px;
-  font-weight: 650;
+  font-weight: 700;
   color: var(--brand-700);
 }
 .avatar__mask {
@@ -240,8 +240,8 @@ onMounted(loadProfile)
   justify-content: center;
   gap: 4px;
   background: rgba(22, 33, 29, .52);
-  color: #fff;
-  font-size: 12px;
+  color: var(--on-accent);
+  font-size: var(--fs-2);
   opacity: 0;
   transition: opacity .2s ease;
 }
@@ -250,15 +250,15 @@ onMounted(loadProfile)
 
 .pf__name {
   margin: 16px 0 0;
-  font-size: 16px;
-  font-weight: 650;
+  font-size: var(--fs-6);
+  font-weight: 700;
   color: var(--text-1);
   text-align: center;
   word-break: break-all;
 }
 .pf__account {
   margin: 4px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-4);
   font-variant-numeric: tabular-nums;
 }
@@ -266,7 +266,7 @@ onMounted(loadProfile)
   margin: 16px 0 0;
   padding-top: 14px;
   border-top: 1px solid var(--border-2);
-  font-size: 12px;
+  font-size: var(--fs-2);
   line-height: 1.7;
   color: var(--text-3);
   text-align: center;
@@ -294,7 +294,7 @@ onMounted(loadProfile)
     border-bottom: 1px solid var(--border-1);
   }
   .avatar { width: 88px; height: 88px; }
-  .avatar__text { font-size: 30px; }
+  .avatar__text { font-size: var(--fs-10); }
   // 触屏没有 hover，改为右下角常驻相机小标（不遮挡头像主体与首字母）
   .avatar__mask {
     background: transparent;
@@ -309,8 +309,8 @@ onMounted(loadProfile)
       border-radius: 50%;
       display: grid;
       place-items: center;
-      font-size: 13px;
-      color: #fff;
+      font-size: var(--fs-4);
+      color: var(--on-accent);
       background: rgba(22, 33, 29, .72);
       border: 2px solid var(--bg-sunken);
       box-sizing: content-box;
@@ -318,7 +318,7 @@ onMounted(loadProfile)
   }
   .avatar.uploading .avatar__mask {
     background: rgba(22, 33, 29, .52);
-    font-size: 12px;
+    font-size: var(--fs-2);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -328,7 +328,7 @@ onMounted(loadProfile)
       height: auto;
       border: 0;
       background: transparent;
-      font-size: 16px;
+      font-size: var(--fs-6);
       box-sizing: border-box;
     }
   }

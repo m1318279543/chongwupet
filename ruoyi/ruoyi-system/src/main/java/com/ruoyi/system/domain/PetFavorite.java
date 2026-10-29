@@ -41,6 +41,15 @@ public class PetFavorite extends BaseEntity
     /** 宠物分类（关联 pet_info 查询展示用，非本表字段） */
     private Long categoryId;
 
+    /** 宠物品种（关联 pet_info 查询展示用，非本表字段） */
+    private String breed;
+
+    /** 宠物月龄（关联 pet_info 查询展示用，非本表字段） */
+    private String age;
+
+    /** 宠物价格（关联 pet_info 查询展示用，非本表字段） */
+    private java.math.BigDecimal price;
+
     public String getImage()
     {
         return image;
@@ -59,6 +68,36 @@ public class PetFavorite extends BaseEntity
     public void setCategoryId(Long categoryId)
     {
         this.categoryId = categoryId;
+    }
+
+    public String getBreed()
+    {
+        return breed;
+    }
+
+    public void setBreed(String breed)
+    {
+        this.breed = breed;
+    }
+
+    public String getAge()
+    {
+        return age;
+    }
+
+    public void setAge(String age)
+    {
+        this.age = age;
+    }
+
+    public java.math.BigDecimal getPrice()
+    {
+        return price;
+    }
+
+    public void setPrice(java.math.BigDecimal price)
+    {
+        this.price = price;
     }
 
     public Long getFavoriteId()

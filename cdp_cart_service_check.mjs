@@ -77,7 +77,7 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
 
   // ③ 购物车页渲染 + 结算按钮
   await goto(BASE + '/shop/cart')
-  check('购物车页有结算按钮', await ev(`!!document.querySelector('.checkout .ui-btn--solid')`))
+  check('购物车页有结算按钮', await ev(`!!document.querySelector('.checkout__go, .checkout .ui-btn--solid')`))
   // 清掉测试加购
   await ev(`localStorage.removeItem('pet_cart_items')`)
 
@@ -98,7 +98,7 @@ const connect = (url) => new Promise((res, rej) => { const ws = new WebSocket(ur
   await send('Network.setCookie', { name: 'Admin-Token', value: AT, url: BASE + '/', path: '/' })
   await goto(BASE + '/admin/order', 7000)
   const kpiText = await ev(`(document.querySelector('.kpi, [class*=kpi]') ? document.body.innerText : '').slice(0, 400)`)
-  const toShip = await ev(`fetch(location.origin + (location.origin.includes('47.116') ? '/dev-api' : '') + '/pet/order/stats', { headers: { Authorization: 'Bearer ' + (document.cookie.match(/Admin-Token=([^;]+)/) || [])[1] } }).then(r => r.json()).then(j => j.data && j.data.toShip).catch(() => null)`)
+  const toShip = await ev(`fetch('${API}/pet/order/stats', { headers: { Authorization: 'Bearer ' + (document.cookie.match(/Admin-Token=([^;]+)/) || [])[1] } }).then(r => r.json()).then(j => j.data && j.data.toShip).catch(() => null)`)
   check('订单统计接口待发货 > 0（全量在途口径）', (toShip || 0) > 0, 'toShip=' + toShip)
 
   console.log(`\n结果: ${pass} pass / ${fail} fail  @ ${BASE}`)
