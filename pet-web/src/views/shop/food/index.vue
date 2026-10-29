@@ -106,8 +106,9 @@ import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
 import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
-import { commentStatGroup } from '@/api/pet/petComment'
+import { usePetRatings } from '@/composables/usePetRatings'
 import { money } from '@/utils/money'
+import { adaptGoods } from '@/utils/goodsAdapter'
 
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
@@ -119,28 +120,7 @@ const goodsList = ref([])
 const fidByCode = {}
 FOOD_LIST.forEach((f) => { fidByCode[f.id] = f.fid })
 
-function adaptGoods(g) {
-  const fallback = FOOD_LIST.find((f) => f.id === g.goodsCode) || {}
-  return {
-    id: g.goodsCode,
-    goodsId: g.goodsId,
-    skuId: g.skus && g.skus.length ? g.skus[0].skuId : null,
-    fid: fallback.fid || fidByCode[g.goodsCode],
-    cat: g.cat,
-    image: g.image,
-    name: g.goodsName,
-    spec: g.spec,
-    price: Number(g.price),
-    stock: g.stock == null ? 0 : Number(g.stock),
-    stage: g.stage,
-    desc: g.description,
-    tags: g.tagList || [],
-    nutrition: g.nutrition,
-    feeding: g.feeding,
-    storage: g.storage
-  }
-}
-
+// 商品字段适配统一走 utils/goodsAdapter（与购物车空态推荐同一口径）
 async function loadGoods(cat = active.value) {
   // all 时按全量拉，否则按品类服务端筛选
   const query = { status: '0', pageNum: 1, pageSize: 50 }
@@ -148,7 +128,7 @@ async function loadGoods(cat = active.value) {
   try {
     const res = await listGoods(query)
     const rows = res.rows || []
-    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST.filter(f => cat === 'all' || f.cat === cat)
+    goodsList.value = rows.length ? rows.map((g) => adaptGoods(g, fidByCode)) : FOOD_LIST.filter(f => cat === 'all' || f.cat === cat)
   } catch (e) {
     goodsList.value = FOOD_LIST.filter(f => cat === 'all' || f.cat === cat)
   }
@@ -164,20 +144,8 @@ const categories = computed(() => FOOD_CATEGORIES)
 watch(active, () => loadGoods())
 
 // 详情弹窗
-// 评分角标：fid -> {avg,count}
-const ratingMap = ref({})
-function foodRating(fid) {
-  const r = ratingMap.value[fid]
-  return r && Number(r.count) > 0 ? r : null
-}
-async function loadRatings() {
-  try {
-    const res = await commentStatGroup('food')
-    const m = {}
-    for (const row of res.data || []) m[row.petId] = row
-    ratingMap.value = m
-  } catch (e) { /* 静默 */ }
-}
+// 评分角标：fid -> {avg,count}（与宠物卡片同一接口，target=food）
+const { rating: foodRating, load: loadRatings } = usePetRatings('food')
 onMounted(() => {
   loadRatings()
   loadGoods()
@@ -203,7 +171,7 @@ function addToCart(p) {
 </script>
 
 <style scoped lang="scss">
-.stock-hint { margin-left: 12px; font-size: 12px; color: var(--text-3); }
+.stock-hint { margin-left: 12px; font-size: var(--fs-2); color: var(--text-3); }
 
 .food-page { padding-top: 40px; }
 /* 页头复用 ui-head（自带 1px 收口线），这里只控制筛选行与列表的间距 */
@@ -211,11 +179,11 @@ function addToCart(p) {
 .cat-tab {
   display: inline-flex; align-items: center; gap: 7px;
   height: 36px; padding: 0 15px; border: 1px solid var(--border-1); background: var(--bg-card);
-  border-radius: var(--radius-pill); cursor: pointer; font-size: 13px; color: var(--text-2);
+  border-radius: var(--radius-pill); cursor: pointer; font-size: var(--fs-4); color: var(--text-2);
   font-family: inherit; transition: all .16s;
   .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   &:hover { border-color: var(--brand-200); color: var(--brand-700); background: var(--brand-50); }
-  &.active { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700;
+  &.active { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-accent); font-weight: 700;
     .dot { background: rgba(255, 255, 255, .75) !important; } }
 }
 
@@ -245,31 +213,31 @@ function addToCart(p) {
     &:hover img { transform: scale(1.05); }
   }
   .body { padding: 12px 2px 0; }
-  .name { font-size: 16px; font-weight: 700; color: var(--text-1); margin-bottom: 6px; }
+  .name { font-size: var(--fs-6); font-weight: 700; color: var(--text-1); margin-bottom: 6px; }
   .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-  .spec { font-size: 13px; color: var(--text-3); }
-  .desc { font-size: 13px; color: var(--text-2); line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
+  .spec { font-size: var(--fs-4); color: var(--text-3); }
+  .desc { font-size: var(--fs-4); color: var(--text-2); line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
   .price-row { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: var(--rule-soft); }
   // 与 PetCard 同一写法：数字字体、20px、价格色，价格左 / 行动右
-  .price { font-family: var(--font-num); color: var(--price); font-size: 20px; font-weight: 700;
+  .price { font-family: var(--font-num); color: var(--price); font-size: var(--fs-8); font-weight: 700;
     line-height: 1.15; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
-    .unit { font-family: var(--font-sans); font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 2px; }
+    .unit { font-family: var(--font-sans); font-size: var(--fs-2); color: var(--text-3); font-weight: 400; margin-left: 2px; }
   }
-  .go { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 700;
+  .go { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-3); font-weight: 700;
     margin-left: auto; padding-bottom: 2px;
     color: var(--text-3); transition: color .16s;
     svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
     .card:hover & { color: var(--brand-700); }
   }
 }
-.rating-tag { font-size: 12px; color: var(--brand-700); background: var(--brand-50); border-radius: var(--radius-pill);
+.rating-tag { font-size: var(--fs-2); color: var(--brand-700); background: var(--brand-50); border-radius: var(--radius-pill);
   padding: 2px 8px; white-space: nowrap; }
 
 /* 换粮贴士：去底色面板，改 1px 顶线 + 标题承接 */
 .tip {
   margin-top: 48px; padding-top: 24px; border-top: var(--rule);
-  h3 { margin: 0 0 8px; color: var(--text-1); font-size: 16px; }
-  p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.7; }
+  h3 { margin: 0 0 8px; color: var(--text-1); font-size: var(--fs-6); }
+  p { margin: 0; color: var(--text-2); font-size: var(--fs-5); line-height: 1.7; }
 }
 
 /* 详情弹窗 */
@@ -284,17 +252,17 @@ function addToCart(p) {
       img { width: 100%; height: 100%; max-height: 420px; object-fit: cover; display: block; }
     }
     .detail-right { flex: 1; padding: 24px 28px; }
-    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--brand-700);
+    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-4); color: var(--brand-700);
       background: var(--brand-50); padding: 3px 12px; border-radius: var(--radius-pill); margin-bottom: 12px;
     }
-    .detail-name { font-size: 20px; color: var(--text-1); margin: 0 0 10px; }
-    .detail-price { font-family: var(--font-num); color: var(--price); font-size: 24px; font-weight: 700;
+    .detail-name { font-size: var(--fs-8); color: var(--text-1); margin: 0 0 10px; }
+    .detail-price { font-family: var(--font-num); color: var(--price); font-size: var(--fs-9); font-weight: 700;
       letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-bottom: 12px;
-      .unit { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 3px; }
+      .unit { font-size: var(--fs-4); color: var(--text-3); font-weight: 400; margin-left: 3px; }
     }
     .detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
     .detail-list { list-style: none; margin: 0 0 20px; padding: 0;
-      li { display: flex; gap: 14px; padding: 10px 0; border-bottom: var(--rule-soft); font-size: 14px;
+      li { display: flex; gap: 14px; padding: 10px 0; border-bottom: var(--rule-soft); font-size: var(--fs-5);
         .k { color: var(--text-3); width: 76px; flex-shrink: 0; }
         .v { color: var(--text-1); line-height: 1.6; flex: 1; }
       }
@@ -327,27 +295,27 @@ function addToCart(p) {
   /* 手机端：两列小卡，图片等比（1:1），一屏可见多款 */
   .food-page { padding: 24px 12px 60px; }
   .cat-tabs { gap: 8px; margin: 18px 0 16px; }
-  .cat-tab { height: 32px; padding: 0 12px; font-size: 13px; }
+  .cat-tab { height: 32px; padding: 0 12px; font-size: var(--fs-4); }
   .grid { gap: 18px 10px; }
   .card {
     .thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
     .body { padding: 9px 1px 0; }
-    .name { font-size: 14px; margin-bottom: 4px; }
+    .name { font-size: var(--fs-5); margin-bottom: 4px; }
     .meta { margin-bottom: 4px;
-      .spec { font-size: 12px; }
+      .spec { font-size: var(--fs-2); }
     }
     .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
     .price-row { gap: 6px; padding-top: 8px; }
-  .rating-tag { font-size: 12px; padding: 1px 6px; }
-  .price { font-size: 16px;
-      .unit { font-size: 11px; }
+  .rating-tag { font-size: var(--fs-2); padding: 1px 6px; }
+  .price { font-size: var(--fs-6);
+      .unit { font-size: var(--fs-1); }
     }
   // 窄屏也保留「详情」入口，价格左、行动右的结构与桌面一致
-  .go { font-size: 12px; }
+  .go { font-size: var(--fs-2); }
   }
   .tip { margin-top: 32px; padding-top: 18px;
-    h3 { font-size: 14px; }
-    p { font-size: 13px; }
+    h3 { font-size: var(--fs-5); }
+    p { font-size: var(--fs-4); }
   }
 }
 </style>

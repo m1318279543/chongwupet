@@ -15,11 +15,6 @@ export function getGoodsStats() {
   return request({ url: '/pet/goods/stats', method: 'get' })
 }
 
-// 前台商品详情
-export function getShopGoods(goodsId) {
-  return request({ url: '/pet/goods/shop/' + goodsId, method: 'get' })
-}
-
 // 后台商品详情
 export function getGoods(goodsId) {
   return request({ url: '/pet/goods/' + goodsId, method: 'get' })

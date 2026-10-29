@@ -33,7 +33,7 @@
           <button
             type="button" class="fav-star" :class="{ on: isFav }"
             :aria-pressed="isFav" :aria-label="isFav ? '取消收藏' : '收藏'"
-            @click="toggleFav"
+            @click="toggleFav(route.params.id)"
           >
             <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"/></svg>
           </button>
@@ -230,8 +230,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPetInfo } from '@/api/pet/petInfo'
 import { createPetOrder } from '@/api/pet/petOrder'
-import { listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { imageVars } from '@/views/shop/home/imageTuning'
+import { usePetFavorite } from '@/composables/usePetFavorite'
+import { isImage, petGradient } from '@/utils/petDisplay'
 import { addPetAppointment, getAppointmentSlots } from '@/api/pet/petAppointment'
 import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
@@ -250,7 +251,9 @@ const pet = ref({})
 const health = ref({})
 const preference = ref({})
 const loading = ref(true)
-const isFav = ref(false)
+// 收藏状态走全站共用 composable（ids 集合 + 切换），详情页只关心当前这只
+const { isFav: isFaved, toggle: toggleFav, load: loadFavorites } = usePetFavorite(openAuth)
+const isFav = computed(() => isFaved(route.params.id))
 const showAppoint = ref(false)
 const submitting = ref(false)
 const buying = ref(false)
@@ -277,13 +280,8 @@ watch(() => appointForm.contactPhone, (val) => {
   }
 })
 
-function petGradient(id) {
-  const colors = [['#fff4e6', '#ffe0b3'], ['#e8f5e9', '#c8e6c9'], ['#e3f2fd', '#bbdefb'], ['#fce4ec', '#f8bbd0']]
-  return `linear-gradient(135deg, ${colors[(id||0)%colors.length][0]}, ${colors[(id||0)%colors.length][1]})`
-}
 function genderText(g) { return g === '0' ? '公' : g === '1' ? '母' : '未知' }
 function statusText(s) { return ['在售','已售','下架'][s] || '未知' }
-function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
 function fmtDate(d) { return d ? String(d).slice(0, 10) : '—' }
 // 价格统一千分位，与列表卡同一写法（¥2,800 而不是 ¥ 2500）
 function fmtPrice(p) {
@@ -357,7 +355,7 @@ async function loadPet() {
   try {
     const res = await getPetInfo(route.params.id)
     pet.value = res.data || {}
-    await Promise.all([loadFavStatus(), loadHealth(), loadPreference()])
+    await Promise.all([loadFavorites(), loadHealth(), loadPreference()])
   } catch (e) {
     ElMessage.error('加载失败')
   } finally {
@@ -383,14 +381,6 @@ async function loadPreference() {
   }
 }
 
-async function loadFavStatus() {
-  if (!userStore.token) { isFav.value = false; return }  // 未登录不查收藏状态
-  try {
-    const res = await listPetFavorite({ userId: userStore.userId, petId: route.params.id })
-    isFav.value = (res.rows || []).length > 0
-  } catch (e) {}
-}
-
 /** 唤起 AI 选宠顾问，带上当前宠物作为上下文；已售时改问「重新匹配」 */
 function askAi(mode) {
   const id = pet.value?.petId || route.params.id
@@ -407,29 +397,6 @@ function askAi(mode) {
 function goSameBreed() {
   const kw = String(pet.value?.breed || '').trim()
   router.push(kw ? { path: '/shop/pets', query: { kw } } : '/shop/pets')
-}
-
-async function toggleFav() {
-  if (!userStore.token) {
-    ElMessage.info('请先登录后再收藏')
-    openAuth('login')
-    return
-  }
-  try {
-    if (isFav.value) {
-      const res = await listPetFavorite({ userId: userStore.userId, petId: route.params.id })
-      const fid = res.rows?.[0]?.favoriteId
-      if (fid) await delPetFavorite(fid)
-      isFav.value = false
-      ElMessage.success('已取消收藏')
-    } else {
-      await addPetFavorite({ petId: route.params.id, userId: userStore.userId })
-      isFav.value = true
-      ElMessage.success('收藏成功')
-    }
-  } catch (e) {
-    ElMessage.error(e?.message || '操作失败')
-  }
 }
 
 function disabledDate(d) {
@@ -483,7 +450,7 @@ async function buyNow() {
   }
   try {
     await ElMessageBox.confirm(
-      `确认购买「${pet.value.petName}」？金额 ¥${pet.value.price || 0}。下单后这只宠物会为你锁定，未支付可在购物车的「下单记录」中取消释放。`,
+      `确认购买「${pet.value.petName}」？金额 ¥${pet.value.price || 0}。下单后这只宠物会为你锁定，未支付可在购物车的「待支付」中继续支付或取消。`,
       '确认购买',
       { confirmButtonText: '去支付', cancelButtonText: '再看看', type: 'warning' }
     )
@@ -494,7 +461,7 @@ async function buyNow() {
   try {
     const res = await createPetOrder(pet.value.petId)
     ElMessage.success('下单成功，请完成支付')
-    // 带 pay 参数去购物车页，下单记录会自动弹出收银台
+    // 带 pay 参数去购物车页，自动弹出收银台完成支付
     router.push({ path: '/shop/cart', query: { pay: res.data && res.data.orderNo } })
   } catch (e) {
     ElMessage.error(e?.message || '下单失败，可能刚被别人订走')
@@ -548,22 +515,58 @@ function submitAppoint() {
   })
 }
 
-onMounted(() => {
+/**
+ * AI 助手「代预约」落地：助手不再直接提交预约，而是带要素跳到这里并打开预约弹窗。
+ * 用户在正式表单里核对门店/日期/时段后再提交——与手动预约同一入口、同一校验，
+ * 也避免「聊完天就莫名多了一条预约」。
+ */
+async function prefillFromQuery() {
+  const q = route.query
+  if (!q.appoint) return
+  const wantSlot = q.slot ? String(q.slot) : ''
+  if (q.storeId) appointForm.storeId = Number(q.storeId)
+  if (q.date) appointForm.date = String(q.date)
+  if (q.phone) appointForm.contactPhone = String(q.phone)
+  if (q.remark) appointForm.remark = String(q.remark)
+
+  showAppoint.value = true
+  if (!appointForm.storeId && stores.value.length) appointForm.storeId = stores.value[0].storeId
+  if (!appointForm.date) {
+    const d = new Date()
+    appointForm.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  await loadSlots()
+  // loadSlots 会清空已选时段；AI 建议的时段若仍可约就回填，约满则提示重选
+  if (wantSlot) {
+    const ok = slots.value.some((s) => s.slot === wantSlot && s.available > 0)
+    if (ok) appointForm.slot = wantSlot
+    else ElMessage.info('AI 建议的时段已约满，请重新选择')
+  }
+  // 清掉 query，避免刷新时重复弹窗（保留 from 供返回使用）
+  router.replace({ path: route.path, query: route.query.from ? { from: route.query.from } : {} })
+}
+
+onMounted(async () => {
   loadPet()
-  storeOptions().then((res) => { stores.value = res.data || [] }).catch(() => {})
+  // 等门店下拉就绪再预填，保证 query 里没带 storeId 时也能落到默认门店
+  try {
+    const res = await storeOptions()
+    stores.value = res.data || []
+  } catch (e) { /* 门店列表失败时不阻塞，用户可手选 */ }
+  prefillFromQuery()
 })
 </script>
 
 <style scoped lang="scss">
 .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
-.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: 1px solid var(--border-1); background: #fff; border-radius: var(--radius-md); cursor: pointer; transition: .15s;
-  b { font-size: 13px; color: var(--text-1); font-weight: 500; }
-  span { font-size: 11px; color: var(--text-3); }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: 1px solid var(--border-1); background: var(--bg-card); border-radius: var(--radius-md); cursor: pointer; transition: .15s;
+  b { font-size: var(--fs-4); color: var(--text-1); font-weight: 500; }
+  span { font-size: var(--fs-1); color: var(--text-3); }
   &:hover:not(:disabled) { border-color: var(--brand-500); }
   &.active { border-color: var(--brand-500); background: var(--brand-50); b { color: var(--brand-700); } }
   &.full { background: var(--bg-page); cursor: not-allowed; b { color: var(--text-4); } span { color: var(--text-4); } }
 }
-.slot-empty { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-3); }
+.slot-empty { grid-column: 1 / -1; margin: 0; font-size: var(--fs-2); color: var(--text-3); }
 
 /* 移动端吸底购买栏：默认隐藏；手机端固定在底部标签栏（66px+安全区）之上 */
 .buy-bar { display: none; }
@@ -572,16 +575,16 @@ onMounted(() => {
     display: flex; align-items: center; gap: 10px;
     position: fixed; left: 0; right: 0;
     bottom: calc(66px + env(safe-area-inset-bottom));
-    z-index: 89; /* 低于 tabbar(90)，但位置在其上方不重叠 */
+    z-index: var(--z-buybar); /* 低于 tabbar(90)，但位置在其上方不重叠 */
     padding: 10px 12px;
     background: rgba(255, 255, 255, .97);
     backdrop-filter: blur(8px);
     border-top: var(--rule);
     .bb-price { flex: 1; display: flex; align-items: baseline; gap: 6px; min-width: 0;
-      .label { font-size: 12px; color: var(--text-3); }
+      .label { font-size: var(--fs-2); color: var(--text-3); }
       .amount { color: var(--price); font-family: var(--font-num); font-size: 22px; font-weight: 700;
         line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
-        i { font-style: normal; font-size: 13px; margin-right: 1px; } }
+        i { font-style: normal; font-size: var(--fs-4); margin-right: 1px; } }
     }
     .el-button { height: 40px; margin: 0; font-weight: 700; padding-left: 14px; padding-right: 14px; }
   }
@@ -593,7 +596,7 @@ onMounted(() => {
   margin: 0 0 14px; padding: 6px 10px 6px 6px;
   border: 0; background: none; cursor: pointer; font-family: inherit;
   border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 700; color: var(--text-3);
+  font-size: var(--fs-4); font-weight: 700; color: var(--text-3);
   transition: color .16s, background .16s;
   svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   &:hover { color: var(--brand-700); background: var(--brand-50); }
@@ -608,11 +611,11 @@ onMounted(() => {
     transform: scale(var(--img-zoom, 1));
   }
   }
-  .guest-tip { margin-top: 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand-300); font-size: 13px; color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .guest-tip { margin-top: 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand-300); font-size: var(--fs-4); color: var(--brand-800); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 }
 .right { flex: 1; min-width: 0; padding-left: 40px; border-left: var(--rule);
   .title-row { display: flex; align-items: center; gap: 12px; margin: 0 0 16px;
-    h1 { font-size: 28px; color: var(--text-1); margin: 0; }
+    h1 { font-size: var(--fs-10); color: var(--text-1); margin: 0; }
     .fav-star { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
       border: 1px solid var(--border-1); background: var(--bg-card); cursor: pointer;
       display: grid; place-items: center; transition: border-color .16s, background .16s;
@@ -627,12 +630,12 @@ onMounted(() => {
   .state-chip { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
     height: 24px; padding: 0 9px; border-radius: var(--radius-xs);
     border: 1px solid var(--border-1); background: var(--bg-sunken);
-    font-size: 12px; font-weight: 700; color: var(--text-2);
+    font-size: var(--fs-2); font-weight: 700; color: var(--text-2);
     i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
     &.ok { border-color: var(--success-100); background: var(--success-50); color: var(--success-500); }
   }
   .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
-    .tag-health { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700; }
+    .tag-health { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-accent); font-weight: 700; }
   }
   .health-strip { display: flex; align-items: stretch; gap: 0; width: 100%; margin: 0 0 20px; padding: 12px 0;
     border: 0; border-top: var(--rule); border-bottom: var(--rule); background: none; cursor: pointer; text-align: left; font-family: inherit;
@@ -643,48 +646,48 @@ onMounted(() => {
     .hs-item { display: flex; align-items: flex-start; gap: 8px; flex: 1 1 200px; padding: 0 16px; border-left: var(--rule-soft);
       &:first-child { border-left: 0; padding-left: 0; }
       .hs-dot { flex-shrink: 0; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--success-500); box-shadow: 0 0 0 3px var(--success-50); }
-      .hs-txt { font-size: 12.5px; color: var(--text-2); line-height: 1.55; overflow-wrap: anywhere;
-        b { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); margin-bottom: 2px; }
+      .hs-txt { font-size: var(--fs-3); color: var(--text-2); line-height: 1.55; overflow-wrap: anywhere;
+        b { display: block; font-size: var(--fs-2); font-weight: 700; letter-spacing: .06em; color: var(--text-3); margin-bottom: 2px; }
       }
     }
-    .hs-more { flex-shrink: 0; align-self: center; padding-left: 16px; border-left: var(--rule-soft); font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+    .hs-more { flex-shrink: 0; align-self: center; padding-left: 16px; border-left: var(--rule-soft); font-size: var(--fs-3); color: var(--text-3); white-space: nowrap; }
   }
   /* 价格：去底色块，用上下两条 1px 线把「售价」框成一行 */
   .price { display: flex; align-items: center; gap: 12px; padding: 16px 0; margin-bottom: 20px;
     border-top: var(--rule); border-bottom: var(--rule);
-    .label { color: var(--text-3); font-size: 13px; }
-    .amount { color: var(--price); font-family: var(--font-num); font-size: 28px; font-weight: 700;
+    .label { color: var(--text-3); font-size: var(--fs-4); }
+    .amount { color: var(--price); font-family: var(--font-num); font-size: var(--fs-10); font-weight: 700;
       line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
-      i { font-style: normal; font-size: 16px; margin-right: 2px; } }
+      i { font-style: normal; font-size: var(--fs-6); margin-right: 2px; } }
   }
   .desc { margin-bottom: 24px;
-    h3 { font-size: 16px; color: var(--text-1); margin: 0 0 8px; }
+    h3 { font-size: var(--fs-6); color: var(--text-1); margin: 0 0 8px; }
     p { color: var(--text-2); line-height: 1.8; }
   }
   .actions { display: flex; align-items: center; gap: 16px; margin-top: 32px; flex-wrap: wrap;
     // 首屏主行动统一 48px 高（与首页 .btn 同一档）
     .el-button { height: 48px; min-width: 148px; font-weight: 700; }
     .ai-link { border: 0; background: none; padding: 4px 0; cursor: pointer; font-family: inherit;
-      font-size: 13px; font-weight: 700; color: var(--text-3); transition: color .16s;
+      font-size: var(--fs-4); font-weight: 700; color: var(--text-3); transition: color .16s;
       &:hover { color: var(--brand-700); }
     }
   }
   /* 已售说明：一行解释，不占按钮位 */
-  .sold-note { margin: 14px 0 0; max-width: 34em; font-size: 12.5px; line-height: 1.7; color: var(--text-3); }
+  .sold-note { margin: 14px 0 0; max-width: 34em; font-size: var(--fs-3); line-height: 1.7; color: var(--text-3); }
 }
 
 /* 健康与服务档案：去容器化，1px 顶线 + 分区标题直接承接；锚点定位给 sticky 头留偏移 */
 .health-panel { margin-top: 32px; padding: 26px 0 8px; border-top: var(--rule);
-  scroll-margin-top: 130px;
+  scroll-margin-top: var(--anchor-offset);
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
-    h2 { margin: 0; font-size: 20px; color: var(--text-1); }
-    .archive { color: var(--text-3); font-size: 13px; }
+    h2 { margin: 0; font-size: var(--fs-8); color: var(--text-1); }
+    .archive { color: var(--text-3); font-size: var(--fs-4); }
   }
 
   /* 健康时间线：1px 分割线的表格是本面板主角 */
   .tl { width: 100%; border-collapse: collapse; margin-bottom: 8px;
-    th { padding: 0 12px 9px 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--text-3); text-align: left; border-bottom: var(--rule); white-space: nowrap; }
-    td { padding: 11px 12px 11px 0; font-size: 13px; line-height: 1.6; vertical-align: top; border-bottom: var(--rule-soft); }
+    th { padding: 0 12px 9px 0; font-size: var(--fs-2); font-weight: 700; letter-spacing: .08em; color: var(--text-3); text-align: left; border-bottom: var(--rule); white-space: nowrap; }
+    td { padding: 11px 12px 11px 0; font-size: var(--fs-4); line-height: 1.6; vertical-align: top; border-bottom: var(--rule-soft); }
     tr:last-child td { border-bottom: none; }
     .tl-date { width: 100px; white-space: nowrap; color: var(--text-2); font-variant-numeric: tabular-nums; }
     .tl-name { width: 92px; white-space: nowrap; color: var(--text-1); font-weight: 700; }
@@ -693,13 +696,13 @@ onMounted(() => {
       .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success-500); margin-right: 7px; box-shadow: 0 0 0 3px var(--success-50); }
     }
   }
-  .tl-note { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); }
+  .tl-note { margin: 4px 0 0; font-size: var(--fs-3); color: var(--text-3); }
 
   .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 8px 36px; margin-top: 22px; padding-top: 20px; border-top: var(--rule);
     .h-sec {
-      h3 { margin: 0 0 6px; font-size: 14px; color: var(--text-1); }
+      h3 { margin: 0 0 6px; font-size: var(--fs-5); color: var(--text-1); }
       ul { margin: 0; padding: 0; list-style: none;
-        li { display: flex; gap: 12px; padding: 7px 0; font-size: 13px; line-height: 1.7; border-bottom: var(--rule-soft);
+        li { display: flex; gap: 12px; padding: 7px 0; font-size: var(--fs-4); line-height: 1.7; border-bottom: var(--rule-soft);
           &:last-child { border-bottom: none; }
           .k { flex: 0 0 76px; color: var(--text-3); }
           .v { flex: 1; color: var(--text-2); word-break: break-all; }
@@ -716,14 +719,14 @@ onMounted(() => {
 /* 宠物喜好 */
 .pref-panel { margin-top: 32px; padding: 26px 0 8px; border-top: var(--rule);
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
-    h2 { margin: 0; font-size: 20px; color: var(--text-1); }
-    .archive { color: var(--text-3); font-size: 13px; }
+    h2 { margin: 0; font-size: var(--fs-8); color: var(--text-1); }
+    .archive { color: var(--text-3); font-size: var(--fs-4); }
   }
   .pref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px;
     .pref-item { display: flex; gap: 12px; align-items: flex-start; padding: 3px 0 3px 12px; border-left: 2px solid var(--brand-200);
-      .ico { font-size: 20px; flex-shrink: 0; }
-      b { display: block; font-size: 13px; color: var(--brand-500); margin-bottom: 2px; }
-      p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+      .ico { font-size: var(--fs-8); flex-shrink: 0; }
+      b { display: block; font-size: var(--fs-4); color: var(--brand-500); margin-bottom: 2px; }
+      p { margin: 0; font-size: var(--fs-4); color: var(--text-2); line-height: 1.6; }
       &.warn { border-left-color: var(--danger-500);
         b { color: var(--danger-500); }
       }
@@ -749,11 +752,11 @@ onMounted(() => {
   .right {
     padding-left: 0; border-left: 0;
     .title-row { margin-bottom: 12px;
-      h1 { font-size: 20px; }
+      h1 { font-size: var(--fs-8); }
       .fav-star { width: 40px; height: 40px; }
     }
     .price { padding: 12px 0; margin-bottom: 14px;
-      .amount { font-size: 24px; }
+      .amount { font-size: var(--fs-9); }
     }
     .actions { gap: 10px; margin-top: 20px;
       .el-button { flex: 1 1 40%; min-width: 0; padding-left: 8px; padding-right: 8px; }
@@ -761,13 +764,13 @@ onMounted(() => {
     }
   }
   .health-panel, .pref-panel { padding: 18px 0 0; margin-top: 24px;
-    .panel-head h2 { font-size: 16px; }
+    .panel-head h2 { font-size: var(--fs-6); }
     .tl {
       thead { display: none; }
       tr { display: block; padding: 10px 0; border-bottom: var(--rule-soft); }
       tr:last-child { border-bottom: none; }
       td { display: block; padding: 0; border: 0; }
-      .tl-date { width: auto; margin-bottom: 2px; font-size: 12px; color: var(--text-3); }
+      .tl-date { width: auto; margin-bottom: 2px; font-size: var(--fs-2); color: var(--text-3); }
       .tl-name { display: inline; width: auto; margin-right: 8px; }
       .tl-detail { margin: 3px 0; }
       .tl-res { width: auto; margin-top: 3px; }

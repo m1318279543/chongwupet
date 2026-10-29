@@ -206,16 +206,15 @@
 <script setup>
 import { ref, inject, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { getPetOverview } from '@/api/pet/petInfo'
-import { listPetFavorite, addPetFavorite, delPetFavorite, listMyFavoriteIds } from '@/api/pet/petFavorite'
-import { commentStatGroup } from '@/api/pet/petComment'
 import { listFeaturedGoods } from '@/api/pet/petGoods'
 import { storeOptions } from '@/api/pet/petStore'
 import { useUserStore } from '@/store/modules/user'
 import PetCard from './PetCard.vue'
-import { PET_GRADIENTS } from './homeData'
+import { usePetFavorite } from '@/composables/usePetFavorite'
+import { usePetRatings } from '@/composables/usePetRatings'
+import { isImage, petGradient } from '@/utils/petDisplay'
 import { money } from '@/utils/money'
 
 const router = useRouter()
@@ -228,33 +227,14 @@ const petList = ref([])
 const featured = ref([])
 const counts = ref({ total: 0, onSale: 0, categoryCount: 0 })
 const loading = ref(false)
-const myFavorites = ref([])
 const stores = ref([])
 const petsSec = ref(null)
 
-// 评分角标：petId -> {avg,count}
-const ratingMap = ref({})
-function petRating(petId) {
-  const r = ratingMap.value[petId]
-  return r && Number(r.count) > 0 ? r : null
-}
-async function loadRatings() {
-  try {
-    const res = await commentStatGroup('pet')
-    const m = {}
-    for (const row of res.data || []) m[row.petId] = row
-    ratingMap.value = m
-  } catch (e) { /* 静默 */ }
-}
+// 收藏 / 评分 / 占位渐变：全站共用 composable 与工具（composables、utils/petDisplay）
+const { isFav, load: loadMyFavorites, toggle: toggleFav } = usePetFavorite(openAuth)
+const { rating: petRating, load: loadRatings } = usePetRatings('pet')
 
-function petGradient(id) {
-  const c = PET_GRADIENTS[(id || 0) % PET_GRADIENTS.length]
-  return `linear-gradient(135deg, ${c[0]}, ${c[1]})`
-}
-// image 字段可能是图片 URL（/images/... 或 http...），也可能是 emoji 兜底
-function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
 function isLogged() { return !!userStore.token }
-function isFav(petId) { return myFavorites.value.includes(petId) }
 
 // Hero 图集：猫 / 狗 / 小宠各取一张有图的
 const heroPets = computed(() => {
@@ -314,37 +294,6 @@ async function loadStores() {
   } catch (e) { /* 静默：游客态或后端未开通该接口 */ }
 }
 
-async function loadMyFavorites() {
-  if (!isLogged()) { myFavorites.value = []; return }
-  try {
-    const res = await listMyFavoriteIds()
-    myFavorites.value = res.data || []
-  } catch (e) { console.warn('收藏加载失败', e) }
-}
-
-async function toggleFav(petId) {
-  if (!isLogged()) {
-    ElMessage.info('请先登录后再收藏')
-    openAuth('login')
-    return
-  }
-  if (isFav(petId)) {
-    try {
-      const res = await listPetFavorite({ userId: userStore.userId, petId })
-      const fid = res.rows?.[0]?.favoriteId
-      if (fid) await delPetFavorite(fid)
-      myFavorites.value = myFavorites.value.filter(id => id !== petId)
-      ElMessage.success('已取消收藏')
-    } catch (e) { ElMessage.error(e?.message || '取消失败') }
-  } else {
-    try {
-      await addPetFavorite({ petId, userId: userStore.userId })
-      myFavorites.value.push(petId)
-      ElMessage.success('收藏成功')
-    } catch (e) { ElMessage.error(e?.message || '收藏失败') }
-  }
-}
-
 function scrollToPets() {
   petsSec.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -400,7 +349,7 @@ onMounted(() => {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px 6px 10px; background: var(--bg-card);
   border: 1px solid var(--border-1); border-radius: var(--radius-pill);
-  font-size: 12.5px; font-weight: 500; color: var(--text-2);
+  font-size: var(--fs-3); font-weight: 500; color: var(--text-2);
   svg { width: 13px; height: 13px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; flex-shrink: 0; }
   b { color: var(--text-1); font-weight: 700; }
   .sep { width: 1px; height: 11px; background: var(--border-1); }
@@ -418,7 +367,7 @@ h1 {
   }
 }
 .hero-sub {
-  margin: 20px 0 0; max-width: 30em; font-size: 16px; line-height: 1.8; color: var(--text-2);
+  margin: 20px 0 0; max-width: 30em; font-size: var(--fs-6); line-height: 1.8; color: var(--text-2);
   b { color: var(--text-1); font-weight: 700; }
 }
 
@@ -430,16 +379,16 @@ h1 {
   transition: border-color .16s;
   // 焦点态只加深描边，不加投影（投影只留给弹窗）
   &:focus-within { border-color: var(--brand-400); }
-  .s-ico { font-size: 20px; color: var(--text-3); flex-shrink: 0; }
+  .s-ico { font-size: var(--fs-8); color: var(--text-3); flex-shrink: 0; }
   input {
     flex: 1; min-width: 0; border: 0; outline: 0; background: none;
-    font-size: 16px; font-family: inherit; color: var(--text-1);
+    font-size: var(--fs-6); font-family: inherit; color: var(--text-1);
     &::placeholder { color: var(--text-4); }
     &::-webkit-search-cancel-button { display: none; }
   }
   .s-go {
     height: 40px; padding: 0 22px; border-radius: var(--radius-md); border: 0;
-    background: var(--brand-600); color: #fff; font-size: 14px; font-weight: 700;
+    background: var(--brand-600); color: var(--on-accent); font-size: var(--fs-5); font-weight: 700;
     font-family: inherit; cursor: pointer; flex-shrink: 0; transition: background .16s;
     &:hover { background: var(--brand-700); }
   }
@@ -465,19 +414,19 @@ h1 {
   }
   .hs-main {
     min-width: 0; flex: 1;
-    b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text-1);
+    b { display: block; font-size: var(--fs-5); font-weight: 700; color: var(--text-1);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    em { display: block; margin-top: 2px; font-style: normal; font-size: 12px; color: var(--text-3);
+    em { display: block; margin-top: 2px; font-style: normal; font-size: var(--fs-2); color: var(--text-3);
          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
   .hs-time {
     display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
-    font-size: 12px; color: var(--text-3);
+    font-size: var(--fs-2); color: var(--text-3);
     svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.8; }
   }
   .hs-go {
     display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;
-    font-size: 12.5px; font-weight: 700; color: var(--brand-700);
+    font-size: var(--fs-3); font-weight: 700; color: var(--brand-700);
     svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.9; }
   }
 }
@@ -485,19 +434,19 @@ h1 {
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 48px; padding: 0 22px; border-radius: var(--radius-md);
-  font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
+  font-size: var(--fs-6); font-weight: 700; font-family: inherit; cursor: pointer;
   border: 1px solid transparent; transition: transform .16s, background .16s, border-color .16s, color .16s;
   svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.9; }
 }
 .btn-primary {
-  background: var(--brand-600); color: #fff;
+  background: var(--brand-600); color: var(--on-accent);
   &:hover { background: var(--brand-700); }
 }
 .btn-ghost {
   background: var(--bg-card); color: var(--text-1); border-color: var(--border-1);
   &:hover { border-color: var(--brand-300); color: var(--brand-700); background: var(--brand-50); }
 }
-.btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-md); }
+.btn-sm { height: 32px; padding: 0 12px; font-size: var(--fs-4); border-radius: var(--radius-md); }
 
 /* 首屏底部数据带：通栏 + 淡底，把首屏下沿封住 */
 .hero-stats {
@@ -512,11 +461,11 @@ h1 {
   div:first-child { padding-left: 0; }
   div + div { border-left: 1px solid var(--border-1); }
   div strong {
-    display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em;
+    display: block; font-size: var(--fs-8); font-weight: 700; letter-spacing: -.02em;
     line-height: 1.3; color: var(--text-1); font-variant-numeric: tabular-nums;
-    i { font-style: normal; font-size: 12px; font-weight: 700; }
+    i { font-style: normal; font-size: var(--fs-2); font-weight: 700; }
   }
-  div span { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+  div span { display: block; font-size: var(--fs-3); color: var(--text-3); margin-top: 2px; }
 }
 
 .hero-media {
@@ -540,8 +489,8 @@ h1 {
   .ok { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-50);
     display: grid; place-items: center; flex-shrink: 0;
     svg { width: 15px; height: 15px; stroke: var(--brand-600); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; } }
-  strong { display: block; font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--text-1); }
-  & > span > span { display: block; font-size: 12px; color: var(--text-3); line-height: 1.35; }
+  strong { display: block; font-size: var(--fs-4); font-weight: 700; line-height: 1.35; color: var(--text-1); }
+  & > span > span { display: block; font-size: var(--fs-2); color: var(--text-3); line-height: 1.35; }
 }
 
 /* ===== 区块通用 ===== */
@@ -550,12 +499,12 @@ h1 {
 .sec-head {
   display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
   margin-bottom: 32px; padding-bottom: 18px; border-bottom: var(--rule);
-  h2 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--text-1); }
-  p { margin-top: 6px; font-size: 13px; color: var(--text-3); }
+  h2 { font-size: var(--fs-9); font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: var(--text-1); }
+  p { margin-top: 6px; font-size: var(--fs-4); color: var(--text-3); }
 }
 .more {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
-  font-size: 14px; font-weight: 700; color: var(--brand-700);
+  font-size: var(--fs-5); font-weight: 700; color: var(--brand-700);
   background: none; border: 0; font-family: inherit; cursor: pointer; padding: 8px 0; white-space: nowrap;
   text-decoration: none;
   svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .16s; }
@@ -572,7 +521,7 @@ h1 {
 }
 .empty {
   text-align: center; padding: 64px 0; color: var(--text-3);
-  p { margin-bottom: 16px; font-size: 14px; }
+  p { margin-bottom: 16px; font-size: var(--fs-5); }
 }
 
 /* ===== ③ 宠物粮精选：与宠物卡同一套扁平语言，图片统一 4:3 ===== */
@@ -591,16 +540,16 @@ h1 {
     &:hover img { transform: scale(1.05); }
   }
   .body { padding: 12px 2px 0; }
-  .name { font-size: 16px; font-weight: 700; color: var(--text-1); line-height: 1.4; }
-  .spec { margin-top: 3px; font-size: 12.5px; color: var(--text-3); }
+  .name { font-size: var(--fs-6); font-weight: 700; color: var(--text-1); line-height: 1.4; }
+  .spec { margin-top: 3px; font-size: var(--fs-3); color: var(--text-3); }
   .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-2); }
   // 与 PetCard 同一写法：数字字体、20px、价格色
-  .price { font-family: var(--font-num); font-size: 20px; font-weight: 700; line-height: 1.15;
+  .price { font-family: var(--font-num); font-size: var(--fs-8); font-weight: 700; line-height: 1.15;
     letter-spacing: -.01em; color: var(--price); font-variant-numeric: tabular-nums;
-    i { font-style: normal; font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 1px; } }
+    i { font-style: normal; font-size: var(--fs-2); color: var(--text-3); font-weight: 400; margin-left: 1px; } }
   .go { display: inline-flex; align-items: center; gap: 3px; padding-bottom: 2px;
-    font-size: 12.5px; font-weight: 700; color: var(--text-3); transition: color .16s;
+    font-size: var(--fs-3); font-weight: 700; color: var(--text-3); transition: color .16s;
     svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
     .food-card:hover & { color: var(--brand-700); } }
 }
@@ -616,17 +565,17 @@ h1 {
 }
 .store-top {
   display: flex; align-items: center; gap: 8px;
-  h4 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
+  h4 { font-size: var(--fs-6); font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
   .tag { padding: 2px 7px; border-radius: var(--radius-xs); background: var(--brand-50);
-    color: var(--brand-700); font-size: 11px; font-weight: 700; }
+    color: var(--brand-700); font-size: var(--fs-1); font-weight: 700; }
 }
 .store-row {
-  display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text-2); line-height: 1.6;
+  display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-4); color: var(--text-2); line-height: 1.6;
   svg { width: 14px; height: 14px; stroke: var(--text-3); fill: none; stroke-width: 1.7; margin-top: 3px; flex-shrink: 0; }
   &.tel { color: var(--text-1); font-weight: 700; font-variant-numeric: tabular-nums; }
 }
 .store-btn {
-  margin-top: auto; width: 100%; height: 40px; font-size: 13px; border-radius: var(--radius-md);
+  margin-top: auto; width: 100%; height: 40px; font-size: var(--fs-4); border-radius: var(--radius-md);
   background: var(--bg-card); color: var(--brand-700); border: 1px solid var(--brand-200);
   &:hover { background: var(--brand-50); border-color: var(--brand-300); }
 }
@@ -637,8 +586,8 @@ h1 {
   max-width: var(--container-lg); margin: 0 auto; padding: 32px;
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: var(--radius-xl);
-  h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
-  p { margin-top: 6px; font-size: 13px; color: var(--text-2); }
+  h3 { font-size: var(--fs-8); font-weight: 700; letter-spacing: -.01em; color: var(--text-1); }
+  p { margin-top: 6px; font-size: var(--fs-4); color: var(--text-2); }
   .cta-actions { display: flex; gap: 12px; flex-shrink: 0; }
 }
 
@@ -681,12 +630,12 @@ h1 {
   .sec-inner { padding: 0 16px; }
 
   .hero-copy { display: flex; flex-direction: column; min-height: 0; }
-  .hero-badge { align-self: flex-start; padding: 5px 10px 5px 9px; font-size: 12px; gap: 6px;
+  .hero-badge { align-self: flex-start; padding: 5px 10px 5px 9px; font-size: var(--fs-2); gap: 6px;
     svg { width: 12px; height: 12px; } }
   h1 { margin-top: 14px; font-size: 25px; line-height: 1.18; }
-  .hero-sub { margin-top: 12px; font-size: 13.5px; line-height: 1.72; }
+  .hero-sub { margin-top: 12px; font-size: var(--fs-5); line-height: 1.72; }
   .hero-search { height: 48px; margin-top: 18px; border-radius: var(--radius-md);
-    .s-go { height: 36px; padding: 0 16px; font-size: 14px; } }
+    .s-go { height: 36px; padding: 0 16px; font-size: var(--fs-5); } }
 
   /* 两个入口并排：次要操作不再和主操作同宽同高，省下约 60px 给首图 */
   .hero-cta {
@@ -695,7 +644,7 @@ h1 {
     gap: 10px;
     margin-top: 14px;
   }
-  .hero-cta .btn { width: 100%; height: 44px; padding: 0 10px; font-size: 14px; gap: 6px; }
+  .hero-cta .btn { width: 100%; height: 44px; padding: 0 10px; font-size: var(--fs-5); gap: 6px; }
 
   /* 门店条只在桌面出现：移动端首屏本来就排满，再塞会挤掉首图高度 */
   .hero-store { display: none; }
@@ -706,8 +655,8 @@ h1 {
     gap: 10px; padding: 14px 58px 16px 16px; }
   .hst-inner div { padding-left: 0; }
   .hst-inner div + div { border-left: 0; }
-  .hst-inner div strong { font-size: 16px; }
-  .hst-inner div span { font-size: 11.5px; line-height: 1.35; }
+  .hst-inner div strong { font-size: var(--fs-6); }
+  .hst-inner div span { font-size: var(--fs-2); line-height: 1.35; }
 
   /* 图集：只留主图，高度交给剩余空间，不再用固定比例把页面撑高 */
   .hero-media {
@@ -730,21 +679,21 @@ h1 {
 
   .sec { padding: 48px 0; }
   .sec-head { flex-wrap: wrap; gap: 8px 12px;
-    h2 { font-size: 20px; } p { margin-top: 4px; font-size: 12.5px; } }
+    h2 { font-size: var(--fs-8); } p { margin-top: 4px; font-size: var(--fs-3); } }
   // 窄屏标题换行后，「查看全部」落到第二行也要靠右
-  .more { margin-left: auto; font-size: 13px; }
+  .more { margin-left: auto; font-size: var(--fs-4); }
   .grid, .food-grid { gap: 18px 10px; }
   .food-card .thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
-  .cta-inner h3 { font-size: 16px; }
+  .cta-inner h3 { font-size: var(--fs-6); }
   .cta-actions { width: 100%;
-    .btn { flex: 1; padding: 0 12px; font-size: 14px; } }
+    .btn { flex: 1; padding: 0 12px; font-size: var(--fs-5); } }
 }
 @media (max-width: 480px) {
   /* 360–390 这类窄屏：入口保持并排，只收字号与间距 */
   h1 { font-size: 23px; }
   .hero-cta { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .hero-cta .btn { padding: 0 8px; font-size: 13px; }
+  .hero-cta .btn { padding: 0 8px; font-size: var(--fs-4); }
   .hero-search { .s-go { padding: 0 14px; } }
-  .hst-inner div span { font-size: 11px; }
+  .hst-inner div span { font-size: var(--fs-1); }
 }
 </style>

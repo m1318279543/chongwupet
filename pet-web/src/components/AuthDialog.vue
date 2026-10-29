@@ -149,19 +149,19 @@ defineExpose({ open, visible, mode: 'login' })
 
 <style scoped lang="scss">
 .code-row { display: flex; gap: 10px; width: 100%; }
-.code-img { width: 120px; height: 40px; border-radius: 4px; cursor: pointer; border: 1px solid #dcdfe6; }
-.submit-btn { width: 100%; background: var(--brand-500); border-color: var(--brand-500); }
+.code-img { width: 120px; height: 40px; border-radius: var(--radius-xs); cursor: pointer; border: 1px solid var(--border-1); }
+.submit-btn { width: 100%; background: var(--brand-600); border-color: var(--brand-600); }
 .submit-btn:hover { background: var(--brand-600); border-color: var(--brand-600); }
 /* 入口行：一条极细分割线 + 两个文字链，不用按钮，避免与主行动抢层级 */
 .auth-foot {
   display: flex; align-items: center; justify-content: center; gap: 14px;
   margin-top: 2px; padding-top: 14px;
   border-top: 1px solid var(--border-2);
-  font-size: 13px;
+  font-size: var(--fs-4);
 }
 .foot-link {
   border: 0; background: none; padding: 2px 0;
-  font: inherit; font-size: 13px; font-weight: 700; color: var(--brand-700);
+  font: inherit; font-size: var(--fs-4); font-weight: 700; color: var(--brand-700);
   cursor: pointer;
   &:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
@@ -174,8 +174,8 @@ defineExpose({ open, visible, mode: 'login' })
   background: var(--brand-50);
   border: 1px solid var(--brand-100);
   border-radius: var(--radius-sm);
-  .an-title { font-size: 13px; font-weight: 700; color: var(--text-1); }
-  .an-desc { margin-top: 4px; font-size: 12.5px; line-height: 1.65; color: var(--text-2); }
+  .an-title { font-size: var(--fs-4); font-weight: 700; color: var(--text-1); }
+  .an-desc { margin-top: 4px; font-size: var(--fs-3); line-height: 1.65; color: var(--text-2); }
   .an-actions { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
 }
 </style>

@@ -1,37 +1,44 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="80px">
-      <el-form-item label="宠物ID" prop="petId">
-        <el-input v-model="queryParams.petId" placeholder="宠物ID" clearable style="width: 160px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="内容" prop="content">
-        <el-input v-model="queryParams.content" placeholder="评论关键词" clearable style="width: 200px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
-          <el-option label="正常" value="0" />
-          <el-option label="已隐藏" value="1" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <el-card shadow="never" class="ui-toolbar-card">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="80px">
+        <el-form-item label="宠物ID" prop="petId">
+          <el-input v-model="queryParams.petId" placeholder="宠物ID" clearable style="width: 160px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="内容" prop="content">
+          <el-input v-model="queryParams.content" placeholder="评论关键词" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+            <el-option label="正常" value="0" />
+            <el-option label="已隐藏" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5"><el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:comment:remove']">删除</el-button></el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="ui-card-head">
+          <div class="head-actions">
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['pet:comment:remove']">删除</el-button>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+        </div>
+      </template>
 
-    <el-table v-loading="loading" :data="commentList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" :data="commentList" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="评论ID" align="center" prop="commentId" width="80" />
       <el-table-column label="宠物" align="center" width="180">
         <template #default="scope">
-          <div class="pet-cell">
-            <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="pet-img" alt="宠物图片" />
-            <span v-else class="pet-emoji">—</span>
+          <div class="ui-pet-cell">
+            <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="ui-pet-cell__img" alt="宠物图片" />
+            <span v-else class="ui-pet-cell__emoji">—</span>
             <span>{{ scope.row.petName }}</span>
           </div>
         </template>
@@ -59,7 +66,10 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <div class="ui-pager">
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -110,8 +120,6 @@ getList();
 </script>
 
 <style scoped>
-.pet-cell { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.pet-img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
-.pet-emoji { font-size: 24px; }
 .reply-tag { color: var(--brand-500); }
+.head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 </style>

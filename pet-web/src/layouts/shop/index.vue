@@ -30,8 +30,8 @@
         <div class="user-area">
           <!-- AI 助手入口：固定在顶栏、消息铃铛左侧（登录与否都能问） -->
           <AssistantEntry scene="shop" />
-          <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
-          <NotificationBell v-if="isLogged" more-path="/shop/cart" />
+          <!-- 站内消息铃铛（登录后显示，桌面/手机共用；暂无消息中心页，不显示「查看全部」） -->
+          <NotificationBell v-if="isLogged" />
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
           <router-link to="/shop/cart" class="m-cart" aria-label="购物车">
             <!-- 与导航/底栏同一族自绘线性图标（1.8 描边），不混用 Element 图标 -->
@@ -60,6 +60,7 @@
                   <el-dropdown-item command="/shop/mypet">我的宠物</el-dropdown-item>
                   <el-dropdown-item command="/shop/appointment">我的预约</el-dropdown-item>
                   <el-dropdown-item command="/shop/favorite">我的收藏</el-dropdown-item>
+                  <el-dropdown-item command="/shop/consult">联系客服</el-dropdown-item>
                   <el-dropdown-item command="/shop/profile" divided>个人资料</el-dropdown-item>
                   <el-dropdown-item command="logout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -76,6 +77,7 @@
             <router-link to="/shop/mypet" class="m-item" @click="closeMenu">我的宠物</router-link>
             <router-link to="/shop/appointment" class="m-item" @click="closeMenu">我的预约</router-link>
             <router-link to="/shop/favorite" class="m-item" @click="closeMenu">我的收藏</router-link>
+            <router-link to="/shop/consult" class="m-item" @click="closeMenu">联系客服</router-link>
             <div class="m-user">
               <div class="m-user-info">
                 <el-avatar :size="34" class="avatar" :src="avatarUrl" @error="avatarBroken = true">{{ avatarText }}</el-avatar>
@@ -291,13 +293,13 @@ function handleCommand(cmd) {
 
 /* ===== 顶栏 ===== */
 .topbar {
-  position: sticky; top: 0; z-index: 100;
+  position: sticky; top: 0; z-index: var(--z-header);
   background: rgba(255, 255, 255, .92);
   backdrop-filter: saturate(1.6) blur(12px);
   border-bottom: 1px solid var(--border-1);
 
   .bar-inner {
-    max-width: var(--container-lg); margin: 0 auto; height: 72px;
+    max-width: var(--container-lg); margin: 0 auto; height: var(--topbar-h);
     display: flex; align-items: center; gap: 32px; padding: 0 24px;
   }
 
@@ -307,11 +309,11 @@ function handleCommand(cmd) {
     .logo {
       width: 36px; height: 36px; border-radius: var(--radius-md); display: grid; place-items: center;
       background: var(--grad-brand);
-      svg { width: 20px; height: 20px; fill: #fff; }
+      svg { width: 20px; height: 20px; fill: var(--on-accent); }
     }
     .brand-txt {
-      strong { display: block; font-size: 16px; font-weight: 700; color: var(--text-1); line-height: 1.2; letter-spacing: -.01em; }
-      span { display: block; font-size: 11px; letter-spacing: .14em; color: var(--text-3); font-weight: 500; }
+      strong { display: block; font-size: var(--fs-6); font-weight: 700; color: var(--text-1); line-height: 1.2; letter-spacing: -.01em; }
+      span { display: block; font-size: var(--fs-1); letter-spacing: .14em; color: var(--text-3); font-weight: 500; }
     }
   }
 
@@ -323,7 +325,7 @@ function handleCommand(cmd) {
   }
   .nav-item {
     position: relative; display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 14px; font-size: 16px; font-weight: 500; color: var(--text-2);
+    padding: 10px 14px; font-size: var(--fs-6); font-weight: 500; color: var(--text-2);
     border-radius: var(--radius-sm); white-space: nowrap; flex-shrink: 0;
     transition: color .16s, background .16s;
     &:hover { color: var(--text-1); background: var(--bg-sunken); }
@@ -341,9 +343,9 @@ function handleCommand(cmd) {
 
   // 导航购物车数量徽标
   .nav-badge {
-    font-style: normal; font-size: 11px; font-weight: 700; line-height: 1;
-    padding: 3px 6px; border-radius: 999px;
-    background: var(--brand-600); color: #fff;
+    font-style: normal; font-size: var(--fs-1); font-weight: 700; line-height: 1;
+    padding: 3px 6px; border-radius: var(--radius-pill);
+    background: var(--brand-600); color: var(--on-accent);
     font-variant-numeric: tabular-nums;
   }
 
@@ -351,7 +353,7 @@ function handleCommand(cmd) {
     .user { display: flex; align-items: center; gap: 8px; cursor: pointer; padding-left: 6px; }
     .avatar { background: var(--brand-50); color: var(--brand-700); font-weight: 700;
       border: 1px solid var(--brand-200); }
-    .uname { font-size: 14px; color: var(--text-1); }
+    .uname { font-size: var(--fs-5); color: var(--text-1); }
   }
   .desk-user { display: flex; align-items: center; gap: 8px; }
 
@@ -380,8 +382,8 @@ function handleCommand(cmd) {
 .cart-badge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
-  background: var(--brand-600); color: #fff; font-size: 11px; font-weight: 700;
-  border: 2px solid #fff; box-sizing: content-box;
+  background: var(--brand-600); color: var(--on-accent); font-size: var(--fs-1); font-weight: 700;
+  border: 2px solid var(--on-accent); box-sizing: content-box;
 }
 .m-item .cart-badge { margin-left: 6px; }
 
@@ -391,7 +393,7 @@ function handleCommand(cmd) {
 @media (max-width: 1240px) {
   .topbar .bar-inner { gap: 20px; }
   .topbar .nav { gap: 0; }
-  .topbar .nav-item { padding: 10px 10px; font-size: 14px; }
+  .topbar .nav-item { padding: 10px 10px; font-size: var(--fs-5); }
 }
 @media (max-width: 1000px) {
   .topbar .user-area .uname { display: none; }
@@ -400,10 +402,11 @@ function handleCommand(cmd) {
 /* ===== 手机端：导航折叠为下拉菜单（与底部标签栏同一断点）===== */
 @media (max-width: 768px) {
   .topbar {
-    .bar-inner { height: 64px; padding: 0 12px; gap: 8px; }
+    --topbar-h: 64px; // 手机端顶栏压低 8px
+    .bar-inner { height: var(--topbar-h); padding: 0 12px; gap: 8px; }
     .brand { margin-right: auto;
       .logo { width: 34px; height: 34px; border-radius: var(--radius-md); }
-      .brand-txt strong { font-size: 16px; }
+      .brand-txt strong { font-size: var(--fs-6); }
       .brand-txt span { display: none; }
     }
     .nav, .desk-user { display: none; }
@@ -413,16 +416,16 @@ function handleCommand(cmd) {
 
     // 窄卡片菜单：挂在汉堡按钮下方右对齐，宽度固定，不再全宽铺满屏幕
     .m-menu {
-      display: block; position: absolute; top: calc(100% + 8px); right: 12px; z-index: 101;
+      display: block; position: absolute; top: calc(100% + 8px); right: 12px; z-index: var(--z-dropdown);
       width: min(264px, calc(100vw - 24px));
-      background: #fff; border: 1px solid var(--border-1); border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md);
       box-shadow: 0 16px 28px rgba(22, 25, 23, .14);
-      max-height: calc(100vh - 64px - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+      max-height: calc(100vh - var(--topbar-h) - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
       padding: 6px 0 14px;
     }
     .m-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 13px 16px; font-size: 16px; color: var(--text-1); text-decoration: none;
+      padding: 13px 16px; font-size: var(--fs-6); color: var(--text-1); text-decoration: none;
       background: transparent; border: 0; width: 100%; text-align: left; font-family: inherit;
       line-height: 1.3; box-sizing: border-box;
       &.router-link-active { color: var(--brand-700); background: var(--brand-50); font-weight: 700; }
@@ -430,20 +433,20 @@ function handleCommand(cmd) {
     }
     .m-user { padding: 4px 16px 0;
       .m-user-info { display: flex; align-items: center; gap: 10px; padding: 10px 0 12px; }
-      .m-uname { font-size: 16px; color: var(--text-1); font-weight: 700; }
+      .m-uname { font-size: var(--fs-6); color: var(--text-1); font-weight: 700; }
       .m-user-actions { display: flex; gap: 10px; }
     }
     .m-auth { display: flex; gap: 10px; padding: 4px 16px 0; }
-    .m-btn { flex: 1; height: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-1); background: #fff;
-      color: var(--text-1); font-size: 16px; font-family: inherit; cursor: pointer;
+    .m-btn { flex: 1; height: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-1); background: var(--bg-card);
+      color: var(--text-1); font-size: var(--fs-6); font-family: inherit; cursor: pointer;
       &:active { background: var(--bg-sunken); }
     }
-    .m-btn-primary { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700;
+    .m-btn-primary { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-accent); font-weight: 700;
       &:active { background: var(--brand-700); }
     }
     .m-btn-danger { color: var(--danger-500); border-color: var(--border-1); }
   }
-  .m-mask { display: block; position: fixed; inset: 0; top: 64px; z-index: 99; background: rgba(22, 25, 23, .32); }
+  .m-mask { display: block; position: fixed; inset: 0; top: var(--topbar-h); z-index: var(--z-mask); background: rgba(22, 25, 23, .32); }
 }
 
 .m-drop-enter-active, .m-drop-leave-active { transition: opacity .2s ease, transform .24s ease; }
@@ -467,7 +470,7 @@ function handleCommand(cmd) {
   .tabbar {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar);
     background: rgba(255, 255, 255, .96);
     backdrop-filter: blur(8px);
     border-top: var(--rule);
@@ -479,7 +482,7 @@ function handleCommand(cmd) {
     // 触控热区 ≥44px（图标 21 + 文字 11 + 上下留白）
     min-height: 44px; padding: 5px 0;
     border: 0; background: none; font-family: inherit; cursor: pointer;
-    text-decoration: none; color: var(--text-3); font-size: 11px; line-height: 1;
+    text-decoration: none; color: var(--text-3); font-size: var(--fs-1); line-height: 1;
     svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.7;
       stroke-linecap: round; stroke-linejoin: round; }
     &.on { color: var(--brand-600); font-weight: 700;
@@ -488,7 +491,7 @@ function handleCommand(cmd) {
   .tab-badge {
     position: absolute; top: 0; right: calc(50% - 22px);
     min-width: 16px; height: 16px; border-radius: var(--radius-pill); padding: 0 4px;
-    background: var(--danger-500); color: #fff; font-size: 11px; font-weight: 700;
+    background: var(--danger-500); color: var(--on-accent); font-size: var(--fs-1); font-weight: 700;
     font-style: normal; display: grid; place-items: center;
   }
 }

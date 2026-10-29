@@ -8,15 +8,6 @@ export function getPetHealth(petId) {
   });
 }
 
-// 前台：在售宠物档案汇总（服务页用）
-export function listOnSaleHealth(query) {
-  return request({
-    url: "/pet/health/onsale",
-    method: "get",
-    params: query,
-  });
-}
-
 // 后台：档案列表
 export function listPetHealth(query) {
   return request({

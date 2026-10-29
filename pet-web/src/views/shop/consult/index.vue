@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, inject, onMounted } from 'vue'
+import { ref, reactive, computed, inject, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { submitConsult, listMyConsult } from '@/api/pet/petConsult'
 import { listStore } from '@/api/pet/petStore'
@@ -192,9 +192,17 @@ async function loadMine() {
   }
 }
 
+// AI 助手「转人工」发生在本页时不再跳转，只关面板并广播刷新，避免 consult → AI → 转人工 → consult 循环
+function onAssistantHandoff() {
+  if (isLogged.value) loadMine()
+}
 onMounted(() => {
   loadStores()
   if (isLogged.value) loadMine()
+  window.addEventListener('pet-consult-refresh', onAssistantHandoff)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('pet-consult-refresh', onAssistantHandoff)
 })
 </script>
 
@@ -218,23 +226,23 @@ onMounted(() => {
   gap: 28px;
 }
 .side-card { border-top: var(--rule); padding-top: 18px; }
-.side-title { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--text-1); }
+.side-title { margin: 0 0 10px; font-size: var(--fs-5); font-weight: 700; color: var(--text-1); }
 .side-list {
   margin: 0; padding-left: 16px;
-  li { font-size: 13px; line-height: 1.8; color: var(--text-2); }
+  li { font-size: var(--fs-4); line-height: 1.8; color: var(--text-2); }
 }
 .tel-list {
   margin: 0; padding: 0; list-style: none;
   display: grid; gap: 14px;
   li {
     display: grid; gap: 3px;
-    b { font-size: 13.5px; font-weight: 700; color: var(--text-1); }
+    b { font-size: var(--fs-5); font-weight: 700; color: var(--text-1); }
     a {
-      font-size: 13px; color: var(--brand-700); text-decoration: none;
+      font-size: var(--fs-4); color: var(--brand-700); text-decoration: none;
       font-variant-numeric: tabular-nums;
       &:hover { text-decoration: underline; }
     }
-    span { font-size: 12px; color: var(--text-3); }
+    span { font-size: var(--fs-2); color: var(--text-3); }
   }
 }
 @media (max-width: 900px) {
@@ -254,13 +262,13 @@ onMounted(() => {
   background: var(--brand-50);
   color: var(--brand-700);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   font-weight: 700;
   padding: 6px 11px;
   border-radius: var(--radius-md);
   cursor: pointer;
   white-space: nowrap;
-  &:hover { background: #fff; }
+  &:hover { background: var(--bg-card); }
 }
 
 .qa {
@@ -278,7 +286,7 @@ onMounted(() => {
 .qa__tag {
   flex-shrink: 0;
   width: 18px;
-  font-size: 12px;
+  font-size: var(--fs-2);
   font-weight: 700;
   line-height: 1.6;
   color: var(--brand-700);
@@ -289,7 +297,7 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-5);
   line-height: 1.7;
   color: var(--text-1);
   overflow-wrap: anywhere;
@@ -300,7 +308,7 @@ onMounted(() => {
 .qa__answer .qa__text--muted { color: var(--text-3); }
 .qa__time {
   margin: 4px 0 0 28px;
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-4);
   font-variant-numeric: tabular-nums;
 }
@@ -317,7 +325,7 @@ onMounted(() => {
 .qa__ans-body { flex: 1; min-width: 0; }
 .qa__by {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-4);
 }
 
@@ -325,7 +333,7 @@ onMounted(() => {
   .qa { padding: 16px 8px; }
   .qa__line { flex-wrap: wrap; }
   .qa__line .ui-chip { margin-left: 28px; }
-  .qa__text { font-size: 13px; }
+  .qa__text { font-size: var(--fs-4); }
   .qa__time { margin-left: 28px; }
 }
 </style>

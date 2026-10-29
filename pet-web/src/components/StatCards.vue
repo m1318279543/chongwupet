@@ -54,11 +54,11 @@ defineProps({
   font-family: inherit;
   min-height: 44px;
 
-  .label { display: block; margin: 0; font-size: 12px; color: var(--text-3); }
+  .label { display: block; margin: 0; font-size: var(--fs-2); color: var(--text-3); }
   .value {
     display: block; margin-top: 6px; font-size: 22px; font-weight: 500;
     color: var(--text-1); font-variant-numeric: tabular-nums;
-    .affix { font-style: normal; font-size: 15px; margin-right: 1px; }
+    .affix { font-style: normal; font-size: var(--fs-6); margin-right: 1px; }
   }
 
   &.clickable { cursor: pointer; transition: box-shadow .2s, transform .2s;
@@ -70,7 +70,7 @@ defineProps({
   &.tone-success { border-left-color: var(--success-500); }
   &.tone-danger { border-left-color: var(--danger-500); }
   &.tone-money { border-left-color: var(--brand-700);
-    .value { color: var(--brand-700); font-size: 20px; }
+    .value { color: var(--brand-700); font-size: var(--fs-8); }
   }
 }
 
@@ -81,7 +81,7 @@ defineProps({
 @media (max-width: 768px) {
   .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .stat-card { padding: 12px 14px;
-    .value { font-size: 20px; }
+    .value { font-size: var(--fs-8); }
   }
 }
 </style>

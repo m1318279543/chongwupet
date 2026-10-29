@@ -1,117 +1,127 @@
 <template>
   <div class="ui-page">
     <!-- 顶部标签栏：购物车 / 待支付 / 已支付 / 已取消，各分区独立查看（游客只有购物车，不显示标签） -->
-    <nav class="tabs" v-if="userStore.token" aria-label="购物车分区">
+    <nav class="ui-tabs" v-if="userStore.token" aria-label="购物车分区">
       <button
         v-for="t in topTabs"
         :key="t.key"
         type="button"
-        class="tab"
+        class="ui-tab"
         :class="{ on: activeTab === t.key }"
         @click="activeTab = t.key"
       >
-        {{ t.label }}<span class="tab__n">{{ t.count }}</span>
+        {{ t.label }}<span class="ui-tab__n">{{ t.count }}</span>
       </button>
     </nav>
 
-    <!-- 三个标签共用同一块定高面板：切换时页面高度不变，结算条仍压在面板最底 -->
+    <!-- 两个标签共用同一块定高面板：切换时页面高度稳定 -->
     <div class="tab-panel">
       <!-- ========== 购物车：只放未下单的商品，清空即空 ========== -->
       <template v-if="activeTab === 'cart'">
-      <!-- 空态：头部（图标 + 一句话 + 行动）＋ 两级推荐，页面不再空一大片 -->
+
+      <!-- 空态：居中一句话 + 一个主行动（对齐参考稿），下方「为你推荐」给出现在就逛的路径 -->
       <div class="cart-empty" v-if="cartStore.items.length === 0">
-        <header class="ui-head cart-empty__head">
-          <div class="ui-head__main">
-            <h1 class="ui-title">
-              <span class="ce-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8z"/><path d="M9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10"/></svg>
-              </span>
-              购物车还是空的
-            </h1>
-            <p class="ui-sub">挑一只合眼缘的伙伴，或带几袋好粮，都放这里结算。</p>
-          </div>
-          <!-- 未登录时登录是结算前的必经步骤，设为主操作；宠物粮入口常驻 -->
-          <div class="ui-head__aside ce-act">
+        <div class="cart-empty__hero">
+          <span class="ce-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8z"/><path d="M9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10"/></svg>
+          </span>
+          <p class="cart-empty__text">购物车还是空的，快去逛逛吧！</p>
+          <!-- 未登录时登录是结算前的必经步骤，设为主操作 -->
+          <div class="ce-act">
             <button v-if="!userStore.token" type="button" class="ui-btn ui-btn--solid" @click="openAuth('login')">去登录</button>
             <button type="button" class="ui-btn" :class="userStore.token ? 'ui-btn--solid' : 'ui-btn--line'" @click="$router.push('/shop/pets')">去逛在售宠物</button>
             <button type="button" class="ui-btn ui-btn--line" @click="$router.push('/shop/food')">去逛宠物粮</button>
           </div>
-        </header>
+        </div>
 
-        <!-- 推荐①：在售宠物精选，卡片与首页/售卖页完全同一只（含收藏与评分） -->
-        <section class="ce-sec" v-if="recPets.length || recLoading">
+        <!-- 为你推荐：在售宠物 + 宠物粮共用一个分区头，两组卡片各带一行小标注 -->
+        <section class="ce-sec" v-if="recPets.length || recFood.length">
           <div class="ce-sec__head">
-            <div>
-              <h3>在售宠物 · 先从这几只看起</h3>
-              <p>每一只都有可查的健康筛查与疫苗记录，支持到店看宠</p>
+            <h3>为你推荐</h3>
+            <div class="ce-more-group">
+              <router-link class="ce-more" to="/shop/pets">
+                看全部在售
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+              </router-link>
+              <router-link class="ce-more" to="/shop/food">
+                逛宠物粮专区
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+              </router-link>
             </div>
-            <router-link class="ce-more" to="/shop/pets">
-              看全部在售
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
-            </router-link>
           </div>
-          <div class="ce-grid" v-loading="recLoading">
-            <PetCard
-              v-for="pet in recPets"
-              :key="pet.petId"
-              :pet="pet"
-              :faved="isFav(pet.petId)"
-              :rating="petRating(pet.petId)"
-              :gradient="petGradient(pet.petId)"
-              @open="goPetDetail"
-              @fav="toggleFav"
-            />
-          </div>
-        </section>
 
-        <!-- 推荐②：宠物粮精选，不用离开本页就能加购（与宠物粮专区同一加购口径） -->
-        <section class="ce-sec" v-if="recFood.length">
-          <div class="ce-sec__head">
-            <div>
-              <h3>宠物粮 · 顺带带几袋</h3>
-              <p>按品类挑对口好粮，加购后可与宠物一起结算</p>
+          <template v-if="recPets.length || recLoading">
+            <p class="ce-sub">在售宠物</p>
+            <div class="ce-grid" v-loading="recLoading">
+              <PetCard
+                v-for="pet in recPets"
+                :key="pet.petId"
+                :pet="pet"
+                :faved="isFav(pet.petId)"
+                :rating="petRating(pet.petId)"
+                :gradient="petGradient(pet.petId)"
+                @open="goPetDetail"
+                @fav="toggleFav"
+              />
             </div>
-            <router-link class="ce-more" to="/shop/food">
-              逛宠物粮专区
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
-            </router-link>
-          </div>
-          <div class="ce-grid">
-            <article class="ce-food" v-for="g in recFood" :key="g.id" @click="$router.push('/shop/food')">
-              <div class="ce-food__thumb"><img :src="g.image" :alt="g.name" loading="lazy" /></div>
-              <div class="ce-food__body">
-                <div class="ce-food__name">{{ g.name }}</div>
-                <div class="ce-food__spec">{{ g.spec }}</div>
-                <div class="ce-food__row">
-                  <span class="ce-food__price">¥{{ money(g.price) }}</span>
-                  <button
-                    type="button"
-                    class="ce-food__add"
-                    :disabled="!g.stock"
-                    @click.stop="addFoodToCart(g)"
-                  >{{ g.stock ? '加入购物车' : '暂时缺货' }}</button>
+          </template>
+
+          <template v-if="recFood.length">
+            <p class="ce-sub">宠物粮</p>
+            <div class="ce-grid">
+              <article class="ce-food" v-for="g in recFood" :key="g.id" @click="$router.push('/shop/food')">
+                <div class="ce-food__thumb"><img :src="g.image" :alt="g.name" loading="lazy" /></div>
+                <div class="ce-food__body">
+                  <div class="ce-food__name">{{ g.name }}</div>
+                  <div class="ce-food__spec">{{ g.spec }}</div>
+                  <div class="ce-food__row">
+                    <span class="ce-food__price">¥{{ money(g.price) }}</span>
+                    <button
+                      type="button"
+                      class="ce-food__add"
+                      :disabled="!g.stock"
+                      @click.stop="addFoodToCart(g)"
+                    >{{ g.stock ? '加入购物车' : '暂时缺货' }}</button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          </div>
+              </article>
+            </div>
+          </template>
         </section>
       </div>
       <template v-else>
-        <table class="ui-table cart-table">
+        <!-- 内容装进白色卡片：页面的绿灰底从卡片四周透出来，纯白区域不再铺满整屏 -->
+        <div class="cart-sheet">
+          <table class="ui-table cart-table">
           <thead>
             <tr>
               <th class="c-check">
                 <el-checkbox :model-value="cartAll" @change="toggleCartAll">全选</el-checkbox>
               </th>
-              <th class="c-goods">商品</th>
+              <th class="c-goods">商品信息</th>
               <th class="c-price align-right">单价</th>
               <th class="c-qty">数量</th>
               <th class="c-sub align-right">小计</th>
               <th class="c-op align-right">操作</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="item in pagedItems" :key="item.id">
+          <!-- 按 itemType 分组：活体与宠物粮的下单规则不同（宠物一只一条），分开成组各自勾选与小计 -->
+          <tbody v-for="grp in cartGroups" :key="grp.key">
+            <tr class="group-row">
+              <td class="c-check">
+                <el-checkbox :model-value="grp.allChecked" @change="(v) => toggleGroup(grp, v)" />
+              </td>
+              <td colspan="5" class="group-cell">
+                <div class="group-inner">
+                  <span class="group-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path :d="grp.icon" /></svg>
+                  </span>
+                  <b class="group-name">{{ grp.label }}</b>
+                  <span class="group-note">{{ grp.note }}</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-for="item in grp.items" :key="item.id">
               <td class="c-check">
                 <el-checkbox :model-value="item.checked" @change="(v) => cartStore.setChecked(item.id, v)" />
               </td>
@@ -119,10 +129,7 @@
                 <div class="goods">
                   <img :src="item.image" :alt="item.name" class="thumb" loading="lazy" />
                   <div class="goods__text">
-                    <div class="goods__name">
-                      {{ item.name }}
-                      <span v-if="isPet(item)" class="ui-chip ui-chip--brand">宠物</span>
-                    </div>
+                    <div class="goods__name">{{ item.name }}</div>
                     <div class="goods__spec">
                       <span v-if="item.spec && item.spec !== item.name">{{ item.spec }}</span><span class="unit" :class="{ 'unit--solo': !item.spec || item.spec === item.name }">¥{{ money(item.price) }}</span>
                     </div>
@@ -149,51 +156,49 @@
                 <button type="button" class="ui-linkbtn ui-linkbtn--danger" @click="removeItem(item)">删除</button>
               </td>
             </tr>
+            <tr class="group-sum">
+              <td colspan="6">
+                数量小计：<b>{{ grp.qty }}</b>
+                <i class="sep"></i>
+                金额小计：<b class="ui-price ui-price--sm">¥{{ money(grp.sum) }}</b>
+              </td>
+            </tr>
           </tbody>
         </table>
 
-        <!-- 定高翻页：每页 5 行，超出翻页查看；全选仍作用于全部商品 -->
-        <div class="cart-foot">
-          <span class="cart-foot__count">第 {{ rangeStart }}–{{ rangeEnd }} 件 / 共 {{ cartStore.items.length }} 件</span>
-          <Pagination
-            v-if="cartStore.items.length > PAGE_SIZE"
-            :total="cartStore.items.length"
-            v-model:page="page"
-            :limit="PAGE_SIZE"
-            :page-sizes="[PAGE_SIZE]"
-            :background="false"
-            layout="prev, pager, next"
-            :auto-scroll="false"
-          />
-        </div>
-
-        <!-- 结算条：贴在页脚正上方（随内容排在页面末尾） -->
-        <div class="checkout">
-          <div class="checkout__left">
-            <el-checkbox :model-value="cartAll" @change="toggleCartAll">全选</el-checkbox>
-            <button type="button" class="ui-linkbtn ui-linkbtn--muted clear-cart" @click="clearCart">清空购物车</button>
-          </div>
-          <div class="checkout__right">
-            <span class="checkout__count">已选 <b>{{ cartSelectedRows }}</b> 行 · 共 {{ cartStore.selectedCount }} 件</span>
-            <span class="checkout__sum">
-              <i>合计</i>
-              <span class="ui-price ui-price--lg">¥{{ money(cartStore.selectedPrice) }}</span>
-            </span>
-            <button type="button" class="ui-btn ui-btn--solid" :disabled="cartStore.selectedPrice === 0" @click="openCashier">
-              结算
-            </button>
+        <!-- 结算条：全选 + 批量操作在左，件数/合计/结算在右（对齐参考稿的底栏结构） -->
+          <div class="checkout">
+            <div class="checkout__left">
+              <el-checkbox :model-value="cartAll" @change="toggleCartAll">全选</el-checkbox>
+              <button type="button" class="ui-linkbtn ui-linkbtn--danger" @click="removeSelected">删除所选</button>
+              <button type="button" class="ui-linkbtn ui-linkbtn--muted clear-cart" @click="clearCart">清空购物车</button>
+            </div>
+            <div class="checkout__right">
+              <span class="checkout__count">已选 <b>{{ cartSelectedRows }}</b>/{{ cartStore.items.length }} 项 · 数量总计 <b>{{ cartStore.selectedCount }}</b> 件</span>
+              <span class="checkout__sum">
+                <i>商品金额合计</i>
+                <span class="ui-price ui-price--lg">¥{{ money(cartStore.selectedPrice) }}</span>
+              </span>
+              <button type="button" class="checkout__go" :disabled="cartStore.selectedPrice === 0" @click="openCashier">
+                结算
+              </button>
+            </div>
           </div>
         </div>
       </template>
-    </template>
+      </template>
 
-    <!-- ========== 已支付 / 已取消：复用历史订单归档区（按顶部标签固定筛选） ========== -->
-    <OrdersSection
-      v-else
-      :groups="archivedGroups"
-      :loading="ordersLoading"
-      :fixed-filter="activeTab"
-    />
+    <!-- ========== 已支付：付款完成的订单归档（已取消不再单独展示） ========== -->
+    <div class="cart-sheet order-sheet" v-else>
+      <div class="order-sheet__head">已支付订单<span class="order-sheet__n">{{ paidGroups.length }}</span></div>
+      <div class="order-sheet__body">
+        <OrdersSection
+          :groups="paidGroups"
+          :loading="ordersLoading"
+          @refresh="getOrders"
+        />
+      </div>
+    </div>
     </div>
 
     <!-- 收银台：一次支付所有勾选项（购物车商品自动先下单，再与勾选订单合并付款） -->
@@ -254,7 +259,7 @@
 
 <script setup>
 import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, CircleCheckFilled, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
@@ -264,17 +269,18 @@ import { listMyOrders } from '@/api/pet/petOrder'
 import { listMyRefunds } from '@/api/pet/petRefund'
 import { getPetOverview } from '@/api/pet/petInfo'
 import { listGoods } from '@/api/pet/petGoods'
-import { commentStatGroup } from '@/api/pet/petComment'
-import { listMyFavoriteIds, listPetFavorite, addPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import OrdersSection from './OrdersSection.vue'
-import Pagination from '@/components/Pagination/index.vue'
 import PetCard from '@/views/shop/home/PetCard.vue'
-import { PET_GRADIENTS } from '@/views/shop/home/homeData'
+import { usePetFavorite } from '@/composables/usePetFavorite'
+import { usePetRatings } from '@/composables/usePetRatings'
+import { petGradient } from '@/utils/petDisplay'
 import { money } from '@/utils/money'
+import { adaptGoods } from '@/utils/goodsAdapter'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const router = useRouter()
+const route = useRoute()
 const openAuth = inject('openAuth', () => {})
 
 // 购物车按账号绑定：登录后把服务端数据拉下来（本地条目自动合并上传），登出回到本地模式
@@ -287,22 +293,11 @@ watch(() => userStore.token, (t) => { if (!t) activeTab.value = 'cart' })
 const recPets = ref([])
 const recFood = ref([])
 const recLoading = ref(false)
-const myFavorites = ref([])
-const ratingMap = ref({})
+// 收藏 / 评分：全站共用 composable（空态推荐卡与首页同一套口径）
+const { isFav, load: loadMyFavorites, toggle: toggleFav } = usePetFavorite(openAuth)
+const { rating: petRating, load: loadRatings } = usePetRatings('pet')
 
-// 与宠物粮专区同一套字段口径（含 skuId/stock，加购时直接可用）
-function adaptGoods(g) {
-  return {
-    id: g.goodsCode,
-    goodsId: g.goodsId,
-    skuId: g.skus && g.skus.length ? g.skus[0].skuId : null,
-    image: g.image,
-    name: g.goodsName,
-    spec: g.spec,
-    price: Number(g.price),
-    stock: g.stock == null ? 0 : Number(g.stock)
-  }
-}
+// 商品字段适配统一走 utils/goodsAdapter（与宠物粮专区同一口径，含 skuId/stock，加购时直接可用）
 
 async function loadRecs() {
   recLoading.value = true
@@ -318,58 +313,6 @@ async function loadRecs() {
   recLoading.value = false
   loadMyFavorites()
   loadRatings()
-}
-
-// 收藏：与首页同一套逻辑（未登录先引导登录）
-function isFav(petId) { return myFavorites.value.includes(petId) }
-async function loadMyFavorites() {
-  if (!userStore.token) { myFavorites.value = []; return }
-  try {
-    const res = await listMyFavoriteIds()
-    myFavorites.value = res.data || []
-  } catch (e) { /* 静默 */ }
-}
-async function toggleFav(petId) {
-  if (!userStore.token) {
-    ElMessage.info('请先登录后再收藏')
-    openAuth('login')
-    return
-  }
-  if (isFav(petId)) {
-    try {
-      const res = await listPetFavorite({ userId: userStore.userId, petId })
-      const fid = res.rows?.[0]?.favoriteId
-      if (fid) await delPetFavorite(fid)
-      myFavorites.value = myFavorites.value.filter((id) => id !== petId)
-      ElMessage.success('已取消收藏')
-    } catch (e) { ElMessage.error(e?.message || '取消失败') }
-  } else {
-    try {
-      await addPetFavorite({ petId, userId: userStore.userId })
-      myFavorites.value.push(petId)
-      ElMessage.success('收藏成功')
-    } catch (e) { ElMessage.error(e?.message || '收藏失败') }
-  }
-}
-
-// 评分角标：petId -> {avg,count}
-function petRating(petId) {
-  const r = ratingMap.value[petId]
-  return r && Number(r.count) > 0 ? r : null
-}
-async function loadRatings() {
-  try {
-    const res = await commentStatGroup('pet')
-    const m = {}
-    for (const row of res.data || []) m[row.petId] = row
-    ratingMap.value = m
-  } catch (e) { /* 静默 */ }
-}
-
-// 无图宠物的占位渐变：与首页同数组同取法，保证同一只宠物配色一致
-function petGradient(petId) {
-  const c = PET_GRADIENTS[(petId || 0) % PET_GRADIENTS.length]
-  return `linear-gradient(135deg, ${c[0]}, ${c[1]})`
 }
 
 // 推荐宠物卡进详情：from 供详情页返回使用
@@ -423,13 +366,17 @@ const groups = computed(() => rows.value.map((o) => ({
 })))
 
 // 行内展示用的封面与首件名（一单多件只列首件 + 件数）
-const archivedGroups = computed(() => groups.value.filter((g) => !(g.unpaid && !g.canceled)))
+// 已支付归档区：付款完成且未取消（已取消不再单独展示）
+const paidGroups = computed(() => groups.value.filter((g) => g.paid && !g.canceled))
 
-// 标签计数
+// 待支付订单（立即购买 / 结算后未完成支付）：不再单独展示，
+// 但「?pay=orderNo」自动收银台仍要靠它找到对应订单
+const unpaidGroups = computed(() => groups.value.filter((g) => g.unpaid && !g.canceled))
+
+// 标签计数：只留 购物车 / 已支付 两栏（待支付订单在购物车页内置顶展示，已取消不再展示）
 const topTabs = computed(() => [
   { key: 'cart', label: '购物车', count: cartStore.items.length },
-  { key: 'paid', label: '已支付', count: groups.value.filter((g) => g.paid && !g.canceled).length },
-  { key: 'canceled', label: '已取消', count: groups.value.filter((g) => g.canceled).length }
+  { key: 'paid', label: '已支付', count: paidGroups.value.length }
 ])
 
 function getOrders() {
@@ -445,8 +392,27 @@ function getOrders() {
       }
       refundMap.value = map
       ordersLoading.value = false
+      maybeAutoPay()
     })
     .catch(() => { ordersLoading.value = false })
+}
+
+/* ---------- 立即购买落地：详情页带 ?pay=orderNo 跳转过来，自动弹出收银台（只触发一次） ---------- */
+const autoPayDone = ref(false)
+function maybeAutoPay() {
+  if (autoPayDone.value) return
+  const payNo = String(route.query.pay || '')
+  if (!payNo) return
+  autoPayDone.value = true
+  // 摘掉地址栏参数，刷新/后退不再重复弹窗
+  router.replace({ path: '/shop/cart' })
+  const g = unpaidGroups.value.find((o) => o.orderNo === payNo)
+  if (g) {
+    // 收银台直接盖在当前页上（待支付订单就展示在购物车标签内，无需再切标签）
+    openCashierForOrder(g)
+  } else {
+    ElMessage.info(groups.value.some((o) => o.orderNo === payNo) ? '该订单已支付或已取消' : '未找到对应订单')
+  }
 }
 
 /* ---------- 选择逻辑：购物车独立勾选 ---------- */
@@ -458,16 +424,29 @@ function toggleCartAll(val) {
 
 const cartSelectedRows = computed(() => cartStore.items.filter((i) => i.checked).length)
 
-/* ---------- 购物车定高翻页：每页 5 行，列表高度稳定不随商品数增长 ---------- */
-const PAGE_SIZE = 5
-const page = ref(1)
-const pagedItems = computed(() => cartStore.items.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
-const rangeStart = computed(() => (cartStore.items.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, cartStore.items.length))
-watch(() => cartStore.items.length, (n) => {
-  // 删除/结算后总数变少时避免停在空页
-  if ((page.value - 1) * PAGE_SIZE >= n) page.value = 1
+/* ---------- 分组：活体与宠物粮的下单规则不同（宠物一只一条），分成两组各自勾选与小计 ---------- */
+const GROUP_PET = 'M12 5.5c-2 0-3.4 1-4.2 2.4-.9-.4-2.2-.2-3 .9-.9 1.3-.6 3 .3 3.9.6.5 1.5.5 2.3-.1C8.3 14.8 10 16.4 12 16.4s3.7-1.6 4.6-3.8c.8.6 1.7.6 2.3.1.9-.9 1.2-2.6.3-3.9-.8-1.1-2.1-1.3-3-.9C15.4 6.5 14 5.5 12 5.5zM9.4 17.4c-1.4 0-2.6.9-2.6 2.1 0 1.2 1.2 2.1 2.6 2.1s2.6-.9 2.6-2.1c0-1.2-1.2-2.1-2.6-2.1zm5.2 0c-1.4 0-2.6.9-2.6 2.1 0 1.2 1.2 2.1 2.6 2.1s2.6-.9 2.6-2.1c0-1.2-1.2-2.1-2.6-2.1z'
+const GROUP_FOOD = 'M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8zM9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10'
+
+const cartGroups = computed(() => {
+  const pets = cartStore.items.filter(isPet)
+  const goods = cartStore.items.filter((i) => !isPet(i))
+  const build = (key, label, note, icon, items) => ({
+    key, label, note, icon, items,
+    allChecked: items.every((i) => i.checked),
+    qty: items.reduce((n, i) => n + i.qty, 0),
+    sum: items.reduce((s, i) => s + i.price * i.qty, 0)
+  })
+  const out = []
+  // 组说明只陈述真实规则：宠物一单一只（store 里锁死数量）、宠物粮可与宠物合并结算
+  if (pets.length) out.push(build('pet', '在售宠物', '活体商品，一只一条', GROUP_PET, pets))
+  if (goods.length) out.push(build('goods', '宠物粮', '可与宠物一起加入结算', GROUP_FOOD, goods))
+  return out
 })
+
+function toggleGroup(grp, val) {
+  grp.items.forEach((i) => cartStore.setChecked(i.id, val))
+}
 
 /* ---------- 购物车常规操作 ---------- */
 function removeItem(item) {
@@ -489,6 +468,21 @@ function clearCart() {
     .catch(() => {})
 }
 
+/* 批量删除所选：与单行删除同一确认口径，删前必须勾选 */
+function removeSelected() {
+  const picked = cartStore.items.filter((i) => i.checked)
+  if (!picked.length) {
+    ElMessage.info('请先勾选要删除的商品')
+    return
+  }
+  ElMessageBox.confirm(`确定删除所选的 ${picked.length} 项商品吗？`, '提示', { type: 'warning' })
+    .then(() => {
+      picked.forEach((i) => cartStore.removeItem(i.id))
+      ElMessage.success('已删除所选商品')
+    })
+    .catch(() => {})
+}
+
 /* ---------- 收银台：购物车勾选商品结算（先成单再支付） ---------- */
 const cashierOpen = ref(false)
 const paySuccess = ref(false)
@@ -497,6 +491,8 @@ const payMethod = ref('alipay')
 const payDetail = ref([])
 const cashierTotal = ref(0)
 const countdown = ref(0)
+// 非空表示正在支付一笔已存在的待支付订单（立即购买落地 / 待支付标签进入）
+const payOrderNo = ref(null)
 let countdownTimer = null
 
 const methods = [
@@ -525,7 +521,28 @@ function openCashier() {
   }))
   paySuccess.value = false
   payMethod.value = 'alipay'
+  payOrderNo.value = null
   cashierOpen.value = true
+  startCountdown()
+}
+
+/** 待支付订单的收银台：直接支付已有订单，不重新成单 */
+function openCashierForOrder(g) {
+  cashierTotal.value = Number(g.total || 0)
+  payDetail.value = (g.items || []).map((i) => ({
+    name: i.goodsName,
+    qtyLabel: i.itemType === '2' ? '1 只' : `×${i.qty}`,
+    amount: i.amount != null ? Number(i.amount) : Number(i.price) * Number(i.qty)
+  }))
+  payOrderNo.value = g.orderNo
+  paySuccess.value = false
+  payMethod.value = 'alipay'
+  cashierOpen.value = true
+  startCountdown()
+}
+
+// 15 分钟支付倒计时，超时自动关窗
+function startCountdown() {
   countdown.value = 15 * 60
   if (countdownTimer) clearInterval(countdownTimer)
   countdownTimer = setInterval(() => {
@@ -542,22 +559,28 @@ async function doPay() {
   if (paying.value) return
   paying.value = true
   try {
-    // 勾选商品先成单，再立即支付该单
-    const items = cartStore.items
-      .filter((i) => i.checked)
-      .map((i) => (i.itemType === '2'
-        ? { itemType: '2', petId: i.petId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: 1 }
-        : { itemType: '1', goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
-    const res = await submitPetCart(items)
-    const orderNo = res?.data?.orderNo
-    if (orderNo) await payPetCart(orderNo, payMethod.value)
-    cartStore.clear()
+    if (payOrderNo.value) {
+      // 待支付订单：直接支付（立即购买落地或历史未付订单）
+      await payPetCart(payOrderNo.value, payMethod.value)
+    } else {
+      // 勾选商品先成单，再立即支付该单
+      const items = cartStore.items
+        .filter((i) => i.checked)
+        .map((i) => (i.itemType === '2'
+          ? { itemType: '2', petId: i.petId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: 1 }
+          : { itemType: '1', goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
+      const res = await submitPetCart(items)
+      const orderNo = res?.data?.orderNo
+      if (orderNo) await payPetCart(orderNo, payMethod.value)
+      cartStore.clear()
+      cartStore.reloadFromServer()
+    }
     paySuccess.value = true
     if (countdownTimer) clearInterval(countdownTimer)
     getOrders()
-    cartStore.reloadFromServer()
     // 支付成功会生成站内通知，通知铃铛立即刷新
     window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
+    payOrderNo.value = null
   } catch (e) {
     ElMessage.error(e?.msg || e?.message || '支付失败，请稍后再试')
   } finally {
@@ -571,82 +594,114 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-// 表格骨架来自 .ui-table；这里只定义标签栏、列宽与页面特有内容（商品/订单单元、结算条、收银台）。
+// 表格骨架来自 .ui-table；标签栏来自 flat.scss 的 .ui-tabs 基元。
+// 这里只定义列宽与页面特有内容（商品/订单单元、结算条、收银台）。
 
-/* ---------- 顶部标签栏：与历史订单区同一套文本标签样式 ---------- */
-.tabs {
-  display: flex;
-  gap: 26px;
-  margin-top: 0;
-  border-bottom: 1px solid var(--border-1);
-  overflow-x: auto;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-}
-.tab {
+/* ---------- 页面背景：顶部一层品牌色渐变洗，压住大面积白底的刺眼感 ---------- */
+.ui-page {
   position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 0 12px;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 14px;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: color .16s ease;
-  &:hover { color: var(--text-1); }
-  &.on {
-    color: var(--text-1);
-    font-weight: 700;
-    &::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -1px;
-      height: 2px;
-      background: var(--text-1);
-    }
-  }
+  background-color: var(--bg-page);
+  background-image: linear-gradient(180deg, var(--brand-50) 0%, rgba(255, 255, 255, 0) 340px);
+  background-repeat: no-repeat;
 }
-.tab__n {
-  font-size: 12px;
-  color: var(--text-4);
+
+/* ---------- 内容卡片：表格 + 结算条同卡，页底色从四周透出 ---------- */
+.cart-sheet {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden; // 圆角裁掉首尾行贴边
+}
+
+/* ---------- 订单卡片（已支付）：与购物车表格同一张卡的语言 ---------- */
+.order-sheet {
+  // 撑满定高面板，OrdersSection 的翻页条吸到卡底
+  flex: 1;
+}
+.order-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  border-bottom: var(--rule);
+  background: var(--brand-50); // 与表格分组头同一层浅绿底
+  font-size: var(--fs-5);
+  font-weight: 700;
+  color: var(--text-1);
+}
+.order-sheet__n {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--brand-600);
+  color: var(--on-accent);
+  font-size: var(--fs-1);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.tab.on .tab__n { color: var(--brand-600); }
+.order-sheet__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 16px;
+}
 
 .cart-table {
-  margin-top: 20px;
+  // 卡片内所有列统一留 12px 内边距（不再首末列贴 0），内容与卡片边缘保持呼吸
+  th:first-child, td:first-child { padding-left: 16px; }
+  th:last-child, td:last-child { padding-right: 16px; }
 
-  // 首列左对齐页面边线，末列贴右，避免整表内缩
-  th:first-child, td:first-child { padding-left: 0; }
-  th:last-child, td:last-child { padding-right: 0; }
-
-  // 行内带交互控件，去掉斑马纹，只保留 1px 行分割线
-  tbody tr:nth-child(even) { background: transparent; }
+  // 恢复斑马纹与悬停底色（分组行除外）：整页纯白看久了累，行与行之间给一点底色节奏
+  tbody tr:nth-child(even) { background: var(--bg-zebra); }
+  tbody tr:not(.group-row):not(.group-sum):hover { background: var(--bg-row-hover); }
 }
 
 // 列宽用固定值，保证各行竖直对齐
 .c-check { width: 76px; }
 
-// 定高翻页条：与表格同宽对齐，左计数右翻页（底部由结算条的 1px 上边线收尾，不再各自画线）
-.cart-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  &__count { font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-}
 .c-goods { min-width: 240px; }
 .c-price { width: 110px; }
 .c-qty { width: 148px; }
 .c-sub { width: 116px; }
 .c-op { width: 72px; }
+
+/* ---------- 分组行（对齐参考稿的店铺分组头）：组勾选 + 图标 + 组名 + 说明 ---------- */
+.group-row td {
+  padding-top: 14px; padding-bottom: 10px;
+  border-bottom: var(--rule-soft);
+  // 组头整行铺一层品牌浅底：一眼看出「这是一组的开始」，也打断纯白
+  background: var(--brand-50);
+}
+.group-cell { padding-right: 0; }
+// flex 放在内层 div 上：td 直接改 display 会脱离表格布局，破坏 colspan 对齐
+.group-inner { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.group-ico {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 50%; background: var(--brand-50);
+  svg { width: 15px; height: 15px; fill: var(--brand-600); }
+}
+.group-name { font-size: var(--fs-5); font-weight: 700; color: var(--text-1); }
+.group-note { font-size: var(--fs-3); color: var(--text-3); }
+
+/* ---------- 组小计行：右对齐，与本组商品行之间留一条 1px 分割线 ---------- */
+.group-sum td {
+  padding: 10px 0 14px;
+  border-bottom: var(--rule);
+  text-align: right;
+  font-size: var(--fs-4);
+  color: var(--text-3);
+  b { font-weight: 700; color: var(--text-1); font-variant-numeric: tabular-nums; }
+  .sep { display: inline-block; width: 1px; height: 12px; margin: 0 16px; background: var(--border-1); vertical-align: -1px; }
+}
 
 // 商品/订单单元：72px 缩略图 + 名称/规格两行
 .goods {
@@ -668,14 +723,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-5);
   font-weight: 700;
   color: var(--text-1);
   line-height: 1.45;
 }
 .goods__spec {
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
 }
 // 单价在窄屏并入规格行（见下方媒体查询），桌面端隐藏，避免重复显示
@@ -686,42 +741,46 @@ onBeforeUnmount(() => {
 
 // 宠物行 / 订单行数量恒定，不给步进器
 .qty-fixed {
-  font-size: 13px;
+  font-size: var(--fs-4);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
-   空购物车：头部 + 两级推荐（宠物卡 / 宠物粮卡）
-   —— 原「居中一句话 + 两按钮」在定高面板里只剩一个小岛，四周全空；
-      改成页面头语言（标题左、行动右、1px 收口） + 两级可操作推荐，
-      既补信息密度，又给「现在就挑一件」的直达路径。
+   空购物车：居中一句话 + 主行动（对齐参考稿），下方「为你推荐」
    ============================================================ */
 .cart-empty { display: flex; flex-direction: column; }
 
+.cart-empty__hero {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 56px 0 8px; text-align: center;
+}
 // 空态头图标：品牌色淡底圆底，与首页数据条的图标同一处理
 .ce-ico {
   display: inline-grid; place-items: center; flex-shrink: 0;
-  width: 34px; height: 34px; border-radius: 50%; background: var(--brand-50);
-  svg { width: 17px; height: 17px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  width: 44px; height: 44px; border-radius: 50%; background: var(--brand-50);
+  svg { width: 21px; height: 21px; stroke: var(--brand-600); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 }
-.cart-empty__head .ui-title { display: flex; align-items: center; gap: 12px; }
+.cart-empty__text { margin: 0; font-size: var(--fs-6); font-weight: 700; color: var(--text-1); }
+.ce-act { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 /* ---------- 推荐分区头：标题左、入口右，1px 线收口 ---------- */
-.ce-sec { margin-top: 34px; }
+.ce-sec { margin-top: 44px; }
 .ce-sec__head {
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
   margin-bottom: 18px; padding-bottom: 13px; border-bottom: var(--rule);
-  h3 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.3; color: var(--text-1); }
-  p { margin-top: 4px; font-size: 12.5px; color: var(--text-3); }
+  h3 { font-size: var(--fs-6); font-weight: 700; letter-spacing: -.01em; line-height: 1.3; color: var(--text-1); }
 }
+.ce-more-group { display: flex; align-items: center; gap: 20px; }
 .ce-more {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
-  padding: 6px 0; font-size: 13px; font-weight: 700; color: var(--brand-700);
+  padding: 6px 0; font-size: var(--fs-4); font-weight: 700; color: var(--brand-700);
   text-decoration: none; white-space: nowrap;
   svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform .16s; }
   &:hover svg { transform: translateX(3px); }
 }
+.ce-sub { margin: 16px 0 10px; font-size: var(--fs-3); font-weight: 700; color: var(--text-3); }
+.ce-sec__head + .ce-sub { margin-top: 0; }
 
 /* ---------- 两级推荐共用网格：auto-fill 自适应，窄屏并排两张 ---------- */
 .ce-grid {
@@ -745,11 +804,11 @@ onBeforeUnmount(() => {
 }
 .ce-food__body { flex: 1; display: flex; flex-direction: column; padding: 11px 2px 0; }
 .ce-food__name {
-  font-size: 14.5px; font-weight: 700; line-height: 1.4; color: var(--text-1);
+  font-size: var(--fs-5); font-weight: 700; line-height: 1.4; color: var(--text-1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ce-food__spec {
-  margin-top: 3px; font-size: 12px; color: var(--text-3);
+  margin-top: 3px; font-size: var(--fs-2); color: var(--text-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 // 价格行贴卡片底：商品名长短不一时，同排卡片的价格与按钮仍对齐
@@ -758,14 +817,14 @@ onBeforeUnmount(() => {
   margin-top: auto; padding-top: 11px;
 }
 .ce-food__price {
-  font-family: var(--font-num); font-size: 18px; font-weight: 700; letter-spacing: -.01em;
+  font-family: var(--font-num); font-size: var(--fs-7); font-weight: 700; letter-spacing: -.01em;
   color: var(--price); font-variant-numeric: tabular-nums;
 }
 .ce-food__add {
   height: 30px; padding: 0 13px; border: 1px solid var(--brand-500); border-radius: var(--radius-pill);
-  background: none; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--brand-700);
+  background: none; font: inherit; font-size: var(--fs-3); font-weight: 700; color: var(--brand-700);
   cursor: pointer; white-space: nowrap; transition: background .15s, color .15s;
-  &:hover:not(:disabled) { background: var(--brand-500); color: #fff; }
+  &:hover:not(:disabled) { background: var(--brand-500); color: var(--on-accent); }
   &:disabled { border-color: var(--border-1); color: var(--text-4); cursor: not-allowed; }
 }
 
@@ -795,15 +854,17 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0 16px;
-  border-top: 1px solid var(--text-1);
+  padding: 14px 16px 16px;
+  border-top: var(--rule);
+  // 结算条铺一层极浅品牌底：与表格区拉开层次，金额与按钮也更聚焦
+  background: rgb(var(--brand-500-rgb) / .04);
 }
 .checkout__left {
   display: flex;
   align-items: center;
   gap: 18px;
 }
-// 清空/取消所选是破坏性操作：与「全选」之间加竖线分隔并拉开间距，避免连点误触（点击后仍有二次确认）
+// 清空/删除所选是破坏性操作：与「全选」之间留间距，避免连点误触（点击后仍有二次确认）
 .clear-cart {
   padding-left: 18px;
   border-left: 1px solid var(--border-1);
@@ -814,7 +875,7 @@ onBeforeUnmount(() => {
   gap: 20px;
 }
 .checkout__count {
-  font-size: 13px;
+  font-size: var(--fs-4);
   color: var(--text-3);
   b {
     font-weight: 700;
@@ -828,9 +889,28 @@ onBeforeUnmount(() => {
   gap: 8px;
   i {
     font-style: normal;
-    font-size: 13px;
+    font-size: var(--fs-4);
     color: var(--text-3);
   }
+}
+// 结算主按钮：块状加大（参考稿的底栏大按钮），禁用时降饱和度而不是变灰
+.checkout__go {
+  min-width: 112px;
+  height: 46px;
+  padding: 0 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--brand-600);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: var(--fs-6);
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  &:hover:not(:disabled) { background: var(--brand-700); }
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:disabled { background: var(--brand-200); cursor: not-allowed; }
 }
 
 /* ============================================================
@@ -840,16 +920,16 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  .cashier-no { font-size: 12px; color: var(--text-3); }
+  .cashier-no { font-size: var(--fs-2); color: var(--text-3); }
 }
 .cashier-body {
   .cashier-amount {
     text-align: center;
     padding: 6px 0 18px;
-    .label { display: block; font-size: 13px; color: var(--text-3); }
+    .label { display: block; font-size: var(--fs-4); color: var(--text-3); }
     .num {
       font-family: var(--font-num);
-      font-size: 28px;
+      font-size: var(--fs-10);
       font-weight: 700;
       color: var(--price);
       font-variant-numeric: tabular-nums;
@@ -869,10 +949,10 @@ onBeforeUnmount(() => {
       align-items: baseline;
       gap: 10px;
       padding: 6px 2px;
-      font-size: 13px;
+      font-size: var(--fs-4);
     }
     .cd-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
-    .cd-qty { flex-shrink: 0; font-size: 12px; color: var(--text-3); }
+    .cd-qty { flex-shrink: 0; font-size: var(--fs-2); color: var(--text-3); }
     .cd-amt { flex-shrink: 0; font-variant-numeric: tabular-nums; color: var(--text-1); }
   }
   .pay-item {
@@ -894,13 +974,13 @@ onBeforeUnmount(() => {
       align-items: center;
       justify-content: center;
       border-radius: var(--r-2);
-      font-size: 16px;
-      color: #fff;
+      font-size: var(--fs-6);
+      color: var(--on-accent);
     }
     .pm-info {
       flex: 1;
-      b { display: block; font-size: 14px; color: var(--text-1); }
-      em { font-size: 12px; color: var(--text-3); font-style: normal; }
+      b { display: block; font-size: var(--fs-5); color: var(--text-1); }
+      em { font-size: var(--fs-2); color: var(--text-3); font-style: normal; }
     }
     .pm-check { width: 18px; text-align: center; color: var(--brand-500); font-weight: 700; }
   }
@@ -911,7 +991,7 @@ onBeforeUnmount(() => {
     margin-top: 14px;
     padding-left: 10px;
     border-left: 2px solid var(--border-1);
-    font-size: 12.5px;
+    font-size: var(--fs-3);
     line-height: 1.6;
     color: var(--text-3);
   }
@@ -926,37 +1006,39 @@ onBeforeUnmount(() => {
   text-align: center;
   padding: 6px 0 4px;
   .s-icon { font-size: 46px; color: var(--success-500); }
-  h3 { margin: 10px 0 4px; font-size: 16px; color: var(--text-1); }
+  h3 { margin: 10px 0 4px; font-size: var(--fs-6); color: var(--text-1); }
   .s-amount {
     margin: 0;
     font-family: var(--font-num);
-    font-size: 24px;
+    font-size: var(--fs-9);
     font-weight: 700;
     color: var(--price);
     font-variant-numeric: tabular-nums;
   }
-  .s-tip { margin: 8px 0 20px; font-size: 13px; line-height: 1.7; color: var(--text-3); }
+  .s-tip { margin: 8px 0 20px; font-size: var(--fs-4); line-height: 1.7; color: var(--text-3); }
 }
 
 /* ============================================================
    手机端：表格折成两行式条目（仍是一行一条 + 1px 分割线）
    ============================================================ */
 @media (max-width: 768px) {
-  .tabs { gap: 18px; }
+  .ui-tabs { gap: 18px; }
 
-  // 空态头：按钮换到下一行并三等分，避免三个按钮挤在一行点不准
-  .cart-empty__head { flex-wrap: wrap; gap: 14px; }
+  // 空态：居中排布天然适配窄屏，只压上下留白；按钮换行并三等分，避免挤在一行点不准
+  .cart-empty__hero { padding: 36px 0 4px; gap: 12px; }
   .ce-act { width: 100%; gap: 8px;
     .ui-btn { flex: 1; min-width: 0; padding: 0 10px; } }
-  .ce-sec { margin-top: 26px; }
+  .ce-sec { margin-top: 28px; }
+  .ce-more-group { gap: 14px; }
   .ce-grid { gap: 18px 10px; }
   // 与首页宠物粮卡一致：窄屏图片改 1:1，卡片更紧凑
   .ce-food__thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-sm); }
-  .ce-food__name { font-size: 14px; }
-  .ce-food__price { font-size: 16px; }
+  .ce-food__name { font-size: var(--fs-5); }
+  .ce-food__price { font-size: var(--fs-6); }
+
+  .cart-sheet { margin-top: 14px; }
 
   .cart-table {
-    margin-top: 16px;
     thead { display: none; }
     tbody, tr, td { display: block; }
     tbody tr {
@@ -964,11 +1046,15 @@ onBeforeUnmount(() => {
       flex-wrap: wrap;
       align-items: center;
       gap: 10px 12px;
-      padding: 14px 0;
+      padding: 14px 12px;
       border-bottom: var(--rule-soft);
     }
     td { border: 0; padding: 0; }
   }
+
+  // 组头 / 组小计在窄屏仍保持整行：组头横排，小计单独一行靠右
+  .cart-table tr.group-row { padding: 14px 0 8px; }
+  .cart-table .group-sum td { text-align: right; }
 
   .c-check { width: 22px; flex: 0 0 22px; }
   .c-goods { flex: 1 1 calc(100% - 34px); min-width: 0; }
@@ -993,39 +1079,32 @@ onBeforeUnmount(() => {
     :deep(.el-input-number__decrease),
     :deep(.el-input-number__increase) { width: 30px; }
   }
-  .qty-fixed { font-size: 14px; }
+  .qty-fixed { font-size: var(--fs-5); }
   .c-sub {
     order: 4;
     width: auto;
     margin-left: auto;
     // 窄屏没有列头，给金额补上「小计」标注，数量 >1 时用户不用心算单价与小计的关系
-    &::before { content: '小计'; font-size: 11px; color: var(--text-3); margin-right: 5px; }
-    .ui-price { font-size: 16px; }
+    &::before { content: '小计'; font-size: var(--fs-1); color: var(--text-3); margin-right: 5px; }
+    .ui-price { font-size: var(--fs-6); }
   }
   .c-op { order: 5; width: auto; }
 
   .thumb { width: 60px; height: 60px; }
   .goods { gap: 12px; }
-  .goods__name { font-size: 14px; }
-
-  // 翻页条：窄屏允许换行，计数与页码各占一行也不挤压
-  .cart-foot {
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 12px 0;
-  }
+  .goods__name { font-size: var(--fs-5); }
 
   // 结算条：左右两栏压缩，价格与按钮占一行
   .checkout {
     flex-wrap: wrap;
     gap: 10px;
-    padding: 12px 0;
+    padding: 12px;
   }
   .checkout__left { gap: 14px; }
   .checkout__right { gap: 12px; margin-left: auto; }
   .checkout__count { display: none; } // 窄屏省掉重复计数，只留合计
-  .checkout__sum .ui-price { font-size: 20px; }
+  .checkout__sum .ui-price { font-size: var(--fs-8); }
   // 结算主按钮触控热区加高，避免误触
-  .checkout__right .ui-btn--solid { min-height: 36px; padding: 8px 22px; }
+  .checkout__go { min-width: 0; min-height: 40px; padding: 8px 22px; font-size: var(--fs-5); }
 }
 </style>

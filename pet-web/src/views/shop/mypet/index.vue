@@ -4,7 +4,7 @@
       <div class="ui-head__main">
         <p class="ui-eyebrow">My Pets</p>
         <h1 class="ui-title">我的宠物</h1>
-        <p class="ui-sub">疫苗、驱虫和服务记录都汇总在这里，拿不准的事可以直接问养护管家。</p>
+        <p class="ui-sub">名下宠物的疫苗、驱虫记录都汇总在这里，服务工单与评价可在「我的预约」查看。</p>
       </div>
       <div class="ui-head__aside" v-if="list.length">
         <span class="ui-count"><b>{{ list.length }}</b>只宠物</span>
@@ -92,6 +92,8 @@ import { myPets } from '@/api/pet/petCustomer'
 import { getPetHealth } from '@/api/pet/petHealth'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
+import { useClientPaging } from '@/composables/usePagedList'
+import { isImage } from '@/utils/petDisplay'
 
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
@@ -101,14 +103,7 @@ const list = ref([])
 const healthMap = ref({})
 
 const PAGE_SIZE = 6
-const page = ref(1)
-const pagedList = computed(() => list.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
-const rangeStart = computed(() => (list.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, list.value.length))
-
-watch(() => list.value.length, (len) => {
-  if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
-})
+const { page, paged: pagedList, rangeStart, rangeEnd } = useClientPaging(list, PAGE_SIZE)
 
 async function loadData() {
   if (!userStore.token) {
@@ -138,10 +133,6 @@ function loadHealth(pets) {
       })
       .catch(() => {})
   })
-}
-
-function isImage(s) {
-  return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0)
 }
 
 function fmtDate(value) {
@@ -190,13 +181,13 @@ watch(() => userStore.token, loadData)
   margin: 0 0 14px;
   padding-left: 10px;
   border-left: 2px solid var(--brand-300);
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   line-height: 1.7;
   color: var(--text-3);
 }
 .mp-row { align-items: center; }
 .mp-age {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3);
   font-weight: 400;
 }

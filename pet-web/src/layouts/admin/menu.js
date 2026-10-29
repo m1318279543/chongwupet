@@ -2,6 +2,12 @@
 // 只描述"谁和谁放一起、分组叫什么"，不重复写页面标题与权限：
 //   标题 / 权限 / 图标 → 各自由 route.meta.title / .perm / .icon 提供（单一来源）
 // 新增页面只需：router/index.js 加一条带 meta 的路由 → 在这里把它的 path 放进某个分组。
+//
+// 分组原则：按「运营时要一起看的事」划分，而不是按后端表名。
+//   - 交易管理：订单 / 退款 / 商品 / 采购 / 取消记录（资金流）
+//   - 服务履约：预约 / 工单 / 服务项目（服务流）
+//   - 用户互动：收藏点赞 / 评论 / 客服 / 智能匹配（用户行为）
+//   - AI 运营：知识库（AI 助手的数据来源）
 export const MENU_GROUPS = [
   { key: 'dash', items: ['/admin/dashboard'] },
   {
@@ -14,32 +20,31 @@ export const MENU_GROUPS = [
     key: 'petBase',
     title: '宠物资料',
     icon: 'Goods',
-    items: ['/admin/category', '/admin/info', '/admin/health', '/admin/preference']
+    items: ['/admin/category', '/admin/info']
   },
   {
-    key: 'petService',
+    key: 'trade',
+    title: '交易管理',
+    icon: 'Tickets',
+    items: ['/admin/order', '/admin/goods', '/admin/purchase']
+  },
+  {
+    key: 'svc',
     title: '服务履约',
     icon: 'Stopwatch',
-    items: ['/admin/service', '/admin/serviceItem']
+    items: ['/admin/appointment', '/admin/service', '/admin/serviceItem']
   },
   {
-    key: 'petBiz',
-    title: '业务数据',
-    icon: 'Tickets',
-    items: [
-      '/admin/appointment',
-      '/admin/order',
-      '/admin/refund',
-      '/admin/goods',
-      '/admin/purchase',
-      '/admin/favorite',
-      '/admin/like',
-      '/admin/comment',
-      '/admin/consult',
-      '/admin/knowledge',
-      '/admin/cancel',
-      '/admin/match'
-    ]
+    key: 'engage',
+    title: '用户互动',
+    icon: 'ChatDotRound',
+    items: ['/admin/interaction', '/admin/comment', '/admin/consult', '/admin/match']
+  },
+  {
+    key: 'ai',
+    title: 'AI 运营',
+    icon: 'Reading',
+    items: ['/admin/knowledge']
   },
   {
     key: 'sys',

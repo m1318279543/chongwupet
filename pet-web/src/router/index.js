@@ -14,23 +14,21 @@ const routes = [
       { path: 'category', component: () => import('@/views/admin/category/index.vue'), meta: { title: '宠物分类', perm: 'pet:category:list', icon: 'Files' } },
       { path: 'store', component: () => import('@/views/admin/store/index.vue'), meta: { title: '门店管理', perm: 'pet:store:list', icon: 'OfficeBuilding' } },
       { path: 'customer', component: () => import('@/views/admin/customer/index.vue'), meta: { title: '客户档案', perm: 'pet:customer:list', icon: 'User' } },
-      { path: 'info', component: () => import('@/views/admin/info/index.vue'), meta: { title: '宠物信息', perm: 'pet:info:list', icon: 'Goods' } },
+      // 宠物信息 / 健康档案 / 宠物喜好合并为「宠物档案」：任一权限可见菜单，页内按 tab 切换
+      { path: 'info', component: () => import('@/views/admin/info/index.vue'), meta: { title: '宠物档案', perm: ['pet:info:list', 'pet:health:list', 'pet:preference:list'], icon: 'Goods' } },
       { path: 'appointment', component: () => import('@/views/admin/appointment/index.vue'), meta: { title: '预约管理', perm: 'pet:appointment:list', icon: 'Calendar' } },
       { path: 'service', component: () => import('@/views/admin/service/index.vue'), meta: { title: '服务工单', perm: 'pet:service:list', icon: 'Stopwatch' } },
       { path: 'serviceItem', component: () => import('@/views/admin/service/item.vue'), meta: { title: '服务项目', perm: 'pet:serviceitem:list', icon: 'List' } },
-      { path: 'favorite', component: () => import('@/views/admin/favorite/index.vue'), meta: { title: '收藏管理', perm: 'pet:favorite:list', icon: 'Star' } },
+      // 收藏与点赞合并为「互动记录」：任一权限可见菜单，页内按 tab 切换数据源
+      { path: 'interaction', component: () => import('@/views/admin/interaction/index.vue'), meta: { title: '互动记录', perm: ['pet:favorite:list', 'pet:like:list'], icon: 'Star' } },
       { path: 'goods', component: () => import('@/views/admin/goods/index.vue'), meta: { title: '商品与库存', perm: 'pet:goods:list', icon: 'ShoppingCart' } },
-      { path: 'order', component: () => import('@/views/admin/order/index.vue'), meta: { title: '订单管理', perm: 'pet:order:list', icon: 'Tickets' } },
-      { path: 'refund', component: () => import('@/views/admin/refund/index.vue'), meta: { title: '退款管理', perm: 'pet:refund:list', icon: 'Money' } },
+      // 订单 / 退款 / 取消记录合并为「交易管理」：任一权限可见菜单，页内按 tab 切换
+      { path: 'order', component: () => import('@/views/admin/order/index.vue'), meta: { title: '交易管理', perm: ['pet:order:list', 'pet:refund:list', 'pet:cancel:list'], icon: 'Tickets' } },
       { path: 'purchase', component: () => import('@/views/admin/purchase/index.vue'), meta: { title: '采购管理', perm: 'pet:purchase:list', icon: 'Van' } },
-      { path: 'like', component: () => import('@/views/admin/like/index.vue'), meta: { title: '点赞管理', perm: 'pet:like:list', icon: 'Pointer' } },
       { path: 'comment', component: () => import('@/views/admin/comment/index.vue'), meta: { title: '评论管理', perm: 'pet:comment:manage', icon: 'ChatLineRound' } },
-      { path: 'preference', component: () => import('@/views/admin/preference/index.vue'), meta: { title: '宠物喜好', perm: 'pet:preference:list', icon: 'IceCream' } },
       { path: 'consult', component: () => import('@/views/admin/consult/index.vue'), meta: { title: '客服管理', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
       { path: 'knowledge', component: () => import('@/views/admin/knowledge/index.vue'), meta: { title: 'AI 知识库', perm: 'pet:knowledge:list', icon: 'Reading' } },
-      { path: 'cancel', component: () => import('@/views/admin/cancel/index.vue'), meta: { title: '取消记录', perm: 'pet:cancel:list', icon: 'CircleClose' } },
       { path: 'match', component: () => import('@/views/admin/match/index.vue'), meta: { title: '智能匹配记录', perm: 'pet:match:list', icon: 'MagicStick' } },
-      { path: 'health', component: () => import('@/views/admin/health/index.vue'), meta: { title: '健康档案', perm: 'pet:health:list', icon: 'Histogram' } },
       // RuoYi 系统管理（共用同一套后端接口与 Token）
       { path: 'system/user', component: () => import('@/views/system/user/index.vue'), meta: { title: '用户管理', perm: 'system:user:list', icon: 'UserFilled' } },
       { path: 'system/role', component: () => import('@/views/system/role/index.vue'), meta: { title: '角色管理', perm: 'system:role:list', icon: 'Avatar' } },
@@ -50,14 +48,14 @@ const routes = [
       { path: 'home', component: () => import('@/views/shop/home/index.vue'), meta: { title: '首页' } },
       // 宠物售卖页：完整在售列表 + 品类快筛（首页只放精选，这里放全部）
       { path: 'pets', component: () => import('@/views/shop/pets/index.vue'), meta: { title: '在售宠物' } },
-      { path: 'match', component: () => import('@/views/shop/match/index.vue'), meta: { title: '智能选宠', perm: 'pet:match:list', icon: 'MagicStick' } },
+      { path: 'match', component: () => import('@/views/shop/match/index.vue'), meta: { title: '智能选宠' } },
       { path: 'pet/:id', component: () => import('@/views/shop/pet/detail.vue'), meta: { title: '宠物详情' } },
-      { path: 'favorite', component: () => import('@/views/shop/favorite/index.vue'), meta: { title: '我的收藏', perm: 'pet:favorite:list', icon: 'Star' } },
-      { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '我的预约', perm: 'pet:appointment:list', icon: 'Calendar' } },
+      { path: 'favorite', component: () => import('@/views/shop/favorite/index.vue'), meta: { title: '我的收藏' } },
+      { path: 'appointment', component: () => import('@/views/shop/appointment/index.vue'), meta: { title: '我的预约' } },
       // 我的宠物：客户档案下的宠物归属 + 疫苗驱虫记录 + 养护管家入口
       { path: 'mypet', component: () => import('@/views/shop/mypet/index.vue'), meta: { title: '我的宠物' } },
       // 联系客服 / 我的咨询
-      { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
+      { path: 'consult', component: () => import('@/views/shop/consult/index.vue'), meta: { title: '联系客服' } },
       // 宠物粮专区（覆盖全部 7 类宠物）
       { path: 'food', component: () => import('@/views/shop/food/index.vue'), meta: { title: '宠物粮' } },
       // 购物车 / 结算 / 下单记录（游客可浏览，结算与下单记录要求登录）
@@ -76,7 +74,7 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  // 带锚点的跳转（服务保障板块）定位到元素并给 sticky 头留出偏移
+  // 带锚点的跳转定位到对应元素，并给 sticky 顶栏留出偏移
   scrollBehavior: (to) => {
     if (to.hash) return { el: to.hash, top: 130, behavior: 'smooth' }
     return { top: 0 }
@@ -84,7 +82,8 @@ const router = createRouter({
 })
 
 // 路由守卫：登录态 + 用户信息加载
-// 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约、购物车（页面内提示登录）
+// 游客可访问范围见下方 guestList / isGuestAllowed（首页、在售、选宠、宠物详情、宠物粮、
+// 购物车、我的收藏/预约），其余页面未登录时引导去首页
 const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment']
 function isGuestAllowed(path) {
   if (guestList.includes(path)) return true

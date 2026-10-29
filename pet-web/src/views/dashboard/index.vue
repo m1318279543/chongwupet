@@ -81,7 +81,7 @@
         </div>
         <ul v-if="feed.length" class="feed">
           <li v-for="(item, idx) in feed" :key="idx">
-            <span class="feed-icon" :style="{ background: typeMeta(item.type).bg }"><el-icon><component :is="typeMeta(item.type).icon" /></el-icon></span>
+            <span class="feed-icon" :style="{ background: typeMeta(item.type).bg, color: typeMeta(item.type).fg }"><el-icon><component :is="typeMeta(item.type).icon" /></el-icon></span>
             <div class="feed-body">
               <div class="feed-title">{{ item.title }}</div>
               <div class="feed-time">
@@ -299,14 +299,14 @@ function growthText(g) {
 }
 
 const FEED_META = {
-  appointment: { icon: 'Calendar', label: '预约', bg: '#eef4ff' },
-  order: { icon: 'ShoppingCart', label: '订单', bg: '#fff4e9' },
-  consult: { icon: 'ChatDotRound', label: '咨询', bg: '#f5eeff' },
-  cancel: { icon: 'RefreshLeft', label: '取消', bg: '#fdeeee' },
+  appointment: { icon: 'Calendar', label: '预约', bg: 'var(--info-50)', fg: 'var(--info-500)' },
+  order: { icon: 'ShoppingCart', label: '订单', bg: 'var(--price-soft)', fg: 'var(--price)' },
+  consult: { icon: 'ChatDotRound', label: '咨询', bg: 'var(--brand-50)', fg: 'var(--brand-700)' },
+  cancel: { icon: 'RefreshLeft', label: '取消', bg: 'var(--danger-50)', fg: 'var(--danger-500)' },
 }
 
 function typeMeta(type) {
-  return FEED_META[type] || { icon: 'More', label: '动态', bg: '#f4f4f5' }
+  return FEED_META[type] || { icon: 'More', label: '动态', bg: 'var(--bg-sunken)', fg: 'var(--text-3)' }
 }
 
 function feedStatus(item) {
@@ -422,13 +422,13 @@ onUnmounted(() => {
     margin: 0;
     font-size: 22px;
     font-weight: 700;
-    color: #1f2329;
+    color: var(--text-1);
     letter-spacing: 0.5px;
   }
 
   p {
     margin: 6px 0 0;
-    font-size: 12px;
+    font-size: var(--fs-2);
     color: var(--text-3);
   }
 }
@@ -444,11 +444,11 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3);
   padding: 4px 10px;
   border-radius: var(--radius-pill);
-  background: #eef0f3;
+  background: var(--bg-sunken);
 
   i {
     width: 7px;
@@ -459,20 +459,20 @@ onUnmounted(() => {
 
   &.on {
     color: var(--success-500);
-    background: #eaf7ea;
+    background: var(--success-100);
 
     i {
-      background: #52c41a;
-      box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.5);
+      background: var(--success-500);
+      box-shadow: 0 0 0 0 rgb(var(--success-500-rgb) / .5);
       animation: pulse 1.8s infinite;
     }
   }
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.45); }
-  70% { box-shadow: 0 0 0 7px rgba(82, 196, 26, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); }
+  0% { box-shadow: 0 0 0 0 rgb(var(--success-500-rgb) / .45); }
+  70% { box-shadow: 0 0 0 7px rgb(var(--success-500-rgb) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--success-500-rgb) / 0); }
 }
 
 .meta-bar {
@@ -480,7 +480,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3);
   margin-bottom: 16px;
 
@@ -496,12 +496,12 @@ onUnmounted(() => {
 
 .dot-sep {
   margin: 0 6px;
-  color: #dcdfe6;
+  color: var(--border-1);
 }
 
 .today-chip {
   margin-left: auto;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid var(--border-1);
   border-radius: var(--radius-sm);
   padding: 3px 12px;
@@ -536,13 +536,13 @@ onUnmounted(() => {
 }
 
 .kpi-label {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
 }
 
 /* 徽标：颜色只表达「对经营是好是坏」，方向交给箭头 */
 .badge {
-  font-size: 11px;
+  font-size: var(--fs-1);
   padding: 1px 6px;
   border-radius: var(--radius-xs);
   line-height: 16px;
@@ -573,7 +573,7 @@ onUnmounted(() => {
 
 .kpi-value {
   margin: 8px 0 4px;
-  font-size: 24px;
+  font-size: var(--fs-9);
   font-weight: 700;
   letter-spacing: -.01em;
   color: var(--text-1);
@@ -582,7 +582,7 @@ onUnmounted(() => {
 }
 
 .kpi-sub {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3);
   white-space: nowrap;
   overflow: hidden;
@@ -628,13 +628,13 @@ onUnmounted(() => {
 
   h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--fs-5);
     font-weight: 600;
     color: var(--text-1);
   }
 
   span {
-    font-size: 11.5px;
+    font-size: var(--fs-2);
     color: var(--text-3);
   }
 }
@@ -656,19 +656,19 @@ onUnmounted(() => {
 }
 
 .live-tag {
-  font-size: 11px;
+  font-size: var(--fs-1);
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--text-4);
   border: 1px solid var(--border-1);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 0 5px;
   line-height: 15px;
 
   &.on {
     color: var(--danger-500);
-    border-color: #fbc4c4;
-    background: #fef0f0;
+    border-color: var(--danger-100);
+    background: var(--danger-50);
   }
 }
 
@@ -689,7 +689,7 @@ onUnmounted(() => {
     align-items: flex-start;
     gap: 9px;
     padding: 8px 0;
-    border-bottom: 1px dashed #f0f2f5;
+    border-bottom: 1px dashed var(--border-2);
 
     &:last-child {
       border-bottom: none;
@@ -700,11 +700,11 @@ onUnmounted(() => {
 .feed-icon {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--fs-4);
   flex-shrink: 0;
 }
 
@@ -714,7 +714,7 @@ onUnmounted(() => {
 }
 
 .feed-title {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
@@ -722,7 +722,7 @@ onUnmounted(() => {
 }
 
 .feed-time {
-  font-size: 11.5px;
+  font-size: var(--fs-2);
   color: var(--text-3);
   margin-top: 3px;
   display: flex;
@@ -731,25 +731,25 @@ onUnmounted(() => {
 }
 
 .feed-status {
-  font-size: 10px;
+  font-size: var(--fs-1);
   padding: 0 5px;
-  border-radius: 3px;
-  background: #f4f4f5;
+  border-radius: var(--radius-xs);
+  background: var(--bg-sunken);
   color: var(--text-3);
 
   &.ok {
     color: var(--success-500);
-    background: #f0f9eb;
+    background: var(--success-50);
   }
 
   &.warn {
-    color: #d48806;
-    background: #fdf6ec;
+    color: var(--warning-500);
+    background: var(--warning-50);
   }
 }
 
 .feed-amount {
-  font-size: 12px;
+  font-size: var(--fs-2);
   font-weight: 600;
   color: var(--brand-500);
   white-space: nowrap;
@@ -762,14 +762,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--text-4);
-  font-size: 12px;
+  font-size: var(--fs-2);
   min-height: 180px;
 }
 
 .footnote {
   margin: 4px 2px 0;
-  font-size: 11px;
-  color: #b1b3b8;
+  font-size: var(--fs-1);
+  color: var(--text-4);
   line-height: 18px;
 }
 
@@ -798,7 +798,7 @@ onUnmounted(() => {
   }
 
   .dash-head h2 {
-    font-size: 18px;
+    font-size: var(--fs-7);
   }
 
   .chart-lg {
@@ -819,7 +819,7 @@ onUnmounted(() => {
   }
 
   .kpi-value {
-    font-size: 20px;
+    font-size: var(--fs-8);
   }
 }
 </style>

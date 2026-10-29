@@ -1,19 +1,21 @@
 // 智能选宠：全部页面逻辑（向导状态、画像计算、提交、收藏、展示工具）
 // index.vue 只保留模板与一行装配，逻辑改动都在这里。
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { recommendPet } from '@/api/pet/petMatch'
-import { addPetFavorite } from '@/api/pet/petFavorite'
-import { useUserStore } from '@/store/modules/user'
 import { useAssistant } from '@/components/assistant/useAssistant'
+import { usePetFavorite } from '@/composables/usePetFavorite'
+import { isImage } from '@/utils/petDisplay'
 import { STEPS } from './matchData'
 
 export function useMatchWizard() {
   const router = useRouter()
   const route = useRoute()
-  const userStore = useUserStore()
+  const openAuth = inject('openAuth', () => {})
   const { open: openAssistant } = useAssistant()
+  // 收藏：全站共用 composable（修复了旧实现重复添加同一条收藏的问题）
+  const { toggle: favToggle, load: loadFavs } = usePetFavorite(openAuth)
 
   const loading = ref(false)
   const result = ref(null)
@@ -110,6 +112,8 @@ export function useMatchWizard() {
     else clearState()
     // 不管浏览器有没有恢复滚动位置，都回到顶部：要看的不是上次滚到的位置
     window.scrollTo(0, 0)
+    // 预拉收藏状态：结果卡的「收藏」按钮要显示是否已收藏
+    loadFavs()
   })
 
   /* ---------- 进度 ---------- */
@@ -251,17 +255,9 @@ export function useMatchWizard() {
     })
   }
 
+  // 选宠场景的提示说明收藏会影响下次协同推荐；已收藏时切换为取消
   async function fav(pet) {
-    if (!userStore.token) {
-      ElMessage.info('请先登录后再收藏')
-      return
-    }
-    try {
-      await addPetFavorite({ petId: pet.petId, userId: userStore.userId })
-      ElMessage.success('收藏成功，会影响下次推荐的协同得分')
-    } catch (e) {
-      ElMessage.error('收藏失败，请稍后重试')
-    }
+    await favToggle(pet.petId, '收藏成功，会影响下次推荐的协同得分')
   }
 
   /* ---------- 展示工具 ---------- */
@@ -271,9 +267,6 @@ export function useMatchWizard() {
   function fmt(v) {
     const n = Number(v)
     return Number.isFinite(n) ? n.toLocaleString('zh-CN') : '—'
-  }
-  function isImg(s) {
-    return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0)
   }
   function genderText(g) {
     return String(g) === '0' ? '公' : String(g) === '1' ? '母' : '未知'
@@ -292,6 +285,6 @@ export function useMatchWizard() {
     // 动作
     next, submit, loosenType, raiseBudget, reset, goDetail, goConsult, askAi, fav,
     // 展示工具
-    pad, fmt, isImg, genderText, preferName
+    pad, fmt, isImg: isImage, genderText, preferName
   }
 }

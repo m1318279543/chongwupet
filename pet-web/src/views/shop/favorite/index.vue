@@ -13,7 +13,7 @@
     </header>
 
     <!-- 游客提示：只留一条左侧色线，不做提示卡片 -->
-    <p v-if="!userStore.token" class="fav-note">
+    <p v-if="!userStore.token" class="ui-note">
       当前为游客浏览，
       <button type="button" class="ui-linkbtn" @click="openAuth('login')">登录</button>
       后可管理自己的收藏。
@@ -93,12 +93,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, inject } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPetFavorite, delPetFavorite } from '@/api/pet/petFavorite'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
+import { useServerPaging } from '@/composables/usePagedList'
+import { isImage } from '@/utils/petDisplay'
 import { money } from '@/utils/money'
 
 const router = useRouter()
@@ -110,17 +112,8 @@ const total = ref(0)
 
 // 定高列表分页：每页 5 条（单行 116px，5 行正好铺满 583px 的列表区），页码交给后端
 const PAGE_SIZE = 5
-const page = ref(1)
-const rangeStart = computed(() => (total.value ? (page.value - 1) * PAGE_SIZE + 1 : 0))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, total.value))
-// 翻页重新取数
-watch(page, () => loadData())
-// 取消收藏后总数可能少于当前页起点，回退一页避免空白页
-watch(total, (n) => {
-  if (n > 0 && (page.value - 1) * PAGE_SIZE >= n) page.value = Math.max(1, page.value - 1)
-})
+const { page, rangeStart, rangeEnd } = useServerPaging(total, PAGE_SIZE, () => loadData())
 
-function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
 // 图片 404 / 加载失败时回退成占位文案，避免出现破图
 function onImgError(item) { item.image = '' }
 
@@ -170,19 +163,6 @@ onMounted(() => {
 <style scoped lang="scss">
 // 注意：页面骨架、行列表、缩略图、空态全部来自 styles/flat.scss 的 .ui-* 基元，
 // 这里只写本页特有的两处：游客提示的内缩，和空态里的一个描边按钮。
-
-// 游客提示：左侧 2px 色线替代整块浅底提示卡
-.fav-note {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin: 22px 0 0;
-  padding: 2px 0 2px 12px;
-  border-left: 2px solid var(--brand-300);
-  font-size: 13px;
-  color: var(--text-2);
-}
 
 // 数据未回来时给加载遮罩留出高度，避免布局跳动
 .fav-body { margin-top: 8px; min-height: 240px; }

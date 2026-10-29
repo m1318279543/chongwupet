@@ -39,15 +39,15 @@ const router = useRouter()
   display: inline-block; font-family: var(--font-num); font-size: 56px; font-weight: 500;
   letter-spacing: 4px; color: var(--brand-500); line-height: 1;
 }
-.nf-card h1 { margin: 14px 0 8px; font-size: 20px; font-weight: 500; color: var(--text-1); }
-.nf-card p { margin: 0; font-size: 14px; color: var(--text-3); line-height: 1.7; }
+.nf-card h1 { margin: 14px 0 8px; font-size: var(--fs-8); font-weight: 500; color: var(--text-1); }
+.nf-card p { margin: 0; font-size: var(--fs-5); color: var(--text-3); line-height: 1.7; }
 .nf-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 26px 0 20px; }
-.nf-known { font-size: 13px; color: var(--text-3);
+.nf-known { font-size: var(--fs-4); color: var(--text-3);
   a { color: var(--brand-700); cursor: pointer; &:hover { text-decoration: underline; } }
 }
 @media (max-width: 480px) {
   .nf-card { padding: 32px 20px 28px; }
-  .nf-code { font-size: 44px; }
+  .nf-code { font-size: var(--fs-11); }
   .nf-actions :deep(.el-button) { width: 100%; margin-left: 0; }
 }
 </style>

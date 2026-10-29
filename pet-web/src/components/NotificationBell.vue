@@ -192,7 +192,7 @@ defineExpose({ refresh: loadUnread })
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--fs-7);
   transition: background 0.18s;
   &:hover { background: var(--bg-sunken); }
 }
@@ -211,13 +211,13 @@ defineExpose({ refresh: loadUnread })
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--danger-500);
-  color: #fff;
-  font-size: 11px;
+  color: var(--on-accent);
+  font-size: var(--fs-1);
   line-height: 16px;
   text-align: center;
-  box-shadow: 0 0 0 2px #fff;
+  box-shadow: 0 0 0 2px var(--on-accent);
 }
 
 .np-panel {
@@ -226,11 +226,11 @@ defineExpose({ refresh: loadUnread })
   right: 0;
   width: 340px;
   max-width: calc(100vw - 24px);
-  background: #fff;
+  background: var(--bg-card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float);
   border: 1px solid var(--bg-sunken);
-  z-index: 3000;
+  z-index: var(--z-top);
   overflow: hidden;
 }
 .np-head {
@@ -239,7 +239,7 @@ defineExpose({ refresh: loadUnread })
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid var(--bg-sunken);
-  strong { font-size: 14px; color: var(--text-1); }
+  strong { font-size: var(--fs-5); color: var(--text-1); }
   .np-actions { display: flex; align-items: center; gap: 4px; }
 }
 .np-list {
@@ -255,20 +255,20 @@ defineExpose({ refresh: loadUnread })
   transition: background 0.15s;
   &:hover { background: var(--brand-50); }
   &.unread { background: var(--brand-50); }
-  .np-icon { font-size: 18px; line-height: 1.2; flex-shrink: 0; }
+  .np-icon { font-size: var(--fs-7); line-height: 1.2; flex-shrink: 0; }
   .np-body { flex: 1; min-width: 0; }
   .np-title {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--fs-4);
     font-weight: 600;
     color: var(--text-1);
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--danger-500); }
   }
   .np-content {
     margin-top: 3px;
-    font-size: 12.5px;
+    font-size: var(--fs-3);
     color: var(--text-2);
     line-height: 1.55;
     display: -webkit-box;
@@ -276,14 +276,14 @@ defineExpose({ refresh: loadUnread })
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .np-time { margin-top: 4px; font-size: 12px; color: var(--text-3); }
+  .np-time { margin-top: 4px; font-size: var(--fs-2); color: var(--text-3); }
 }
 .np-empty {
   text-align: center;
   padding: 28px 0;
   color: var(--text-4);
   span { font-size: 30px; }
-  p { margin: 6px 0 0; font-size: 13px; }
+  p { margin: 6px 0 0; font-size: var(--fs-4); }
 }
 .np-foot {
   padding: 8px 14px;

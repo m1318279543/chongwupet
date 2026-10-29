@@ -226,5 +226,5 @@ getList()
 </script>
 
 <style scoped>
-.tree-border { margin-top: 5px; border: 1px solid #e5e6e7; background: #fff none; border-radius: 4px; max-height: 220px; overflow-y: auto; }
+.tree-border { margin-top: 5px; border: 1px solid var(--border-1); background: var(--bg-card) none; border-radius: var(--radius-xs); max-height: 220px; overflow-y: auto; }
 </style>

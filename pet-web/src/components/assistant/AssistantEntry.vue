@@ -63,6 +63,6 @@ function toggle() {
   display: grid;
   place-items: center;
   background: var(--grad-brand);
-  svg { width: 13px; height: 13px; fill: #fff; }
+  svg { width: 13px; height: 13px; fill: var(--on-accent); }
 }
 </style>

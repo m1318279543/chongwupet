@@ -202,10 +202,10 @@ onMounted(getCode)
   border-radius: var(--radius-sm);
   background: var(--grad-brand);
 }
-.brand-panel .mark svg { width: 24px; height: 24px; fill: #fff; }
+.brand-panel .mark svg { width: 24px; height: 24px; fill: var(--on-accent); }
 .brand-panel .eyebrow {
   margin: 22px 0 0;
-  font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  font-size: var(--fs-1); font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
   color: var(--text-3);
 }
 .brand-panel h1 {
@@ -215,12 +215,12 @@ onMounted(getCode)
 }
 .brand-panel .lede {
   margin: 16px 0 0; max-width: 20em;
-  font-size: 14px; line-height: 1.8; color: var(--text-2);
+  font-size: var(--fs-5); line-height: 1.8; color: var(--text-2);
 }
 .brand-panel .meta {
   margin: 28px 0 0; padding-top: 14px;
   border-top: 1px solid var(--border-1);
-  font-size: 12.5px; color: var(--text-3);
+  font-size: var(--fs-3); color: var(--text-3);
 }
 
 .login-card {
@@ -237,10 +237,10 @@ onMounted(getCode)
   display: none;
   width: 36px; height: 36px; flex: none;
 }
-.card-title h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-1); letter-spacing: -.01em; }
-.card-title p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
+.card-title h2 { margin: 0; font-size: var(--fs-8); font-weight: 700; color: var(--text-1); letter-spacing: -.01em; }
+.card-title p { margin: 4px 0 0; font-size: var(--fs-3); color: var(--text-3); line-height: 1.5; }
 
-:deep(.el-form-item__label) { font-size: 13px; font-weight: 700; color: var(--text-1); padding-bottom: 6px; }
+:deep(.el-form-item__label) { font-size: var(--fs-4); font-weight: 700; color: var(--text-1); padding-bottom: 6px; }
 :deep(.el-form-item) { margin-bottom: 18px; }
 
 .code-row { display: flex; gap: 10px; width: 100%; }
@@ -252,18 +252,18 @@ onMounted(getCode)
 }
 .code-loading {
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; color: var(--text-3);
+  font-size: var(--fs-2); color: var(--text-3);
 }
 
 .submit {
   width: 100%; height: 44px; margin-top: 4px;
-  font-size: 15px; font-weight: 700; letter-spacing: .04em;
+  font-size: var(--fs-6); font-weight: 700; letter-spacing: .04em;
 }
 
 .foot {
   display: flex; align-items: center; justify-content: space-between;
   margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-2);
-  font-size: 12px; color: var(--text-3);
+  font-size: var(--fs-2); color: var(--text-3);
 }
 .foot .link { color: var(--brand-700); font-weight: 700; cursor: pointer; }
 .foot .link:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -278,12 +278,12 @@ onMounted(getCode)
   }
   .brand-panel { display: none; }
   .card-head .mark--sm { display: grid; place-items: center; background: var(--grad-brand); border-radius: var(--radius-sm); }
-  .card-head .mark--sm svg { width: 20px; height: 20px; fill: #fff; }
+  .card-head .mark--sm svg { width: 20px; height: 20px; fill: var(--on-accent); }
 }
 
 @media (max-width: 480px) {
   .admin-login { padding: 24px 16px; }
   .login-card { padding: 26px 20px 18px; }
-  .card-title h2 { font-size: 18px; }
+  .card-title h2 { font-size: var(--fs-7); }
 }
 </style>

@@ -42,12 +42,13 @@
   --el-color-danger-light-9: #fce9e9;
   --el-color-danger-dark-2: #b01e1e;
 
-  --el-color-error: var(--danger-500);
-  --el-color-error-light-3: #e76767;
-  --el-color-error-light-5: #ee9292;
-  --el-color-error-light-7: #f5bebe;
-  --el-color-error-light-8: #f8d4d4;
-  --el-color-error-light-9: #fce9e9;
+  // EP 2.x 将 danger 更名为 error，两套变量同值——error 直接引用 danger，不再逐行重复
+  --el-color-error: var(--el-color-danger);
+  --el-color-error-light-3: var(--el-color-danger-light-3);
+  --el-color-error-light-5: var(--el-color-danger-light-5);
+  --el-color-error-light-7: var(--el-color-danger-light-7);
+  --el-color-error-light-8: var(--el-color-danger-light-8);
+  --el-color-error-light-9: var(--el-color-danger-light-9);
 
   --el-color-info: var(--info-500);
   --el-color-info-light-3: #939eae;

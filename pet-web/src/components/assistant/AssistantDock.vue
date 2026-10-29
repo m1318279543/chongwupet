@@ -86,16 +86,16 @@
 
 <script setup>
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AssistantBlock from './AssistantBlock.vue'
 import { useAssistant } from './useAssistant'
 import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import { submitConsult } from '@/api/pet/petConsult'
-import { addPetAppointment } from '@/api/pet/petAppointment'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const openAuth = inject('openAuth', null)
@@ -222,52 +222,25 @@ async function addCart(goods) {
   ElMessage.success({ message: '已加入购物车，可在购物车里修改数量', duration: 1500 })
 }
 
-/** 代预约：确认卡里的要素由后端整理，这里只做二次确认和提交 */
-async function createAppointment(data) {
+/**
+ * 代预约：不再由助手直接提交。
+ * 带上要素跳宠物详情页的预约弹窗（预填），让用户在正式表单里核对时段后再提交——
+ * 与手动预约同一入口、同一校验，也避免「聊完天就莫名多了一条预约」。
+ */
+function createAppointment(data) {
   if (!data || !data.petId) return
   if (!userStore.token) {
     if (openAuth) openAuth('login')
     return
   }
-  let phone = data.contactPhone || ''
-  if (!phone) {
-    try {
-      const { value } = await ElMessageBox.prompt('留个联系电话，门店确认时用', '预约看宠', {
-        confirmButtonText: '下一步',
-        cancelButtonText: '取消',
-        inputPattern: /^1\d{10}$/,
-        inputErrorMessage: '请输入 11 位手机号'
-      })
-      phone = value
-    } catch (e) {
-      return
-    }
-  }
-  try {
-    await ElMessageBox.confirm(
-      `宠物 ${data.petName} · ${data.storeName || '默认门店'} · ${data.date} ${data.time} · ${phone}`,
-      '确认预约',
-      { confirmButtonText: '确认提交', cancelButtonText: '再改改' }
-    )
-  } catch (e) {
-    return
-  }
-  try {
-    await addPetAppointment({
-      petId: data.petId,
-      userId: userStore.userId,
-      storeId: data.storeId,
-      appointmentDate: `${data.date} ${data.time}:00`,
-      contactPhone: phone,
-      status: '0',
-      remark: '由 AI 助手代预约'
-    })
-    ElMessage.success('预约已提交，门店会尽快联系你')
-    close()
-    router.push('/shop/appointment')
-  } catch (e) {
-    ElMessage.error(e?.msg || e?.message || '预约提交失败')
-  }
+  const query = { appoint: '1' }
+  if (data.storeId) query.storeId = data.storeId
+  if (data.date) query.date = data.date
+  if (data.time) query.slot = data.time
+  if (data.contactPhone) query.phone = data.contactPhone
+  query.remark = '由 AI 助手代预约'
+  close()
+  router.push({ path: `/shop/pet/${data.petId}`, query })
 }
 
 async function handoff() {
@@ -288,7 +261,13 @@ async function handoff() {
     })
     ElMessage.success('已转给人工客服，回复会出现在「我的咨询」')
     close()
-    router.push('/shop/consult')
+    // 咨询页本身就有「先问 AI」入口，若在这里转人工再跳回同一页，
+    // 会形成 consult → AI → 转人工 → consult 的循环。留在原地刷新列表即可。
+    if (route.path === '/shop/consult') {
+      window.dispatchEvent(new CustomEvent('pet-consult-refresh'))
+    } else {
+      router.push('/shop/consult')
+    }
   } catch (e) {
     ElMessage.error(e?.message || '转人工失败，请稍后再试')
   }
@@ -311,7 +290,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 /* 悬浮入口（仅无顶栏入口的场景渲染）：图标圆钮，默认悬在右上角（顶栏下方），悬停显示文字气泡 */
 .as-launcher {
-  position: fixed; top: 84px; right: 22px; z-index: 160;
+  position: fixed; top: calc(var(--topbar-h) + 12px); right: 22px; z-index: var(--z-float);
   // 后台场景：右上角会压住统计卡，改默认右下角并收小，减少对管理页面的干扰
   .is-admin & {
     top: auto; bottom: 28px; width: 40px; height: 40px;
@@ -320,8 +299,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   width: 44px; height: 44px; padding: 0;
   // 浮标是唯一保留 pill 圆角与投影的元素：它必须始终浮在内容之上
   border: 1px solid var(--brand-200); border-radius: var(--radius-pill);
-  background: #fff; color: var(--brand-700);
-  font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  background: var(--bg-card); color: var(--brand-700);
+  font-family: inherit; font-size: var(--fs-5); font-weight: 700; cursor: pointer;
   box-shadow: 0 2px 8px rgba(22, 25, 23, .10);
   transition: box-shadow .16s;
   touch-action: manipulation;  // 去掉双击缩放等待，点击更跟手
@@ -330,14 +309,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .as-launcher-ico {
   width: 26px; height: 26px; border-radius: var(--radius-md); display: grid; place-items: center;
   background: var(--grad-brand);
-  svg { width: 15px; height: 15px; fill: #fff; }
+  svg { width: 15px; height: 15px; fill: var(--on-accent); }
 }
 /* 文字改悬停气泡：默认隐藏，移入浮标时从右侧弹出 */
 .as-txt {
   position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%);
   padding: 6px 11px; border-radius: var(--radius-sm);
-  background: var(--text-1); color: #fff;
-  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  background: var(--text-1); color: var(--on-accent);
+  font-size: var(--fs-3); font-weight: 600; white-space: nowrap;
   opacity: 0; pointer-events: none;
   transition: opacity .15s;
 }
@@ -345,7 +324,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 /* 面板：右侧全高抽屉 —— 聊天时左侧内容保持可见，边看边问 */
 .as-panel {
-  position: fixed; top: 0; right: 0; bottom: 0; z-index: 1900;
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--z-drawer);
   width: 424px; max-width: calc(100vw - 32px);
   display: flex; flex-direction: column;
   background: var(--bg-page);
@@ -356,27 +335,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .as-head {
   flex-shrink: 0; height: 60px; padding: 0 14px 0 16px;
   display: flex; align-items: center; justify-content: space-between;
-  background: #fff; border-bottom: 1px solid var(--border-1);
+  background: var(--bg-card); border-bottom: 1px solid var(--border-1);
 }
 .as-brand { display: flex; align-items: center; gap: 10px; }
 .as-logo {
   width: 32px; height: 32px; border-radius: var(--radius-md); display: grid; place-items: center;
   background: var(--grad-brand);
-  svg { width: 17px; height: 17px; fill: #fff; }
+  svg { width: 17px; height: 17px; fill: var(--on-accent); }
 }
 .as-name {
   display: flex; flex-direction: column; line-height: 1.25;
-  strong { font-size: 14px; font-weight: 700; color: var(--text-1); }
-  em { font-style: normal; font-size: 11px; color: var(--text-3); }
+  strong { font-size: var(--fs-5); font-weight: 700; color: var(--text-1); }
+  em { font-style: normal; font-size: var(--fs-1); color: var(--text-3); }
 }
 .as-head-act {
   display: flex; align-items: center; gap: 4px;
   button {
     border: 0; background: none; cursor: pointer; font-family: inherit;
-    font-size: 12px; color: var(--text-3); padding: 6px 8px; border-radius: var(--radius-md);
+    font-size: var(--fs-2); color: var(--text-3); padding: 6px 8px; border-radius: var(--radius-md);
     &:hover { background: var(--bg-sunken); color: var(--text-1); }
   }
-  .as-close { font-size: 20px; line-height: 1; padding: 2px 8px 6px; }
+  .as-close { font-size: var(--fs-8); line-height: 1; padding: 2px 8px 6px; }
 }
 
 .as-body {
@@ -389,26 +368,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .as-avatar {
   flex-shrink: 0; width: 26px; height: 26px; border-radius: var(--radius-sm); margin-top: 2px;
   display: grid; place-items: center; background: var(--brand-50); color: var(--brand-700);
-  font-size: 11px; font-weight: 700;
+  font-size: var(--fs-1); font-weight: 700;
 }
 .as-stack { max-width: 84%; display: flex; flex-direction: column; gap: 8px; }
 .is-user .as-stack { align-items: flex-end; max-width: 78%; }
 
 .as-bubble {
   padding: 10px 12px; border-radius: var(--radius-md);
-  background: #fff; border: 1px solid var(--border-1);
-  font-size: 13px; line-height: 1.72; color: var(--text-1);
+  background: var(--bg-card); border: 1px solid var(--border-1);
+  font-size: var(--fs-4); line-height: 1.72; color: var(--text-1);
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .is-user .as-bubble {
-  background: var(--brand-600); border-color: var(--brand-600); color: #fff;
+  background: var(--brand-600); border-color: var(--brand-600); color: var(--on-accent);
   border-bottom-right-radius: 6px;
 }
 .is-assistant .as-bubble { border-bottom-left-radius: 6px; }
 
 .as-typing {
   display: inline-flex; gap: 4px; padding: 12px 14px; width: fit-content;
-  background: #fff; border: 1px solid var(--border-1); border-radius: var(--radius-md);
+  background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md);
   i { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-400); animation: as-blink 1s infinite; }
   i:nth-child(2) { animation-delay: .15s; }
   i:nth-child(3) { animation-delay: .3s; }
@@ -418,7 +397,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .as-blocks { display: flex; flex-direction: column; gap: 8px; }
 .as-cites {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  font-size: 12px; color: var(--text-3);
+  font-size: var(--fs-2); color: var(--text-3);
 }
 .as-cites-label { color: var(--text-4); }
 .as-cite {
@@ -427,51 +406,51 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 }
 .as-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .as-actions button {
-  border: 1px solid var(--brand-200); background: #fff; color: var(--brand-700);
-  font-family: inherit; font-size: 12.5px; padding: 5px 11px; border-radius: var(--radius-md); cursor: pointer;
+  border: 1px solid var(--brand-200); background: var(--bg-card); color: var(--brand-700);
+  font-family: inherit; font-size: var(--fs-3); padding: 5px 11px; border-radius: var(--radius-md); cursor: pointer;
   &:hover { background: var(--brand-50); }
 }
 .as-feedback {
   display: flex; align-items: center; gap: 4px;
   button {
-    border: 0; background: none; font-family: inherit; font-size: 12px;
+    border: 0; background: none; font-family: inherit; font-size: var(--fs-2);
     color: var(--text-4); cursor: pointer; padding: 2px 6px; border-radius: var(--radius-sm);
     &:hover { background: var(--bg-sunken); color: var(--text-2); }
     &.on { color: var(--brand-700); background: var(--brand-50); }
   }
 }
-.as-src { margin-left: auto; font-size: 11px; color: var(--text-4); }
+.as-src { margin-left: auto; font-size: var(--fs-1); color: var(--text-4); }
 
 .as-quick {
   flex-shrink: 0; padding: 0 14px 10px; display: flex; flex-wrap: wrap; gap: 6px;
   button {
-    border: 1px solid var(--border-1); background: #fff; color: var(--text-2);
-    font-family: inherit; font-size: 12px; padding: 6px 10px; border-radius: var(--radius-md); cursor: pointer;
+    border: 1px solid var(--border-1); background: var(--bg-card); color: var(--text-2);
+    font-family: inherit; font-size: var(--fs-2); padding: 6px 10px; border-radius: var(--radius-md); cursor: pointer;
     &:hover { border-color: var(--brand-200); color: var(--brand-700); }
   }
 }
 
 .as-foot {
   flex-shrink: 0; display: flex; align-items: flex-end; gap: 8px;
-  padding: 10px 12px; background: #fff; border-top: 1px solid var(--border-1);
+  padding: 10px 12px; background: var(--bg-card); border-top: 1px solid var(--border-1);
   textarea {
     flex: 1; min-height: 38px; max-height: 96px; resize: none;
     border: 1px solid var(--border-1); border-radius: var(--radius-md);
-    padding: 9px 11px; font-family: inherit; font-size: 13px; line-height: 1.5;
+    padding: 9px 11px; font-family: inherit; font-size: var(--fs-4); line-height: 1.5;
     color: var(--text-1); background: var(--bg-page);
-    &:focus { outline: none; border-color: var(--brand-400); background: #fff; }
+    &:focus { outline: none; border-color: var(--brand-400); background: var(--bg-card); }
   }
 }
 .as-send {
   flex-shrink: 0; height: 38px; padding: 0 15px; border-radius: var(--radius-md);
-  border: 1px solid var(--brand-600); background: var(--brand-600); color: #fff;
-  font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--brand-600); background: var(--brand-600); color: var(--on-accent);
+  font-family: inherit; font-size: var(--fs-4); font-weight: 700; cursor: pointer;
   &:disabled { opacity: .45; cursor: not-allowed; }
-  &.is-stop { background: #fff; color: var(--text-2); border-color: var(--border-1); }
+  &.is-stop { background: var(--bg-card); color: var(--text-2); border-color: var(--border-1); }
 }
 .as-tip {
-  flex-shrink: 0; margin: 0; padding: 0 12px 9px; background: #fff;
-  font-size: 11px; color: var(--text-4); text-align: center;
+  flex-shrink: 0; margin: 0; padding: 0 12px 9px; background: var(--bg-card);
+  font-size: var(--fs-1); color: var(--text-4); text-align: center;
 }
 
 .as-panel-enter-active, .as-panel-leave-active { transition: opacity .18s, transform .24s; }
@@ -498,6 +477,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   .as-head { height: 56px; }
   .as-body { padding: 14px 12px 6px; }
   .as-stack { max-width: 88%; }
-  .as-bubble { font-size: 14px; }
+  .as-bubble { font-size: var(--fs-5); }
 }
 </style>

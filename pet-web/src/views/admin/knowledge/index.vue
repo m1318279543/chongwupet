@@ -59,7 +59,7 @@
     </el-row>
 
     <!-- 搜索 -->
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="never" class="ui-toolbar-card">
       <el-form :model="queryParams" inline>
         <el-form-item label="标题/关键词">
           <el-input v-model="queryParams.keywords" placeholder="如 软便、退款" clearable style="width: 180px" @keyup.enter="handleQuery" />
@@ -91,7 +91,7 @@
     <!-- 列表 -->
     <el-card shadow="never" class="table-card">
       <template #header>
-        <div class="card-head">
+        <div class="ui-card-head">
           <span>共 {{ total }} 条</span>
           <el-button type="success" @click="reload">刷新</el-button>
         </div>
@@ -126,7 +126,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
+      <div class="ui-pager">
         <el-pagination
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
@@ -387,20 +387,20 @@ onMounted(reload)
 }
 .k-stat {
   padding: 14px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: var(--el-bg-color);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
   em {
     display: block;
     font-style: normal;
-    font-size: 24px;
+    font-size: var(--fs-9);
     font-weight: 600;
-    color: var(--el-color-primary);
+    color: var(--brand-700);
     line-height: 1.2;
   }
   span {
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
+    font-size: var(--fs-2);
+    color: var(--text-3);
   }
 }
 .k-panels {
@@ -415,8 +415,8 @@ onMounted(reload)
   gap: 8px;
   em {
     font-style: normal;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
+    font-size: var(--fs-2);
+    color: var(--text-3);
   }
 }
 .k-list {
@@ -431,8 +431,8 @@ onMounted(reload)
     justify-content: space-between;
     gap: 10px;
     padding: 7px 0;
-    border-bottom: 1px dashed var(--el-border-color-lighter);
-    font-size: 13px;
+    border-bottom: 1px dashed var(--border-2);
+    font-size: var(--fs-4);
     &:last-child {
       border-bottom: 0;
     }
@@ -444,7 +444,7 @@ onMounted(reload)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--el-text-color-regular);
+  color: var(--text-2);
 }
 .k-top-title {
   flex: 1;
@@ -454,31 +454,18 @@ onMounted(reload)
   white-space: nowrap;
 }
 .k-top-count {
-  font-size: 12px;
-  color: var(--el-color-primary);
+  font-size: var(--fs-2);
+  color: var(--brand-700);
 }
 .k-empty {
   justify-content: center !important;
-  color: var(--el-text-color-placeholder);
-  font-size: 12px;
+  color: var(--text-4);
+  font-size: var(--fs-2);
 }
 .k-hint {
   margin-left: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-.search-card {
-  margin-bottom: 12px;
-}
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.pager {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
+  font-size: var(--fs-2);
+  color: var(--text-3);
 }
 @media (max-width: 1000px) {
   .k-stats {

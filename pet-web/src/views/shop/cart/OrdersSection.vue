@@ -1,28 +1,9 @@
 <template>
   <section class="orders-sec">
-    <header class="sec-head" v-if="!fixedFilter">
-      <h2>历史订单</h2>
-      <span class="sec-n" v-if="groups.length"><b>{{ groups.length }}</b> 单</span>
-    </header>
-
-    <!-- 状态标签栏：独立使用时显示；被购物车页顶部标签固定筛选时隐藏 -->
-    <nav class="tabs" v-if="!fixedFilter && groups.length" aria-label="历史订单筛选">
-      <button
-        v-for="t in tabs"
-        :key="t.key"
-        type="button"
-        class="tab"
-        :class="{ on: filter === t.key }"
-        @click="filter = t.key"
-      >
-        {{ t.label }}<span class="tab__n">{{ t.count }}</span>
-      </button>
-    </nav>
-
     <!-- 空态 -->
     <div class="ui-empty" v-if="shownGroups.length === 0">
       <p class="ui-empty__title">{{ emptyTitle }}</p>
-      <p class="ui-empty__desc">付款完成的订单会自动归档到这里。</p>
+      <p class="ui-empty__desc">{{ emptyDesc }}</p>
     </div>
 
     <!-- 订单列表：定高区（每页 3 单）底部翻页 -->
@@ -91,43 +72,27 @@
 </template>
 
 <script setup>
-import { ref, computed, inject, watch } from 'vue'
+import { ref, computed, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { applyRefund } from '@/api/pet/petRefund'
 import Pagination from '@/components/Pagination/index.vue'
+import { useClientPaging } from '@/composables/usePagedList'
 import { money } from '@/utils/money'
 
-// 归档区只接收父组件算好的「已支付/已取消」订单；待付款订单在「待支付」标签
+// 已支付订单归档列表：父组件已按「已支付且未取消」筛好传入；
+// 待支付订单不再展示（立即购买靠 ?pay=orderNo 直接唤起收银台，不经此列表）。
 const props = defineProps({
   groups: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false },
-  // 非空时由父级顶部标签固定筛选（'paid' / 'canceled'），隐藏自带标签栏
-  fixedFilter: { type: String, default: '' }
+  loading: { type: Boolean, default: false }
 })
 const emit = defineEmits(['refresh'])
 
 const openAuth = inject('openAuth', () => {})
 const refundingNo = ref(null)
 
-// 状态标签栏：计数从 groups 派生，不再多请求一次
-const filter = ref(props.fixedFilter || 'all')
-// 顶部标签切换（已支付 ↔ 已取消）时回到第 1 页，别把另一个分区的页码带过来
-watch(() => props.fixedFilter, (v) => { if (v) { filter.value = v; page.value = 1 } })
-const tabs = computed(() => [
-  { key: 'all', label: '全部', count: props.groups.length },
-  { key: 'paid', label: '已支付', count: props.groups.filter((g) => g.paid && !g.canceled).length },
-  { key: 'canceled', label: '已取消', count: props.groups.filter((g) => g.canceled).length }
-])
-const shownGroups = computed(() => {
-  if (filter.value === 'paid') return props.groups.filter((g) => g.paid && !g.canceled)
-  if (filter.value === 'canceled') return props.groups.filter((g) => g.canceled)
-  return props.groups
-})
-const emptyTitle = computed(() => {
-  if (filter.value === 'canceled') return '还没有已取消的订单'
-  if (filter.value === 'paid') return '还没有已支付的订单'
-  return '还没有历史订单'
-})
+const shownGroups = computed(() => props.groups)
+const emptyTitle = computed(() => '还没有已支付的订单')
+const emptyDesc = computed(() => '付款完成的订单会自动归档到这里。')
 
 // 状态文案 / 样式：用 1px 描边标签代替实心 el-tag
 function statusText(g) {
@@ -146,14 +111,7 @@ function chipClass(g) {
 
 // 定高列表分页：每页 3 单
 const PAGE_SIZE = 3
-const page = ref(1)
-const pagedGroups = computed(() => shownGroups.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
-const rangeStart = computed(() => (shownGroups.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, shownGroups.value.length))
-watch(() => [props.groups.length, filter.value], () => {
-  // 总数变少时避免停在空页
-  if ((page.value - 1) * PAGE_SIZE >= shownGroups.value.length) page.value = 1
-})
+const { page, paged: pagedGroups, rangeStart, rangeEnd } = useClientPaging(shownGroups, PAGE_SIZE)
 
 /** 带着订单号唤起助手，直接问当前状态 */
 function askAssistant(g) {
@@ -204,66 +162,7 @@ function onImgErr(e) {
 </script>
 
 <style scoped lang="scss">
-// 原「我的订单」区块样式迁移；去掉收银台，加状态标签栏，只服务已支付/已取消归档。
-
-/* ---------- 区块头 ---------- */
-.sec-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 40px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--text-1);
-  h2 { font-size: 15px; font-weight: 700; color: var(--text-1); }
-  .sec-n { font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums;
-    b { font-weight: 700; color: var(--text-1); } }
-}
-
-/* ---------- 状态标签栏：文本标签 + 计数，选中态 2px 下划线 ---------- */
-.tabs {
-  display: flex;
-  gap: 26px;
-  margin-top: 16px;
-  border-bottom: 1px solid var(--border-1);
-  overflow-x: auto;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-}
-.tab {
-  position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 0 12px;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 14px;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: color .16s ease;
-  &:hover { color: var(--text-1); }
-  &.on {
-    color: var(--text-1);
-    font-weight: 700;
-    &::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -1px;
-      height: 2px;
-      background: var(--text-1);
-    }
-  }
-}
-.tab__n {
-  font-size: 12px;
-  color: var(--text-4);
-  font-variant-numeric: tabular-nums;
-}
-.tab.on .tab__n { color: var(--brand-600); }
+// 只服务订单卡列表（待支付 / 已支付），筛选归父组件。
 
 /* ---------- 订单区块：撑满定高面板，翻页条压到面板最底 ---------- */
 // 与「购物车」标签同一套路：面板是 flex 列，列表区随内容自然生长、装不下才收缩内滚，
@@ -316,7 +215,7 @@ function onImgErr(e) {
   min-width: 0;
 }
 .order__no {
-  font-size: 14px;
+  font-size: var(--fs-5);
   font-weight: 700;
   letter-spacing: .01em;
   color: var(--text-1);
@@ -329,7 +228,7 @@ function onImgErr(e) {
   flex-wrap: wrap;
 }
 .order__time {
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -361,14 +260,14 @@ function onImgErr(e) {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-5);
   font-weight: 700;
   color: var(--text-1);
   line-height: 1.45;
 }
 .item__spec {
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-3);
 }
 .item__unit { color: var(--text-3); font-variant-numeric: tabular-nums; }
@@ -383,19 +282,18 @@ function onImgErr(e) {
   margin-top: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--border-2);
-  font-size: 13px;
+  font-size: var(--fs-4);
   color: var(--text-3);
 }
 .order__total {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  b { font-size: 20px; }
+  b { font-size: var(--fs-8); }
 }
 
 /* ---------- 手机端 ---------- */
 @media (max-width: 768px) {
-  .tabs { gap: 18px; }
   .order { padding: 18px 0; }
   .order__act {
     width: 100%;
@@ -409,7 +307,7 @@ function onImgErr(e) {
     padding: 10px 0;
   }
   .item__thumb { width: 48px; height: 48px; }
-  .item__sum { font-size: 16px; }
+  .item__sum { font-size: var(--fs-6); }
 
   .order__foot { gap: 12px; }
 }

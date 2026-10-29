@@ -261,9 +261,9 @@ function handleCommand(cmd) {
     .mark {
       width: 28px; height: 28px; flex-shrink: 0; border-radius: var(--radius-sm);
       display: grid; place-items: center; background: var(--grad-brand);
-      svg { width: 17px; height: 17px; fill: #fff; }
+      svg { width: 17px; height: 17px; fill: var(--on-accent); }
     }
-    .text { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+    .text { color: var(--on-accent); font-size: var(--fs-6); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
   }
   .menu { border-right: none; background: transparent; }
   // 激活项：浅色底 + 左侧 2px 品牌色，文字用最亮的一档（11.4:1）
@@ -277,14 +277,14 @@ function handleCommand(cmd) {
 }
 .header {
   background: var(--bg-card); display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border-1); z-index: 10;
+  border-bottom: 1px solid var(--border-1); z-index: var(--z-adminbar);
   // 右侧操作组：AI 入口 + 消息铃铛 + 用户菜单，固定间距避免换行空隙抖动
   .right { display: flex; align-items: center; gap: 4px; }
-  .page-title { font-size: 16px; font-weight: 700; color: var(--text-1); }
+  .page-title { font-size: var(--fs-6); font-weight: 700; color: var(--text-1); }
   .ruoyi-link { margin-right: 16px; }
   .user { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  .avatar { background: var(--brand-600); color: #fff; font-weight: 600; }
-  .name { font-size: 14px; color: var(--text-1); }
+  .avatar { background: var(--brand-600); color: var(--on-accent); font-weight: 600; }
+  .name { font-size: var(--fs-5); color: var(--text-1); }
 }
 // el-main 默认就有 20px padding，.app-container 也有 20px —— 以前叠加成 40px
 .main { background: var(--bg-page); padding: 0; }
@@ -296,10 +296,10 @@ function handleCommand(cmd) {
   position: relative; width: 96px; height: 96px; border-radius: 50%;
   overflow: hidden; background: var(--brand-600); display: flex; align-items: center; justify-content: center;
   img { width: 100%; height: 100%; object-fit: cover; }
-  .pf-avatar-text { color: #fff; font-size: 32px; font-weight: 600; }
+  .pf-avatar-text { color: var(--on-accent); font-size: 32px; font-weight: 600; }
   .pf-mask {
-    position: absolute; inset: 0; background: rgba(0,0,0,.45); color: #fff;
-    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    position: absolute; inset: 0; background: rgba(0,0,0,.45); color: var(--on-accent);
+    font-size: var(--fs-2); display: flex; align-items: center; justify-content: center;
     opacity: 0; transition: opacity .2s;
   }
   &:hover .pf-mask, &.busy .pf-mask { opacity: 1; }

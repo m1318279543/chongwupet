@@ -51,7 +51,7 @@
         <template #default="scope">{{ catText(scope.row.cat) }}</template>
       </el-table-column>
       <el-table-column label="售价" width="96">
-        <template #default="scope"><span class="money">¥{{ scope.row.price }}</span></template>
+        <template #default="scope"><span class="ui-money">¥{{ scope.row.price }}</span></template>
       </el-table-column>
       <el-table-column label="库存" width="110">
         <template #default="scope">
@@ -203,7 +203,7 @@
     <el-drawer v-model="logsOpen" :title="'库存流水 · ' + logsRow.goodsName" size="560px">
       <el-table :data="logs" v-loading="logsLoading" size="small">
         <el-table-column label="时间" width="150">
-          <template #default="scope">{{ fmt(scope.row.createTime) }}</template>
+          <template #default="scope">{{ fmtShort(scope.row.createTime) }}</template>
         </el-table-column>
         <el-table-column label="类型" width="90">
           <template #default="scope">
@@ -233,6 +233,7 @@ import StatCards from '@/components/StatCards.vue'
 import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listGoods, getGoodsStats, getGoods, addGoods, updateGoods, listStockLogs, changeStock } from '@/api/pet/petGoods'
+import { fmtShort } from '@/utils/format'
 
 const { proxy } = getCurrentInstance()
 
@@ -291,9 +292,6 @@ function typeTag(t) {
 }
 function inType(t) {
   return t === '1' || t === '3' || t === '5'
-}
-function fmt(v) {
-  return v ? String(v).replace('T', ' ').slice(5, 16) : '—'
 }
 
 function getList() {
@@ -440,11 +438,10 @@ onMounted(getList)
 
 <style scoped lang="scss">
 .goods-cell { display: flex; align-items: center; gap: 10px;
-  .thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; background: var(--bg-page); }
-  .name { font-size: 13px; color: var(--text-1); }
-  .code { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .thumb { width: 42px; height: 42px; border-radius: var(--radius-sm); object-fit: cover; background: var(--bg-page); }
+  .name { font-size: var(--fs-4); color: var(--text-1); }
+  .code { font-size: var(--fs-2); color: var(--text-3); margin-top: 2px; }
 }
-.money { color: var(--brand-700); font-weight: 600; }
 .up { color: var(--success-500); font-weight: 600; }
 .down { color: var(--danger-500); font-weight: 600; }
 </style>

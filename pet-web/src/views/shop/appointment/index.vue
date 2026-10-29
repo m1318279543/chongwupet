@@ -13,7 +13,7 @@
     </header>
 
     <!-- 游客提示：一条左色线，不做提示卡 -->
-    <p v-if="!userStore.token" class="apt-note">
+    <p v-if="!userStore.token" class="ui-note">
       当前为游客浏览，
       <button type="button" class="ui-linkbtn" @click="openAuth('login')">登录</button>
       后可查看和管理自己的预约。
@@ -120,13 +120,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
+import { ref, reactive, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Phone } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
 import { listMyServiceOrders, evaluateServiceOrder } from '@/api/pet/petService'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
+import { useClientPaging } from '@/composables/usePagedList'
+import { isImage } from '@/utils/petDisplay'
 
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
@@ -141,13 +143,7 @@ const evalForm = reactive({ score: 5, comment: '' })
 
 // 定高列表分页：每页 5 条（单行 126px，5 行铺满 630px 的列表区）
 const PAGE_SIZE = 5
-const page = ref(1)
-const pagedList = computed(() => list.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
-const rangeStart = computed(() => (list.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, list.value.length))
-watch(() => list.value.length, (len) => {
-  if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
-})
+const { page, paged: pagedList, rangeStart, rangeEnd } = useClientPaging(list, PAGE_SIZE)
 
 function svcOf(item) { return serviceMap.value[item.appointmentId] }
 function svcText(s) { return { 0: '待接单', 1: '已接单', 2: '服务中', 3: '已完成', 4: '已取消', 5: '爽约' }[s] || '' }
@@ -192,7 +188,6 @@ async function loadService() {
   }
 }
 
-function isImage(s) { return !!s && (s.indexOf('/') === 0 || s.indexOf('http') === 0) }
 function fmtTime(v) {
   if (!v) return '—'
   const str = String(v).replace('T', ' ')
@@ -254,18 +249,6 @@ onMounted(() => {
 // 骨架（页头/行列表/状态标签/空态）全部来自 .ui-* 基元，
 // 这里只处理「留言」和「工单」两处从属信息的分层。
 
-.apt-note {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin: 22px 0 0;
-  padding: 2px 0 2px 12px;
-  border-left: 2px solid var(--brand-300);
-  font-size: 13px;
-  color: var(--text-2);
-}
-
 .apt-body { margin-top: 8px; min-height: 240px; }
 
 // 定高后每条必须等高：留言已并入元信息行并做单行省略，避免撑破行高
@@ -286,7 +269,7 @@ onMounted(() => {
   align-items: center;
   gap: 5px;
   color: var(--text-3);
-  .el-icon { font-size: 13px; color: var(--text-4); }
+  .el-icon { font-size: var(--fs-4); color: var(--text-4); }
 }
 
 // 工单：依附于预约的下级信息 —— 缩进 + 左侧竖线，不用第二个框
@@ -298,7 +281,7 @@ onMounted(() => {
   margin-top: 12px;
   padding: 10px 0 2px 12px;
   border-left: 2px solid var(--brand-200);
-  font-size: 12.5px;
+  font-size: var(--fs-3);
   color: var(--text-2);
 }
 .svc__no { font-variant-numeric: tabular-nums; color: var(--text-2); }
@@ -306,7 +289,7 @@ onMounted(() => {
 .svc__score { color: var(--warning-500); }
 
 .eval-box {
-  .eval-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--text-1); }
+  .eval-title { margin: 0 0 12px; font-size: var(--fs-6); font-weight: 700; color: var(--text-1); }
 }
 
 @media (max-width: 768px) {

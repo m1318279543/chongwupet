@@ -96,15 +96,15 @@
 <script setup>
 import { ref, computed, inject, nextTick, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { listPetInfo, getPetOverview } from '@/api/pet/petInfo'
 import { listCategory } from '@/api/pet/category'
-import { listPetFavorite, addPetFavorite, delPetFavorite, listMyFavoriteIds } from '@/api/pet/petFavorite'
-import { commentStatGroup } from '@/api/pet/petComment'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
 import PetCard from '@/views/shop/home/PetCard.vue'
-import { PET_GRADIENTS } from '@/views/shop/home/homeData'
+import { usePetFavorite } from '@/composables/usePetFavorite'
+import { usePetRatings } from '@/composables/usePetRatings'
+import { useServerPaging } from '@/composables/usePagedList'
+import { petGradient } from '@/utils/petDisplay'
 
 const route = useRoute()
 const router = useRouter()
@@ -116,12 +116,11 @@ const total = ref(0)
 const counts = ref({ total: 0, onSale: 0, categoryCount: 0 })
 const byCategory = ref([])
 const loading = ref(false)
-const myFavorites = ref([])
 const gridRef = ref(null)
 const chipsRef = ref(null)
 // 服务端分页：每页 12 只，翻页只取当前页
 const PAGE_SIZE = 12
-const page = ref(1)
+const { page } = useServerPaging(total, PAGE_SIZE, () => loadList())
 
 // 筛选状态
 const keyword = ref(String(route.query.kw || ''))
@@ -132,19 +131,10 @@ const fPrice = ref('')
 const fSort = ref('')
 const fOnSale = ref(false)
 
-// 评分角标：petId -> {avg,count}
-const ratingMap = ref({})
-function petRating(petId) {
-  const r = ratingMap.value[petId]
-  return r && Number(r.count) > 0 ? r : null
-}
-
-function petGradient(id) {
-  const c = PET_GRADIENTS[(id || 0) % PET_GRADIENTS.length]
-  return `linear-gradient(135deg, ${c[0]}, ${c[1]})`
-}
+// 收藏 / 评分 / 占位渐变：全站共用 composable 与工具
+const { isFav, load: loadMyFavorites, toggle: toggleFav } = usePetFavorite(openAuth)
+const { rating: petRating, load: loadRatings } = usePetRatings('pet')
 function isLogged() { return !!userStore.token }
-function isFav(petId) { return myFavorites.value.includes(petId) }
 
 // 分类计数：来自 overview 接口的分类聚合，不再自己遍历全量列表
 const catCounts = computed(() => {
@@ -221,40 +211,6 @@ watch([activeValue, fGender, fPrice, fSort, fOnSale, keyword], () => {
     loadList()
   }, 250)
 })
-// 翻页
-watch(page, () => loadList())
-
-async function loadMyFavorites() {
-  if (!isLogged()) { myFavorites.value = []; return }
-  try {
-    const res = await listMyFavoriteIds()
-    myFavorites.value = res.data || []
-  } catch (e) { console.warn('收藏加载失败', e) }
-}
-
-async function toggleFav(petId) {
-  if (!isLogged()) {
-    ElMessage.info('请先登录后再收藏')
-    openAuth('login')
-    return
-  }
-  if (isFav(petId)) {
-    try {
-      const res = await listPetFavorite({ userId: userStore.userId, petId })
-      const fid = res.rows?.[0]?.favoriteId
-      if (fid) await delPetFavorite(fid)
-      myFavorites.value = myFavorites.value.filter(id => id !== petId)
-      ElMessage.success('已取消收藏')
-    } catch (e) { ElMessage.error(e?.message || '取消失败') }
-  } else {
-    try {
-      await addPetFavorite({ petId, userId: userStore.userId })
-      myFavorites.value.push(petId)
-      ElMessage.success('收藏成功')
-    } catch (e) { ElMessage.error(e?.message || '收藏失败') }
-  }
-}
-
 function applyFilter(type, value) {
   activeType.value = type
   activeValue.value = value
@@ -302,11 +258,7 @@ onMounted(() => {
   listCategory({ pageNum: 1, pageSize: 100 }).then((res) => {
     categoryRows.value = res.rows || []
   }).catch(() => {})
-  commentStatGroup('pet').then((res) => {
-    const m = {}
-    for (const row of res.data || []) m[row.petId] = row
-    ratingMap.value = m
-  }).catch(() => {})
+  loadRatings()
 })
 </script>
 
@@ -316,21 +268,21 @@ onMounted(() => {
 
 /* 品类快筛：吸附在顶栏下方，滚动浏览时也能随手换品类 */
 .chips {
-  position: sticky; top: 71px; z-index: 30;
+  position: sticky; top: calc(var(--topbar-h) - 1px); z-index: var(--z-sticky);
   display: flex; gap: 8px; flex-wrap: wrap;
   margin: 26px 0 22px; padding: 10px 0 12px;
   background: var(--bg-page);
-  scroll-margin-top: 74px;
+  scroll-margin-top: calc(var(--topbar-h) + 2px);
   &::-webkit-scrollbar { display: none; }
 }
 .chip {
   display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px;
   border: 1px solid var(--border-1); border-radius: var(--radius-pill);
-  background: var(--bg-card); color: var(--text-2); font-size: 13px; font-weight: 500;
+  background: var(--bg-card); color: var(--text-2); font-size: var(--fs-4); font-weight: 500;
   font-family: inherit; white-space: nowrap; cursor: pointer; transition: all .16s;
-  em { font-style: normal; font-size: 12px; opacity: .62; font-variant-numeric: tabular-nums; }
+  em { font-style: normal; font-size: var(--fs-2); opacity: .62; font-variant-numeric: tabular-nums; }
   &:hover { border-color: var(--brand-200); color: var(--brand-700); background: var(--brand-50); }
-  &.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; font-weight: 700;
+  &.on { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-accent); font-weight: 700;
     em { opacity: .82; } }
 }
 
@@ -340,8 +292,8 @@ onMounted(() => {
   padding: 12px 0; margin-bottom: 20px;
   border-bottom: var(--rule);
   .fb-item { display: flex; align-items: center; gap: 8px; }
-  .fb-label { font-size: 13px; color: var(--text-3); flex-shrink: 0; }
-  .kw-note { font-size: 13px; color: var(--brand-700); font-weight: 700; }
+  .fb-label { font-size: var(--fs-4); color: var(--text-3); flex-shrink: 0; }
+  .kw-note { font-size: var(--fs-4); color: var(--brand-700); font-weight: 700; }
 }
 
 /* 网格：auto-fill 自适应，390 两列 / 1000 三列 / 1200 四列，无断点跳变 */
@@ -349,7 +301,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(250px, 45%), 1fr));
   gap: 26px 16px;
-  min-height: 200px; scroll-margin-top: 150px;
+  min-height: 200px; scroll-margin-top: calc(var(--anchor-offset) + 20px);
 }
 
 /* 服务端分页条：居中，与网格留出呼吸区 */
@@ -361,7 +313,7 @@ onMounted(() => {
 @media (max-width: 768px) {
   /* 品类条：单行横滑，吸附在 64px 顶栏下方；右侧渐隐提示还能滑 */
   .chips {
-    top: 63px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
     -webkit-overflow-scrolling: touch; margin: 20px 0 16px;
     scroll-snap-type: x proximity;
     // 右侧 32px 渐隐：露出的半个 chip 与渐隐一起构成「可横滑」的暗示
@@ -369,8 +321,8 @@ onMounted(() => {
     mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 32px), transparent 100%);
     padding-right: 32px;
   }
-  .chip { height: 33px; padding: 0 12px; font-size: 13px; flex-shrink: 0; scroll-snap-align: start; }
-  .grid { gap: 18px 10px; scroll-margin-top: 130px; }
+  .chip { height: 33px; padding: 0 12px; font-size: var(--fs-4); flex-shrink: 0; scroll-snap-align: start; }
+  .grid { gap: 18px 10px; scroll-margin-top: var(--anchor-offset); }
   .filter-bar { gap: 10px; }
 }
 </style>

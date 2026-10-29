@@ -106,7 +106,7 @@ onMounted(getList)
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-5);
 }
 .text-danger {
   color: var(--danger-500);

@@ -1,6 +1,6 @@
 <template>
   <div class="consult-admin">
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="never" class="ui-toolbar-card">
       <el-form :model="queryParams" inline>
         <el-form-item label="用户名">
           <el-input v-model="queryParams.userName" placeholder="请输入" clearable style="width: 160px" @keyup.enter="handleQuery" />
@@ -19,7 +19,7 @@
 
     <el-card shadow="never" class="table-card">
       <template #header>
-        <div class="card-head">
+        <div class="ui-card-head">
           <span>共 {{ total }} 条咨询</span>
           <el-button type="success" @click="handleQuery">刷新</el-button>
         </div>
@@ -42,7 +42,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
+      <div class="ui-pager">
         <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize"
           :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper"
           @size-change="getList" @current-change="getList" />
@@ -139,10 +139,8 @@ onMounted(getList)
   margin-bottom: 8px;
 }
 .draft-hint {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-3, #8a8f8c);
 }
-.search-card { margin-bottom: 14px; }
-.table-card .card-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--text-2); }
-.pager { display: flex; justify-content: flex-end; margin-top: 16px; }
+
 </style>
