@@ -372,7 +372,9 @@ async function loadFavStatus() {
 function askAi() {
   const p = pet.value || {}
   const q = `我在看「${p.petName}」（${p.breed || '品种未知'}，¥${p.price || '价格面议'}），它适合什么样的家庭？养它每月大概要花多少？`
-  window.dispatchEvent(new CustomEvent('pet-ai-open', { detail: { q } }))
+  window.dispatchEvent(new CustomEvent('pet-assistant-open', {
+    detail: { scene: 'shop', petId: p.petId || null, message: q }
+  }))
 }
 
 async function toggleFav() {
