@@ -22,6 +22,31 @@ export function draftConsultReply(consultId) {
   })
 }
 
+// 后台：AI 咨询记录列表（分类/用户/场景/日期/关键词筛选）
+export function listAiChats(query) {
+  return request({
+    url: '/pet/assistant/admin/list',
+    method: 'get',
+    params: query
+  })
+}
+
+// 后台：AI 咨询分类统计
+export function aiChatStats() {
+  return request({
+    url: '/pet/assistant/admin/stats',
+    method: 'get'
+  })
+}
+
+// 会话回放（本人或有后台查看权限）
+export function aiChatHistory(convId) {
+  return request({
+    url: '/pet/assistant/history/' + convId,
+    method: 'get'
+  })
+}
+
 // 回答反馈
 export function sendAssistantFeedback(data) {
   return request({

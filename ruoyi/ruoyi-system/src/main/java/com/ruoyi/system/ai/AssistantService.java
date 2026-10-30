@@ -1461,6 +1461,7 @@ public class AssistantService
                 conv.setUserId(userId);
                 conv.setUserName(userName);
                 conv.setScene(StringUtils.isBlank(req.scene) ? "shop" : req.scene);
+                conv.setIntent(answer.intent);
                 conv.setBizId(req.bizId);
                 conv.setTitle(abbreviate(message, 40));
                 conv.setStatus("0");

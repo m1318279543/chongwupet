@@ -28,6 +28,7 @@ const routes = [
       { path: 'comment', component: () => import('@/views/admin/comment/index.vue'), meta: { title: '评论管理', perm: 'pet:comment:manage', icon: 'ChatLineRound' } },
       { path: 'preference', component: () => import('@/views/admin/preference/index.vue'), meta: { title: '宠物喜好', perm: 'pet:preference:list', icon: 'IceCream' } },
       { path: 'consult', component: () => import('@/views/admin/consult/index.vue'), meta: { title: '客服管理', perm: 'pet:consult:list', icon: 'ChatDotRound' } },
+      { path: 'aichat', component: () => import('@/views/admin/aichat/index.vue'), meta: { title: 'AI 咨询记录', perm: 'pet:assistant:list', icon: 'MagicStick' } },
       { path: 'cancel', component: () => import('@/views/admin/cancel/index.vue'), meta: { title: '取消记录', perm: 'pet:cancel:list', icon: 'CircleClose' } },
       { path: 'match', component: () => import('@/views/admin/match/index.vue'), meta: { title: '智能匹配记录', perm: 'pet:match:list', icon: 'MagicStick' } },
       { path: 'health', component: () => import('@/views/admin/health/index.vue'), meta: { title: '健康档案', perm: 'pet:health:list', icon: 'Histogram' } },

@@ -10,6 +10,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="userId"        column="user_id" />
         <result property="userName"      column="user_name" />
         <result property="scene"         column="scene" />
+        <result property="intent"        column="intent" />
         <result property="bizId"         column="biz_id" />
         <result property="title"         column="title" />
         <result property="storeId"       column="store_id" />
@@ -35,15 +36,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <insert id="insertConversation" parameterType="PetAiConversation" useGeneratedKeys="true" keyProperty="convId">
         insert into pet_ai_conversation
-        (conv_no, user_id, user_name, scene, biz_id, title, store_id, message_count, last_time, status, create_time, update_time)
+        (conv_no, user_id, user_name, scene, intent, biz_id, title, store_id, message_count, last_time, status, create_time, update_time)
         values
-        (#{convNo}, #{userId}, #{userName}, #{scene}, #{bizId}, #{title}, #{storeId}, 0, sysdate(), '0', sysdate(), sysdate())
+        (#{convNo}, #{userId}, #{userName}, #{scene}, #{intent}, #{bizId}, #{title}, #{storeId}, 0, sysdate(), '0', sysdate(), sysdate())
     </insert>
 
     <update id="updateConversation" parameterType="PetAiConversation">
         update pet_ai_conversation
         <set>
             <if test="title != null and title != ''">title = #{title},</if>
+            <if test="intent != null and intent != ''">intent = #{intent},</if>
             <if test="messageCount != null">message_count = #{messageCount},</if>
             <if test="status != null">status = #{status},</if>
             <if test="storeId != null">store_id = #{storeId},</if>
@@ -102,6 +104,44 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                coalesce(sum(case when rating = '1' then 1 else 0 end), 0) as good,
                coalesce(sum(case when rating = '0' then 1 else 0 end), 0) as bad
         from pet_ai_feedback
+    </select>
+
+    <!-- 后台咨询记录列表：按分类/用户/场景/日期/关键词筛选 -->
+    <select id="selectAdminList" parameterType="PetAiConversation" resultMap="PetAiConversationResult">
+        select * from pet_ai_conversation
+        <where>
+            <if test="intent != null and intent != ''">
+                <choose>
+                    <when test="intent == 'unknown'">and (intent is null or intent = '')</when>
+                    <otherwise>and intent = #{intent}</otherwise>
+                </choose>
+            </if>
+            <if test="userName != null and userName != ''">and user_name like concat('%', #{userName}, '%')</if>
+            <if test="scene != null and scene != ''">and scene = #{scene}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                and (title like concat('%', #{params.keyword}, '%') or conv_no like concat('%', #{params.keyword}, '%'))
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">and date(create_time) &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and date(create_time) &lt;= #{params.endTime}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <!-- 意图分类统计 -->
+    <select id="selectIntentStats" resultType="java.util.LinkedHashMap">
+        select coalesce(intent, 'unknown') as intent, count(*) as total
+        from pet_ai_conversation
+        group by coalesce(intent, 'unknown')
+        order by total desc
+    </select>
+
+    <!-- 咨询总览：总会话 / 今日 / 转人工 -->
+    <select id="selectOverview" resultType="java.util.LinkedHashMap">
+        select count(*) as total,
+               coalesce(sum(case when date(create_time) = curdate() then 1 else 0 end), 0) as today,
+               coalesce(sum(case when status = '1' then 1 else 0 end), 0) as handoff
+        from pet_ai_conversation
     </select>
 
 </mapper>

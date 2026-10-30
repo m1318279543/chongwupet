@@ -37,4 +37,13 @@ public interface PetAiConversationMapper
 
     /** 反馈统计：总数 / 有用 / 没用 */
     public java.util.Map<String, Object> selectFeedbackStat();
+
+    /** 后台咨询记录列表（分页插件接管分页） */
+    public List<PetAiConversation> selectAdminList(PetAiConversation query);
+
+    /** 意图分类统计：intent -> total */
+    public List<java.util.Map<String, Object>> selectIntentStats();
+
+    /** 咨询总览：total / today / handoff */
+    public java.util.Map<String, Object> selectOverview();
 }

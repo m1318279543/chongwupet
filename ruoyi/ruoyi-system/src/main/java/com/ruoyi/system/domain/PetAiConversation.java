@@ -3,12 +3,16 @@ package com.ruoyi.system.domain;
 import java.io.Serializable;
 import java.util.Date;
 
+import com.ruoyi.common.core.domain.BaseEntity;
+
 /**
  * AI 会话 实体
  *
+ * 继承 BaseEntity 以获得 params 查询映射（日期范围 / 关键词等后台筛选）。
+ *
  * @author ruoyi
  */
-public class PetAiConversation implements Serializable
+public class PetAiConversation extends BaseEntity implements Serializable
 {
     private static final long serialVersionUID = 1L;
 
@@ -17,6 +21,8 @@ public class PetAiConversation implements Serializable
     private Long userId;
     private String userName;
     private String scene;
+    /** 首问意图分类：goods/order_list/knowledge...，后台咨询记录按此分门别类 */
+    private String intent;
     private String bizId;
     private String title;
     private Long storeId;
@@ -74,6 +80,16 @@ public class PetAiConversation implements Serializable
     public void setScene(String scene)
     {
         this.scene = scene;
+    }
+
+    public String getIntent()
+    {
+        return intent;
+    }
+
+    public void setIntent(String intent)
+    {
+        this.intent = intent;
     }
 
     public String getBizId()

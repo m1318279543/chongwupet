@@ -99,6 +99,11 @@ public class SceneRouter
             }
             return INTENT_PET;
         }
+        // 商品咨询先于选宠推荐："推荐狗粮"是商品问题，"推荐一只猫"才是选宠
+        if (contains(text, "粮", "猫粮", "狗粮", "吃什么", "喂多少", "换粮"))
+        {
+            return INTENT_GOODS;
+        }
         // 关键词要覆盖前端 QUICK 里的快捷问句，否则用户点完示例会掉进养宠知识：
         // 「小户型、第一次养，预算 3000」和「每天只能陪 1 小时」原先都不命中。
         if ("match".equals(scene) || contains(text, "推荐", "适合", "选一只", "养什么", "第一只", "新手养",
@@ -110,10 +115,6 @@ public class SceneRouter
         if (contains(text, "门店", "地址", "营业时间", "在哪"))
         {
             return INTENT_STORES;
-        }
-        if (contains(text, "粮", "猫粮", "狗粮", "吃什么", "喂多少", "换粮"))
-        {
-            return INTENT_GOODS;
         }
         // 入口场景兜底：订单页进来但没命中任何内容意图时，仍按订单助手处理
         if ("order".equals(scene))

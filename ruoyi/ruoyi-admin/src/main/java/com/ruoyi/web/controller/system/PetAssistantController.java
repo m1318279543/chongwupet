@@ -23,7 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.ai.AiGuard;
@@ -42,12 +44,14 @@ import com.ruoyi.system.service.IPetConsultService;
  *   GET  /pet/assistant/history/{id} 会话回放
  *   POST /pet/assistant/feedback    回答反馈
  *   POST /pet/assistant/consult/draft 后台客服起草
+ *   GET  /pet/assistant/admin/list  后台咨询记录（按分类筛选）
+ *   GET  /pet/assistant/admin/stats 后台咨询分类统计
  *
  * @author ruoyi
  */
 @RestController
 @RequestMapping("/pet/assistant")
-public class PetAssistantController
+public class PetAssistantController extends BaseController
 {
     private static final Logger log = LoggerFactory.getLogger(PetAssistantController.class);
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -117,7 +121,7 @@ public class PetAssistantController
         return AjaxResult.success(answer.toPayload());
     }
 
-    /** 会话回放（只能看自己的） */
+    /** 会话回放（本人或有后台查看权限的账号可看） */
     @GetMapping("/history/{convId}")
     public AjaxResult history(@PathVariable("convId") Long convId)
     {
@@ -127,7 +131,7 @@ public class PetAssistantController
             return AjaxResult.error("会话不存在");
         }
         Long userId = currentUserId();
-        if (conv.getUserId() != null && userId != null && !conv.getUserId().equals(userId))
+        if (conv.getUserId() != null && userId != null && !conv.getUserId().equals(userId) && !canReviewAll())
         {
             return AjaxResult.error("没有权限查看该会话");
         }
@@ -175,7 +179,7 @@ public class PetAssistantController
         return AjaxResult.success();
     }
 
-    /** 后台客服起草：返回草稿与引用，不落库、不自动发送 */
+    /** 后台咨询起草：返回草稿与引用，不落库、不自动发送 */
     @PreAuthorize("@ss.hasPermi('pet:consult:list')")
     @PostMapping("/consult/draft")
     public AjaxResult consultDraft(@RequestBody Map<String, Object> body)
@@ -200,6 +204,28 @@ public class PetAssistantController
         data.put("draft", answer.content);
         data.put("citations", answer.citations);
         data.put("convId", answer.convId);
+        return AjaxResult.success(data);
+    }
+
+    /** 后台咨询记录：按分类/用户/场景/日期/关键词分页 */
+    @PreAuthorize("@ss.hasPermi('pet:assistant:list')")
+    @GetMapping("/admin/list")
+    public TableDataInfo adminList(PetAiConversation query)
+    {
+        startPage();
+        List<PetAiConversation> list = conversationMapper.selectAdminList(query);
+        return getDataTable(list);
+    }
+
+    /** 后台咨询统计：总览 + 意图分类分布 + 反馈 */
+    @PreAuthorize("@ss.hasPermi('pet:assistant:list')")
+    @GetMapping("/admin/stats")
+    public AjaxResult adminStats()
+    {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("overview", conversationMapper.selectOverview());
+        data.put("intents", conversationMapper.selectIntentStats());
+        data.put("feedback", conversationMapper.selectFeedbackStat());
         return AjaxResult.success(data);
     }
 
@@ -294,6 +320,20 @@ public class PetAssistantController
         try
         {
             return SecurityUtils.isAdmin() || SecurityUtils.hasRole("store_manager");
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+    }
+
+    /** 后台查看权限：admin / 店长 / 持有 pet:assistant:list 权限的账号可看所有会话 */
+    private static boolean canReviewAll()
+    {
+        try
+        {
+            return SecurityUtils.isAdmin() || SecurityUtils.hasRole("store_manager")
+                    || SecurityUtils.getLoginUser().getPermissions().contains("pet:assistant:list");
         }
         catch (Exception e)
         {
