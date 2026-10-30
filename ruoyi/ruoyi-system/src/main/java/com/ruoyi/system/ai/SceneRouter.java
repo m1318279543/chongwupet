@@ -62,8 +62,8 @@ public class SceneRouter
             return INTENT_ORDER_DETAIL;
         }
         // 订单意图只看内容关键词：用户在订单页问"狗粮怎么选"也应走商品咨询，
-        // 入口场景只做兜底（见方法末尾）
-        if (contains(text, "订单", "退款", "发货", "物流", "支付", "付款", "到货"))
+        // 入口场景不再兜底（避免随便一句"你好"也弹订单卡片）
+        if (contains(text, "订单", "退款", "发货", "物流", "支付", "付款", "到货", "结算"))
         {
             return INTENT_ORDER_LIST;
         }
@@ -116,11 +116,8 @@ public class SceneRouter
         {
             return INTENT_STORES;
         }
-        // 入口场景兜底：订单页进来但没命中任何内容意图时，仍按订单助手处理
-        if ("order".equals(scene))
-        {
-            return INTENT_ORDER_LIST;
-        }
+        // 订单页入口不再兜底成订单咨询：问什么答什么（订单词已在前面命中），
+        // 否则用户随便说句"你好"也会弹一屏订单卡片
         return INTENT_KNOWLEDGE;
     }
 
