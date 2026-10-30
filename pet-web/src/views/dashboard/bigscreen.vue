@@ -384,7 +384,7 @@ onBeforeUnmount(() => {
 .screen {
   width: 1920px;
   height: 1080px;
-  transform-origin: left top;
+  transform-origin: center center;
   position: absolute;
   left: 50%; top: 50%;
   margin-left: -960px;
