@@ -129,6 +129,7 @@ import { useRouter } from 'vue-router'
 const props = defineProps({
   block: { type: Object, required: true }
 })
+const emit = defineEmits(['consult'])
 const router = useRouter()
 const data = computed(() => props.block?.data || {})
 const health = computed(() => data.value.health || {})
@@ -157,7 +158,8 @@ function go() {
   } else if (props.block.type === 'goods') {
     router.push('/shop/food')
   } else if (props.block.type === 'order') {
-    router.push('/shop/cart')
+    // 订单卡片可点击：直接就该订单发起咨询，而不是跳页
+    emit('consult', data.value.orderNo)
   } else if (props.block.type === 'appointment') {
     router.push('/shop/appointment')
   }

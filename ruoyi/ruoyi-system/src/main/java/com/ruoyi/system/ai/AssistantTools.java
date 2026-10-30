@@ -449,23 +449,51 @@ public class AssistantTools
         List<Map<String, Object>> list = new ArrayList<>();
         for (PetOrder one : rows)
         {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("orderNo", one.getOrderNo());
-            m.put("orderType", one.getOrderType());
-            m.put("status", one.getStatus());
-            m.put("payStatus", one.getPayStatus());
-            m.put("payAmount", money(one.getPayAmount()));
-            m.put("itemCount", one.getItemCount());
-            m.put("storeName", one.getStoreName());
-            m.put("createTime", datetime(one.getCreateTime()));
-            m.put("firstItem", firstItem(one));
-            list.add(m);
             if (list.size() >= limit)
             {
                 break;
             }
+            list.add(orderCard(one));
         }
         return list;
+    }
+
+    /** 我已支付且未取消的订单：订单咨询/售后场景专用，已取消单不进入咨询列表 */
+    public List<Map<String, Object>> myPaidOrders(Long userId, int limit)
+    {
+        if (userId == null)
+        {
+            return new ArrayList<>();
+        }
+        List<PetOrder> rows = petOrderService.selectMyOrders(userId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (PetOrder one : rows)
+        {
+            if (list.size() >= limit)
+            {
+                break;
+            }
+            if ("1".equals(one.getPayStatus()) && !"3".equals(one.getStatus()))
+            {
+                list.add(orderCard(one));
+            }
+        }
+        return list;
+    }
+
+    private Map<String, Object> orderCard(PetOrder one)
+    {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("orderNo", one.getOrderNo());
+        m.put("orderType", one.getOrderType());
+        m.put("status", one.getStatus());
+        m.put("payStatus", one.getPayStatus());
+        m.put("payAmount", money(one.getPayAmount()));
+        m.put("itemCount", one.getItemCount());
+        m.put("storeName", one.getStoreName());
+        m.put("createTime", datetime(one.getCreateTime()));
+        m.put("firstItem", firstItem(one));
+        return m;
     }
 
     /** 订单详情，带归属校验 */

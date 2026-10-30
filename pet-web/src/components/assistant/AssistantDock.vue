@@ -26,7 +26,7 @@
               <div v-if="m.loading && !m.content" class="as-typing"><i></i><i></i><i></i></div>
 
               <div v-if="m.blocks && m.blocks.length" class="as-blocks">
-                <AssistantBlock v-for="(block, index) in m.blocks" :key="index" :block="block" />
+                <AssistantBlock v-for="(block, index) in m.blocks" :key="index" :block="block" @consult="consultOrder" />
               </div>
 
               <div v-if="m.citations && m.citations.length" class="as-cites">
@@ -147,6 +147,12 @@ function submit(text) {
   send(value)
   input.value = ''
   nextTick(() => autoGrow())
+}
+
+/** 点订单卡片：直接就该订单发起咨询 */
+function consultOrder(orderNo) {
+  if (!orderNo || state.loading) return
+  submit(`我想咨询订单 ${orderNo} 的售后问题，帮我看看这笔订单的明细和当前状态。`)
 }
 
 function onEnter(event) {

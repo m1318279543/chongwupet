@@ -472,15 +472,16 @@ public class AssistantService
             answer.actions.add(action("login", "去登录"));
             return answer;
         }
-        List<Map<String, Object>> orders = tools.myOrders(userId, 5);
+        // 咨询/售后场景只列已支付且未取消的订单，已取消单不进入咨询列表
+        List<Map<String, Object>> orders = tools.myPaidOrders(userId, 5);
         answer.tools.add("order.mine");
         if (orders.isEmpty())
         {
-            answer.content = "你还没有订单记录。如果想看看在售宠物或宠物粮，我可以帮你找。";
+            answer.content = "你名下暂时没有可咨询的已支付订单。如果想看看在售宠物或宠物粮，我可以帮你找。";
             answer.actions.add(action("link", "去逛逛", "/shop/pets"));
             return answer;
         }
-        StringBuilder sb = new StringBuilder("你最近的订单：\n");
+        StringBuilder sb = new StringBuilder("以下是你可以咨询的已支付订单，点订单卡片就能直接发起咨询：\n");
         for (Map<String, Object> one : orders)
         {
             sb.append("\n").append(one.get("orderNo"))
@@ -494,7 +495,7 @@ public class AssistantService
             block.put("data", one);
             answer.blocks.add(block);
         }
-        sb.append("\n把订单号发给我，我可以看具体明细；需要退款的话，已支付且未取消的订单可以在订单页直接申请。");
+        sb.append("\n点击上方订单卡片即可针对该订单咨询；也可以直接把问题发给我。");
         answer.actions.add(action("link", "打开我的订单", "/shop/order"));
         answer.content = sb.toString();
         return answer;

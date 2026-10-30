@@ -22,7 +22,6 @@ const routes = [
       { path: 'goods', component: () => import('@/views/admin/goods/index.vue'), meta: { title: '商品与库存', perm: 'pet:goods:list', icon: 'ShoppingCart' } },
       { path: 'order', component: () => import('@/views/admin/order/index.vue'), meta: { title: '订单管理', perm: 'pet:order:list', icon: 'Tickets' } },
       { path: 'payment', component: () => import('@/views/admin/payment/index.vue'), meta: { title: '支付流水', perm: 'pet:payment:list', icon: 'Wallet' } },
-      { path: 'knowledge', component: () => import('@/views/admin/knowledge/index.vue'), meta: { title: 'AI 知识库', perm: 'pet:knowledge:list', icon: 'Reading' } },
       { path: 'refund', component: () => import('@/views/admin/refund/index.vue'), meta: { title: '退款管理', perm: 'pet:refund:list', icon: 'Money' } },
       { path: 'purchase', component: () => import('@/views/admin/purchase/index.vue'), meta: { title: '采购管理', perm: 'pet:purchase:list', icon: 'Van' } },
       { path: 'like', component: () => import('@/views/admin/like/index.vue'), meta: { title: '点赞管理', perm: 'pet:like:list', icon: 'Pointer' } },
