@@ -169,15 +169,46 @@
         <el-table-column label="预约时间" width="140">
           <template #default="scope">{{ fmt(scope.row.appointTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="90" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="openSvcDetail(scope.row)">详情</el-button>
+            <el-button
+              v-if="scope.row.status === '0' || (scope.row.status === '1' && !scope.row.staffId)"
+              link type="primary" @click="openSvcDispatch(scope.row)" v-hasPermi="['pet:service:dispatch']"
+            >派工</el-button>
+            <el-button
+              v-if="scope.row.status === '1'" link type="primary" @click="handleSvcStart(scope.row)" v-hasPermi="['pet:service:dispatch']"
+            >开始</el-button>
+            <el-button
+              v-if="scope.row.status === '1' || scope.row.status === '2'" link type="success" @click="handleSvcFinish(scope.row)" v-hasPermi="['pet:service:finish']"
+            >完成</el-button>
+            <el-button
+              v-if="['0','1','2'].includes(scope.row.status)" link type="danger" @click="handleSvcCancel(scope.row)" v-hasPermi="['pet:service:cancel']"
+            >取消</el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <pagination v-show="svcTotal > 0" :total="svcTotal" v-model:page="svcQuery.pageNum" v-model:limit="svcQuery.pageSize" @pagination="getSvcList" />
-      <p class="svc-hint">派工、开始服务、完成服务请到「服务工单」页处理；此处的服务单与商品订单一样参与支付与统计。</p>
+      <p class="svc-hint">此处可直接派工 / 开始 / 完成 / 取消；服务单与商品订单一样参与支付与统计。</p>
+
+      <!-- 服务单派工弹窗 -->
+      <el-dialog title="派工 / 接单" v-model="svcDispatchOpen" width="440px" append-to-body>
+        <el-form label-width="80px">
+          <el-form-item label="工单">
+            <span>{{ svcDispatchRow.serviceNo }} · {{ svcDispatchRow.itemName || '服务项目' }}</span>
+          </el-form-item>
+          <el-form-item label="执行员工">
+            <el-select v-model="svcDispatchStaff" placeholder="选择员工" style="width: 100%">
+              <el-option v-for="s in svcStaffList" :key="s.staffId" :label="s.staffName + '（' + (s.post || '员工') + '）'" :value="s.staffId" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="svcDispatchOpen = false">取消</el-button>
+          <el-button type="primary" :loading="svcSubmitting" @click="submitSvcDispatch">确认派工</el-button>
+        </template>
+      </el-dialog>
     </template>
 
     <!-- 服务预约单详情 -->
@@ -271,7 +302,8 @@ import StatCards from '@/components/StatCards.vue'
 import { ref, reactive, toRefs, getCurrentInstance, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listOrders, getOrder, orderStats, shipOrder, cancelOrder } from '@/api/pet/petOrder'
-import { listServiceOrder, getServiceOrder, getServiceStats } from '@/api/pet/petService'
+import { listServiceOrder, getServiceOrder, getServiceStats, dispatchServiceOrder, startServiceOrder, finishServiceOrder, cancelServiceOrder } from '@/api/pet/petService'
+import { listStoreStaff } from '@/api/pet/petStore'
 
 const { proxy } = getCurrentInstance()
 
@@ -422,6 +454,87 @@ function openSvcDetail(row) {
     svcDetail.value = res.data || row
     svcDetailLoading.value = false
   }).catch(() => { svcDetailLoading.value = false })
+}
+
+/* ---------- 服务单流转：派工 / 开始 / 完成 / 取消 ---------- */
+const svcDispatchOpen = ref(false)
+const svcDispatchRow = ref({})
+const svcDispatchStaff = ref(null)
+const svcStaffList = ref([])
+const svcSubmitting = ref(false)
+
+async function openSvcDispatch(row) {
+  svcDispatchRow.value = row
+  svcDispatchStaff.value = row.staffId || null
+  svcDispatchOpen.value = true
+  svcStaffList.value = []
+  if (row.storeId) {
+    try {
+      const res = await listStoreStaff(row.storeId)
+      svcStaffList.value = (res.data || []).filter((s) => s.status === '0')
+    } catch (e) {
+      svcStaffList.value = []
+    }
+  }
+}
+
+function submitSvcDispatch() {
+  if (!svcDispatchStaff.value) {
+    ElMessage.warning('请选择执行员工')
+    return
+  }
+  const staff = svcStaffList.value.find((s) => s.staffId === svcDispatchStaff.value)
+  svcSubmitting.value = true
+  dispatchServiceOrder(svcDispatchRow.value.serviceId, {
+    staffId: svcDispatchStaff.value,
+    staffName: staff ? staff.staffName : ''
+  }).then((res) => {
+    ElMessage.success(res.msg || '派工成功')
+    svcDispatchOpen.value = false
+    getSvcList()
+    getSvcStats()
+  }).catch((e) => {
+    ElMessage.error(e?.msg || '派工失败')
+  }).finally(() => { svcSubmitting.value = false })
+}
+
+function handleSvcStart(row) {
+  ElMessageBox.confirm(`确认开始「${row.itemName}」的服务？`, '开始服务', { type: 'info' })
+    .then(() => startServiceOrder(row.serviceId))
+    .then((res) => {
+      ElMessage.success(res.msg || '已开始服务')
+      getSvcList()
+      getSvcStats()
+    })
+    .catch(() => {})
+}
+
+function handleSvcFinish(row) {
+  ElMessageBox.prompt('服务完成，填写本次服务备注（选填）：', '完成服务', {
+    confirmButtonText: '确认完成',
+    cancelButtonText: '取消',
+    inputPlaceholder: '如：洗护完成，客户已接走'
+  }).then(({ value }) => finishServiceOrder(row.serviceId, value || ''))
+    .then((res) => {
+      ElMessage.success(res.msg || '工单已完成')
+      getSvcList()
+      getSvcStats()
+    })
+    .catch(() => {})
+}
+
+function handleSvcCancel(row) {
+  ElMessageBox.prompt('取消工单，请填写原因：', '取消工单', {
+    confirmButtonText: '确认取消',
+    cancelButtonText: '再想想',
+    inputPlaceholder: '如：客户改期 / 宠物状态不适合'
+  }).then(({ value }) => cancelServiceOrder(row.serviceId, value || ''))
+    .then((res) => {
+      ElMessage.success(res.msg || '工单已取消')
+      getSvcList()
+      getSvcStats()
+    })
+    .catch(() => {})
 }
 
 function openDetail(row) {

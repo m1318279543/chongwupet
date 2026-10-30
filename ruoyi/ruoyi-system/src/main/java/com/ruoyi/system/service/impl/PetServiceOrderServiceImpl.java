@@ -549,10 +549,18 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
     public Map<String, Object> selectTodayStats(Long storeId)
     {
         String today = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
-        List<Map<String, Object>> rows = petServiceOrderMapper.selectStatusCount(storeId, today);
+        // 两套口径：今日口径（预约时间=今天）只用于「今日工单/今日营收/员工排名」；
+        // 待接单/已接单/服务中/已完成/取消爽约一律全量统计，否则"明天来店的预约"在途数量统计不到
+        List<Map<String, Object>> todayRows = petServiceOrderMapper.selectStatusCount(storeId, today);
+        List<Map<String, Object>> allRows = petServiceOrderMapper.selectStatusCount(storeId, null);
         Map<String, Object> stats = new LinkedHashMap<>();
+        int total = 0;
+        for (Map<String, Object> row : todayRows)
+        {
+            total += ((Number) row.get("cnt")).intValue();
+        }
         int pending = 0, accepted = 0, serving = 0, finished = 0, canceled = 0, missed = 0;
-        for (Map<String, Object> row : rows)
+        for (Map<String, Object> row : allRows)
         {
             String status = String.valueOf(row.get("status"));
             int cnt = ((Number) row.get("cnt")).intValue();
@@ -567,13 +575,13 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
                 default: break;
             }
         }
+        stats.put("total", total);
         stats.put("pending", pending);
         stats.put("accepted", accepted);
         stats.put("serving", serving);
         stats.put("finished", finished);
         stats.put("canceled", canceled);
         stats.put("missed", missed);
-        stats.put("total", pending + accepted + serving + finished + canceled + missed);
         stats.put("revenue", petServiceOrderMapper.selectDayRevenue(storeId, today));
         stats.put("staffRank", petServiceOrderMapper.selectStaffRank(storeId, today));
         stats.put("date", today);
