@@ -205,7 +205,7 @@
 
 <script setup>
 import StatCards from '@/components/StatCards.vue'
-import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
+import { ref, reactive, toRefs, getCurrentInstance, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -394,10 +394,22 @@ if (route.query.appointmentId) {
   queryParams.value.appointmentId = route.query.appointmentId
 }
 
+// 实时刷新：30s 轮询 + 预约支付/取消等业务事件即时刷新（客户支付会收到站内通知，通知铃铛轮询到后广播 pet-notify-refresh）
+let statsTimer = null
+function refreshAll() {
+  getList()
+  getStats()
+}
 onMounted(() => {
   getList()
   getStats()
   storeOptions().then((res) => { stores.value = res.data || [] }).catch(() => {})
+  statsTimer = setInterval(refreshAll, 30_000)
+  window.addEventListener('pet-notify-refresh', refreshAll)
+})
+onBeforeUnmount(() => {
+  if (statsTimer) clearInterval(statsTimer)
+  window.removeEventListener('pet-notify-refresh', refreshAll)
 })
 </script>
 

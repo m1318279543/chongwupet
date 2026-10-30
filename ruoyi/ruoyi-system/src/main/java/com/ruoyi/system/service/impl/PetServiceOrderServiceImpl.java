@@ -8,6 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import com.ruoyi.system.domain.PetServiceOrder;
 import com.ruoyi.system.mapper.PetAppointmentMapper;
 import com.ruoyi.system.mapper.PetServiceItemMapper;
 import com.ruoyi.system.mapper.PetServiceOrderMapper;
+import com.ruoyi.system.service.IPetNotificationService;
 import com.ruoyi.system.service.IPetPaymentLogService;
 import com.ruoyi.system.service.IPetServiceOrderService;
 import com.ruoyi.system.service.IPetWalletService;
@@ -39,6 +42,8 @@ import com.ruoyi.system.service.IPetWalletService;
 @Service
 public class PetServiceOrderServiceImpl implements IPetServiceOrderService
 {
+    private static final Logger log = LoggerFactory.getLogger(PetServiceOrderServiceImpl.class);
+
     @Autowired
     private PetServiceOrderMapper petServiceOrderMapper;
 
@@ -53,6 +58,9 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
 
     @Autowired
     private IPetPaymentLogService petPaymentLogService;
+
+    @Autowired
+    private IPetNotificationService petNotificationService;
 
     @Override
     public List<PetServiceOrder> selectPetServiceOrderList(PetServiceOrder order)
@@ -178,6 +186,13 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
 
         writeLog(order.getServiceId(), null, "0", order.getCreateBy(),
                 "客户自助预约「" + item.getItemName() + "」×" + qty + "（" + ("2".equals(mode) ? "上门服务" : "到店服务") + "），待门店接单");
+        notifyQuietly(order, "appointment",
+                "预约提交成功",
+                "您已预约「" + item.getItemName() + "」×" + qty
+                        + "（" + ("2".equals(mode) ? "上门服务" : "到店服务") + "），预约时间 "
+                        + new SimpleDateFormat("MM-dd HH:mm").format(order.getAppointTime())
+                        + (price.compareTo(BigDecimal.ZERO) > 0 ? "，请尽快完成支付。" : "，到店后无需支付。"),
+                order.getServiceId());
         return order;
     }
 
@@ -233,6 +248,9 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
             petServiceOrderMapper.updatePetServiceOrder(free);
             recordPay(order, userId, "free", BigDecimal.ZERO, qty, "success", "免费项目，无需支付");
             writeLog(order.getServiceId(), order.getStatus(), order.getStatus(), order.getContactName(), "免费项目，预约直接确认");
+            notifyQuietly(order, "appointment",
+                    "预约已确认",
+                    "「" + order.getItemName() + "」×" + qty + " 为免费项目，已直接确认，请按时到店（或等候上门）。");
             Map<String, Object> freeResult = new LinkedHashMap<>();
             freeResult.put("serviceNo", order.getServiceNo());
             freeResult.put("serviceId", order.getServiceId());
@@ -277,6 +295,10 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
                 "预约支付「" + order.getItemName() + "」×" + qty);
         writeLog(order.getServiceId(), order.getStatus(), order.getStatus(), order.getContactName(),
                 "预约已支付 ¥" + amount + "（" + payMethodText(method) + "）");
+        notifyQuietly(order, "appointment",
+                "预约支付成功",
+                "预约「" + order.getItemName() + "」×" + qty + " 已支付 ¥" + amount
+                        + "（" + payMethodText(method) + "），门店将按预约时间为您安排服务。");
         if (deducted)
         {
             balance = petWalletService.getBalance(userId);
@@ -340,6 +362,11 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
         writeLog(serviceId, origin.getStatus(), "4", origin.getContactName(),
                 "客户取消预约" + (StringUtils.isBlank(reason) ? "" : "：" + reason)
                         + (amount.compareTo(BigDecimal.ZERO) > 0 && "1".equals(origin.getPayStatus()) ? "，退款 ¥" + amount + " 至余额" : ""));
+        notifyQuietly(origin, "appointment",
+                "预约已取消",
+                "预约「" + origin.getItemName() + "」×" + qty + " 已取消"
+                        + (amount.compareTo(BigDecimal.ZERO) > 0 && "1".equals(origin.getPayStatus())
+                                ? "，¥" + amount + " 已退回平台余额。" : "。"));
         return rows;
     }
 
@@ -593,6 +620,30 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
         log.setOperator(StringUtils.isBlank(operator) ? "system" : operator);
         log.setRemark(remark);
         petServiceOrderMapper.insertPetServiceLog(log);
+    }
+
+    /** 预约生命周期站内通知：推给客户，通知铃铛轮询到新消息会广播刷新事件，驱动后台工单页联动 */
+    private void notifyQuietly(PetServiceOrder order, String type, String title, String content)
+    {
+        notifyQuietly(order, type, title, content, null);
+    }
+
+    private void notifyQuietly(PetServiceOrder order, String type, String title, String content, Long refId)
+    {
+        if (order == null || order.getUserId() == null)
+        {
+            return;
+        }
+        try
+        {
+            petNotificationService.push(order.getUserId(),
+                    StringUtils.isBlank(order.getContactName()) ? order.getCustomerName() : order.getContactName(),
+                    type, title, content, refId != null ? refId : order.getServiceId());
+        }
+        catch (Exception e)
+        {
+            log.warn("预约通知发送失败 serviceNo={}", order.getServiceNo(), e);
+        }
     }
 
     private String genServiceNo(Long appointmentId)
