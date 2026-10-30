@@ -188,7 +188,9 @@
           </div>
           <div class="bkd-field bkd-field--half">
             <label>联系电话</label>
-            <el-input v-model="form.contactPhone" maxlength="11" placeholder="11 位手机号" />
+            <el-input v-model="form.contactPhone" maxlength="11" inputmode="numeric" placeholder="11 位手机号"
+                      :class="{ 'is-error': form.contactPhone && !phoneOk }" @input="onPhoneInput" />
+            <p class="bkd-err" v-if="form.contactPhone && !phoneOk">请填写 11 位手机号（1 开头，第二位 3-9）</p>
           </div>
         </div>
 
@@ -350,6 +352,13 @@ const form = reactive({
 })
 const formTotal = computed(() => (Number(picked.price) || 0) * (Number(form.qty) || 1))
 
+// 手机号严格校验：只允许数字输入，且必须是 11 位大陆手机号（1 开头，第二位 3-9）
+const phoneOk = computed(() => /^1[3-9]\d{9}$/.test(String(form.contactPhone || '').trim()))
+function onPhoneInput(v) {
+  const cleaned = String(v || '').replace(/[^\d]/g, '').slice(0, 11)
+  if (cleaned !== v) form.contactPhone = cleaned
+}
+
 // 快捷时段：今天/明天的常见档期，点了直接填进时间框
 const quickSlots = computed(() => {
   const now = new Date()
@@ -393,7 +402,7 @@ function openBooking(it) {
 function validateBooking() {
   if (!form.appointTime) { ElMessage.warning('请选择预约时间'); return false }
   if (!form.contactName.trim()) { ElMessage.warning('请填写联系人'); return false }
-  if (!/^1[3-9]\d{9}$/.test(form.contactPhone.trim())) { ElMessage.warning('请填写正确的 11 位手机号'); return false }
+  if (!phoneOk.value) { ElMessage.warning('请填写正确的手机号：11 位数字，1 开头，第二位为 3-9'); return false }
   if (form.serviceMode === '2' && form.address.trim().length < 6) { ElMessage.warning('上门服务请填写详细地址'); return false }
   if (new Date(form.appointTime.replace(/-/g, '/')).getTime() < Date.now() - 60000) {
     ElMessage.warning('预约时间不能早于当前时间')
@@ -777,6 +786,8 @@ onMounted(async () => {
 .bkd-field--half { flex: 1; min-width: 0; }
 .bkd-opt { font-style: normal; font-weight: 400; color: var(--text-4); margin-left: 4px; }
 .bkd-tip { margin: 0; font-size: 12px; color: var(--text-3); }
+.bkd-err { margin: 0; font-size: 12px; color: #d92d20; }
+.bkd-field .is-error :deep(.el-input__wrapper) { box-shadow: 0 0 0 1px #d92d20 inset; }
 .bkd-slots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .bkd-slot {
   border: 1px solid var(--border-1); background: var(--bg-card); border-radius: 999px;

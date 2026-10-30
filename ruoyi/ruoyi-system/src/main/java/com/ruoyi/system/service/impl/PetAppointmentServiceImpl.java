@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.PhoneUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.PetAppointment;
 import com.ruoyi.system.domain.PetCancelRecord;
@@ -82,6 +83,8 @@ public class PetAppointmentServiceImpl implements IPetAppointmentService
     @Override
     public int insertPetAppointment(PetAppointment petAppointment)
     {
+        // 手机号严格校验：预约必须留一个能联系到客户的 11 位手机号
+        petAppointment.setContactPhone(PhoneUtils.require(petAppointment.getContactPhone(), "联系电话"));
         // 容量校验：同一门店同一时段最多 SLOT_CAPACITY 单
         if (petAppointment.getStoreId() != null && petAppointment.getAppointmentDate() != null)
         {
@@ -97,6 +100,12 @@ public class PetAppointmentServiceImpl implements IPetAppointmentService
     @Override
     public int updatePetAppointment(PetAppointment petAppointment)
     {
+        // 修改时只校验本次填写的号码，未填则保持原值（状态流转等内部调用不带电话）
+        String phone = PhoneUtils.optional(petAppointment.getContactPhone(), "联系电话");
+        if (phone != null)
+        {
+            petAppointment.setContactPhone(phone);
+        }
         return petAppointmentMapper.updatePetAppointment(petAppointment);
     }
 

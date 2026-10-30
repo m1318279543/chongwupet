@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.PhoneUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.PetAppointment;
 import com.ruoyi.system.domain.PetPaymentLog;
@@ -112,15 +113,12 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
         {
             throw new ServiceException("请填写联系人姓名");
         }
-        String phone = StringUtils.isBlank(booking.getContactPhone()) ? null : booking.getContactPhone().trim();
-        if (phone == null)
+        if (contactName.length() > 16)
         {
-            throw new ServiceException("请填写联系电话");
+            throw new ServiceException("联系人姓名最多 16 个字");
         }
-        if (!phone.matches("^1[3-9]\\d{9}$"))
-        {
-            throw new ServiceException("联系电话格式不正确，请填写 11 位手机号");
-        }
+        // 严格校验手机号：允许带空格/连字符/+86，入库前统一规范化为 11 位纯数字
+        String phone = PhoneUtils.require(booking.getContactPhone(), "联系电话");
         String address = StringUtils.isBlank(booking.getAddress()) ? null : booking.getAddress().trim();
         if ("2".equals(mode))
         {
@@ -374,7 +372,8 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
         order.setQty(1);
         order.setTotalAmount(order.getPrice());
         order.setContactName(appointment.getUserName());
-        order.setContactPhone(appointment.getContactPhone());
+        // 旧数据可能带空格/+86，转工单时统一规范化，非法号码不再写脏
+        order.setContactPhone(PhoneUtils.normalize(appointment.getContactPhone()));
         order.setAppointTime(appointment.getAppointmentDate());
         order.setStatus("0");
         order.setPayStatus("0");

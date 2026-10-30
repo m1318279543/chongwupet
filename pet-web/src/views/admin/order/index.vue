@@ -1,13 +1,25 @@
 <template>
   <div class="app-container">
-    <StatCards :items="[
+    <!-- 单据类型：商品订单 / 服务预约单（服务单独立成表，但在订单管理里统一可查） -->
+    <el-radio-group v-model="tab" class="scope-switch" @change="handleScopeChange">
+      <el-radio-button value="goods">商品订单</el-radio-button>
+      <el-radio-button value="service">服务预约单</el-radio-button>
+    </el-radio-group>
+
+    <StatCards v-if="tab === 'goods'" :items="[
       { label: '今日订单', value: stats.total || 0 },
       { label: '今日实收', value: formatMoney(stats.paid), prefix: '¥', tone: 'money' },
       { label: '待付款', value: stats.unpaid || 0, tone: 'warn', onClick: () => filterStatus('0') },
       { label: '待发货', value: stats.toShip || 0, tone: 'brand', onClick: () => filterStatus('1') }
     ]" />
+    <StatCards v-else :items="[
+      { label: '今日服务单', value: svcStats.total || 0 },
+      { label: '待接单', value: svcStats.pending || 0, tone: 'warn', onClick: () => filterSvcStatus('0') },
+      { label: '服务中', value: svcStats.serving || 0, tone: 'brand', onClick: () => filterSvcStatus('2') },
+      { label: '今日服务营收', value: formatMoney(svcStats.revenue), prefix: '¥', tone: 'money' }
+    ]" />
 
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="72px">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch && tab === 'goods'" label-width="72px">
       <el-form-item label="关键词" prop="keyword">
         <el-input v-model="queryParams.keyword" placeholder="订单号 / 账号 / 收货人" clearable style="width: 220px" @keyup.enter="handleQuery" />
       </el-form-item>
@@ -37,7 +49,37 @@
       </el-form-item>
     </el-form>
 
-    <el-table v-loading="loading" :data="orderList">
+    <el-form :model="svcQuery" ref="svcQueryRef" :inline="true" v-show="showSearch && tab === 'service'" label-width="72px">
+      <el-form-item label="关键词" prop="petName">
+        <el-input v-model="svcQuery.petName" placeholder="服务单号 / 客户 / 手机号" clearable style="width: 220px" @keyup.enter="handleSvcQuery" />
+      </el-form-item>
+      <el-form-item label="服务方式" prop="serviceMode">
+        <el-select v-model="svcQuery.serviceMode" placeholder="全部方式" clearable style="width: 120px">
+          <el-option label="到店服务" value="1" />
+          <el-option label="上门服务" value="2" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="支付" prop="payStatus">
+        <el-select v-model="svcQuery.payStatus" placeholder="全部" clearable style="width: 110px">
+          <el-option label="已支付" value="1" />
+          <el-option label="待支付" value="0" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="状态" prop="status">
+        <el-select v-model="svcQuery.status" placeholder="全部状态" clearable style="width: 130px">
+          <el-option v-for="s in SVC_STATUS" :key="s.value" :label="s.label" :value="s.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="预约日期" prop="queryDate">
+        <el-date-picker v-model="svcQuery.queryDate" type="date" value-format="YYYY-MM-DD" placeholder="全部日期" style="width: 150px" />
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="Search" @click="handleSvcQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetSvcQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-table v-if="tab === 'goods'" v-loading="loading" :data="orderList">
       <el-table-column label="订单号" prop="orderNo" width="190" />
       <el-table-column label="类型" width="86" align="center">
         <template #default="scope">
@@ -83,7 +125,90 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+    <pagination v-show="tab === 'goods' && total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+
+    <!-- 服务预约单：与商品订单同屏可查，明细里带服务方式/联系人/上门地址 -->
+    <template v-if="tab === 'service'">
+      <el-table v-loading="svcLoading" :data="svcList">
+        <el-table-column label="服务单号" prop="serviceNo" width="190" />
+        <el-table-column label="服务项目" min-width="180">
+          <template #default="scope">
+            <div class="cell-main">{{ scope.row.itemName || '—' }}</div>
+            <div class="cell-sub">×{{ scope.row.qty || 1 }} · {{ scope.row.itemType === '6' ? '到店接待' : '服务' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="方式" width="90" align="center">
+          <template #default="scope">
+            <el-tag size="small" :type="scope.row.serviceMode === '2' ? 'warning' : 'info'" effect="plain">
+              {{ scope.row.serviceMode === '2' ? '上门' : '到店' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="客户 / 联系方式" min-width="180">
+          <template #default="scope">
+            <div class="cell-main">{{ scope.row.contactName || scope.row.customerName || '—' }}</div>
+            <div class="cell-sub">{{ scope.row.contactPhone || '—' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="门店" prop="storeName" width="120" :show-overflow-tooltip="true" />
+        <el-table-column label="应付" width="100">
+          <template #default="scope"><span class="money">¥{{ formatMoney(orderAmount(scope.row)) }}</span></template>
+        </el-table-column>
+        <el-table-column label="支付" width="110">
+          <template #default="scope">
+            <el-tag size="small" :type="scope.row.payStatus === '1' ? 'success' : 'info'">
+              {{ scope.row.payStatus === '1' ? payText(scope.row.payMethod) : '未支付' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="94">
+          <template #default="scope">
+            <el-tag size="small" :type="svcStatusType(scope.row.status)">{{ svcStatusText(scope.row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="预约时间" width="140">
+          <template #default="scope">{{ fmt(scope.row.appointTime) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="90" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="openSvcDetail(scope.row)">详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <pagination v-show="svcTotal > 0" :total="svcTotal" v-model:page="svcQuery.pageNum" v-model:limit="svcQuery.pageSize" @pagination="getSvcList" />
+      <p class="svc-hint">派工、开始服务、完成服务请到「服务工单」页处理；此处的服务单与商品订单一样参与支付与统计。</p>
+    </template>
+
+    <!-- 服务预约单详情 -->
+    <el-drawer v-model="svcDetailOpen" title="服务预约详情" size="520px">
+      <div v-loading="svcDetailLoading">
+        <div class="detail-head">
+          <div>
+            <p class="no">{{ svcDetail.serviceNo }}</p>
+            <p class="sub">{{ svcDetail.storeName || '—' }} · {{ svcDetail.serviceMode === '2' ? '上门服务' : '到店服务' }}</p>
+          </div>
+          <el-tag :type="svcStatusType(svcDetail.status)">{{ svcStatusText(svcDetail.status) }}</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="服务项目">{{ svcDetail.itemName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="数量">×{{ svcDetail.qty || 1 }}</el-descriptions-item>
+          <el-descriptions-item label="预约时间">{{ fmt(svcDetail.appointTime) }}</el-descriptions-item>
+          <el-descriptions-item label="应付金额">¥{{ formatMoney(orderAmount(svcDetail)) }}</el-descriptions-item>
+          <el-descriptions-item label="联系人">{{ svcDetail.contactName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ svcDetail.contactPhone || '—' }}</el-descriptions-item>
+          <el-descriptions-item v-if="svcDetail.serviceMode === '2'" label="上门地址" :span="2">{{ svcDetail.address || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="支付状态">{{ svcDetail.payStatus === '1' ? '已支付' : '未支付' }}</el-descriptions-item>
+          <el-descriptions-item label="支付方式">{{ payText(svcDetail.payMethod) }}</el-descriptions-item>
+          <el-descriptions-item label="支付时间">{{ fmt(svcDetail.payTime) }}</el-descriptions-item>
+          <el-descriptions-item label="下单时间">{{ fmt(svcDetail.createTime) }}</el-descriptions-item>
+          <el-descriptions-item label="执行人">{{ svcDetail.staffName || '未指派' }}</el-descriptions-item>
+          <el-descriptions-item label="下单账号">{{ svcDetail.customerName || '—' }}</el-descriptions-item>
+          <el-descriptions-item v-if="svcDetail.cancelReason" label="取消原因" :span="2">{{ svcDetail.cancelReason }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ svcDetail.remark || '—' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-drawer>
 
     <el-drawer v-model="detailOpen" title="订单详情" size="560px">
       <div v-loading="detailLoading" class="detail">
@@ -146,6 +271,7 @@ import StatCards from '@/components/StatCards.vue'
 import { ref, reactive, toRefs, getCurrentInstance, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listOrders, getOrder, orderStats, shipOrder, cancelOrder } from '@/api/pet/petOrder'
+import { listServiceOrder, getServiceOrder, getServiceStats } from '@/api/pet/petService'
 
 const { proxy } = getCurrentInstance()
 
@@ -156,20 +282,42 @@ const STATUS = [
   { value: '3', label: '已取消' }
 ]
 
+// 服务工单状态机：0待接单 1已接单 2服务中 3已完成 4已取消 5爽约
+const SVC_STATUS = [
+  { value: '0', label: '待接单' },
+  { value: '1', label: '已接单' },
+  { value: '2', label: '服务中' },
+  { value: '3', label: '已完成' },
+  { value: '4', label: '已取消' },
+  { value: '5', label: '爽约' }
+]
+
+const tab = ref('goods')
+
 const orderList = ref([])
 const stats = ref({})
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
 
+// 服务预约单
+const svcList = ref([])
+const svcStats = ref({})
+const svcLoading = ref(false)
+const svcTotal = ref(0)
+const svcDetailOpen = ref(false)
+const svcDetailLoading = ref(false)
+const svcDetail = ref({})
+
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref({})
 
 const data = reactive({
-  queryParams: { pageNum: 1, pageSize: 10, keyword: undefined, orderType: undefined, status: undefined, payStatus: undefined, queryDate: undefined }
+  queryParams: { pageNum: 1, pageSize: 10, keyword: undefined, orderType: undefined, status: undefined, payStatus: undefined, queryDate: undefined },
+  svcQuery: { pageNum: 1, pageSize: 10, petName: undefined, serviceMode: undefined, status: undefined, payStatus: undefined, queryDate: undefined }
 })
-const { queryParams } = toRefs(data)
+const { queryParams, svcQuery } = toRefs(data)
 
 function statusText(s) {
   return (STATUS.find((x) => x.value === s) || {}).label || '未知'
@@ -221,6 +369,61 @@ function filterStatus(status) {
   handleQuery()
 }
 
+// ---------------- 服务预约单 ----------------
+function payText(m) {
+  return { alipay: '支付宝', wechat: '微信', balance: '余额', free: '免费' }[m] || (m ? '线上' : '—')
+}
+function orderAmount(row) {
+  if (row && row.totalAmount != null) return Number(row.totalAmount)
+  return Number((row && row.price) || 0) * Number((row && row.qty) || 1)
+}
+function svcStatusText(s) {
+  return (SVC_STATUS.find((x) => x.value === s) || {}).label || '未知'
+}
+function svcStatusType(s) {
+  return { 0: 'warning', 1: 'primary', 2: 'primary', 3: 'success', 4: 'info', 5: 'danger' }[s] || 'info'
+}
+function handleScopeChange(v) {
+  if (v === 'service') {
+    getSvcList()
+    getSvcStats()
+  }
+}
+function getSvcList() {
+  svcLoading.value = true
+  listServiceOrder(svcQuery.value).then((res) => {
+    svcList.value = res.rows || []
+    svcTotal.value = res.total || 0
+    svcLoading.value = false
+  }).catch(() => { svcLoading.value = false })
+}
+function getSvcStats() {
+  getServiceStats().then((res) => { svcStats.value = res.data || {} }).catch(() => {})
+}
+function handleSvcQuery() {
+  svcQuery.value.pageNum = 1
+  getSvcList()
+}
+function resetSvcQuery() {
+  proxy.resetForm('svcQueryRef')
+  handleSvcQuery()
+}
+function filterSvcStatus(status) {
+  tab.value = 'service'
+  svcQuery.value.status = status
+  svcQuery.value.queryDate = undefined
+  handleSvcQuery()
+}
+function openSvcDetail(row) {
+  svcDetailOpen.value = true
+  svcDetailLoading.value = true
+  svcDetail.value = row
+  getServiceOrder(row.serviceId).then((res) => {
+    svcDetail.value = res.data || row
+    svcDetailLoading.value = false
+  }).catch(() => { svcDetailLoading.value = false })
+}
+
 function openDetail(row) {
   detailOpen.value = true
   detailLoading.value = true
@@ -262,8 +465,13 @@ function handleCancel(row) {
 // 实时刷新：30s 轮询 + 支付/取消等业务事件即时刷新（通知铃铛会广播 pet-notify-refresh）
 let statsTimer = null
 function refreshAll() {
-  getList()
-  getStats()
+  if (tab.value === 'service') {
+    getSvcList()
+    getSvcStats()
+  } else {
+    getList()
+    getStats()
+  }
 }
 onMounted(() => {
   refreshAll()
@@ -279,6 +487,8 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .cell-main { font-size: 13px; color: var(--text-1); }
 .cell-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.scope-switch { margin-bottom: 12px; }
+.svc-hint { margin: 10px 0 0; font-size: 12px; color: var(--text-3); }
 .money { color: var(--brand-700); font-weight: 600; }
 .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;
   .no { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-1); }

@@ -8,7 +8,7 @@
         <p class="ui-sub">一单一次记录，支付、退款与接宠进度都在这里。</p>
       </div>
       <div class="ui-head__aside">
-        <span class="ui-count" v-if="isLogged"><b>{{ groups.length }}</b>笔订单</span>
+        <span class="ui-count" v-if="isLogged"><b>{{ scope === 'goods' ? groups.length : shownSvc.length }}</b>{{ scope === 'goods' ? '笔订单' : '笔服务预约' }}</span>
       </div>
     </header>
 
@@ -21,7 +21,17 @@
       </div>
     </div>
 
-    <template v-else>
+    <!-- 单据类型：商品订单 / 服务预约（两类分开存储，但都算"我的订单"） -->
+    <div class="scope-bar" v-if="isLogged">
+      <button type="button" class="scope-btn" :class="{ on: scope === 'goods' }" @click="switchScope('goods')">
+        商品订单<span class="scope-n">{{ groups.length }}</span>
+      </button>
+      <button type="button" class="scope-btn" :class="{ on: scope === 'service' }" @click="switchScope('service')">
+        服务预约<span class="scope-n">{{ serviceRows.length }}</span>
+      </button>
+    </div>
+
+    <template v-if="isLogged && scope === 'goods'">
       <!-- 状态筛选：文本标签页 + 计数，选中态用 2px 下划线（比按钮组安静） -->
       <nav class="tabs" v-if="groups.length" aria-label="订单状态筛选">
         <button
@@ -117,6 +127,83 @@
       </div>
     </template>
 
+    <!-- 服务预约单：洗护/美容/上门接送等，独立下单独立结算，列表与商品订单并列 -->
+    <template v-else-if="scope === 'service'">
+      <nav class="tabs" v-if="serviceRows.length" aria-label="服务预约状态筛选">
+        <button
+          v-for="t in svcTabs"
+          :key="t.key"
+          type="button"
+          class="tab"
+          :class="{ on: svcFilter === t.key }"
+          @click="svcFilter = t.key"
+        >
+          {{ t.label }}<span class="tab__n">{{ t.count }}</span>
+        </button>
+      </nav>
+
+      <div class="ui-empty" v-if="shownSvc.length === 0">
+        <p class="ui-empty__title">还没有服务预约</p>
+        <p class="ui-empty__desc">洗护、美容、上门接送都能直接下单，到店时带上宠物就行。</p>
+        <div class="ui-empty__act">
+          <button type="button" class="ui-btn ui-btn--line" @click="goBooking">去预约服务</button>
+        </div>
+      </div>
+
+      <div class="ui-box order-box" v-else v-loading="svcLoading">
+        <div class="ui-box__body">
+          <article class="order" v-for="s in pagedSvc" :key="s.serviceNo" :class="{ 'is-muted': s.status === '4' }">
+            <header class="order__head">
+              <div class="order__id">
+                <span class="order__no">{{ s.serviceNo }}</span>
+                <span class="ui-chip" :class="svcChip(s)">{{ svcStatusText(s) }}</span>
+                <span class="ui-chip ui-chip--brand">{{ s.serviceMode === '2' ? '上门' : '到店' }}</span>
+              </div>
+              <div class="order__act">
+                <span class="order__time">{{ fmtDay(s.createTime) }}</span>
+                <button v-if="canPaySvc(s)" type="button" class="ui-btn ui-btn--solid ui-btn--sm" @click="openSvcCashier(s)">去支付</button>
+                <button
+                  v-if="canCancelSvc(s)"
+                  type="button"
+                  class="ui-linkbtn ui-linkbtn--danger"
+                  :disabled="cancelingSvc === s.serviceNo"
+                  @click="cancelSvc(s)"
+                >{{ cancelingSvc === s.serviceNo ? '取消中…' : '取消预约' }}</button>
+              </div>
+            </header>
+
+            <ul class="items">
+              <li class="item">
+                <div class="item__main">
+                  <div class="item__name">
+                    {{ s.itemName }}
+                    <span class="item__unit">×{{ s.qty || 1 }}</span>
+                  </div>
+                  <div class="item__spec">预约 {{ fmtDay(s.appointTime) }} · {{ s.contactName || '—' }} {{ s.contactPhone || '' }}</div>
+                  <div class="item__spec" v-if="s.serviceMode === '2' && s.address">上门地址：{{ s.address }}</div>
+                </div>
+                <span class="item__sum ui-price">¥{{ money(s.totalAmount) }}</span>
+              </li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="ui-box__foot">
+          <span class="ui-box__count">第 {{ svcRangeStart }}–{{ svcRangeEnd }} 单 / 共 {{ shownSvc.length }} 单</span>
+          <Pagination
+            v-if="shownSvc.length > PAGE_SIZE"
+            :total="shownSvc.length"
+            v-model:page="svcPage"
+            :limit="PAGE_SIZE"
+            :page-sizes="[PAGE_SIZE]"
+            :background="false"
+            layout="prev, pager, next"
+            :auto-scroll="false"
+          />
+        </div>
+      </div>
+    </template>
+
     <!-- 模拟收银台（弹窗内部属于允许成「面」的例外） -->
     <el-dialog v-model="cashierOpen" width="420px" align-center :show-close="!paySuccess" class="cashier-dialog"
                :close-on-click-modal="false">
@@ -167,7 +254,7 @@
         <div class="s-icon"><el-icon><CircleCheckFilled /></el-icon></div>
         <h3>支付成功</h3>
         <p class="s-amount">¥{{ current ? current.total.toFixed(2) : '' }}</p>
-        <p class="s-tip">{{ current && current.isPet ? '请带上身份证到门店接它回家，可在「我的订单」查看进度' : '我们会尽快为你安排发货，可在「我的订单」查看进度' }}</p>
+        <p class="s-tip">{{ current && current.tip }}</p>
         <button type="button" class="ui-btn ui-btn--solid" @click="closeCashier">完成</button>
       </div>
     </el-dialog>
@@ -182,6 +269,7 @@ import { InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { listMyOrders, payOrder, cancelOrder as cancelOrderApi } from '@/api/pet/petOrder'
 import { listMyRefunds, applyRefund } from '@/api/pet/petRefund'
+import { listMyServiceOrders, payServiceBooking, cancelServiceBooking } from '@/api/pet/petService'
 import { getMyWallet, rechargeWallet } from '@/api/pet/petWallet'
 import Pagination from '@/components/Pagination/index.vue'
 
@@ -198,6 +286,109 @@ const cancelingId = ref(null)
 const refundingNo = ref(null)
 const refundMap = ref({})
 const payingNo = ref(null)
+
+// 单据类型：商品订单 / 服务预约（服务单在 pet_service_order，不与商品订单混表）
+const scope = ref('goods')
+const serviceRows = ref([])
+const svcLoading = ref(false)
+const svcFilter = ref('all')
+const svcPage = ref(1)
+const cancelingSvc = ref(null)
+
+function loadServiceOrders() {
+  if (!isLogged.value) return
+  svcLoading.value = true
+  listMyServiceOrders().then((res) => {
+    const list = res.data || []
+    // 下单时间倒序，最新一单排在最前面
+    serviceRows.value = list.slice().sort((a, b) => timeMs(b.createTime) - timeMs(a.createTime))
+    svcLoading.value = false
+  }).catch(() => { svcLoading.value = false })
+}
+function timeMs(v) {
+  return new Date(String(v || '').replace('T', ' ').replace(/-/g, '/')).getTime() || 0
+}
+
+function switchScope(v) {
+  scope.value = v
+  if (v === 'service') loadServiceOrders()
+}
+function goBooking() {
+  router.push('/shop/appointment')
+}
+function fmtDay(v) {
+  return v ? String(v).replace('T', ' ').slice(5, 16) : '—'
+}
+
+function canPaySvc(s) {
+  return s.status !== '4' && s.payStatus === '0' && Number(s.totalAmount || 0) > 0
+}
+function canCancelSvc(s) {
+  return !['2', '3', '4'].includes(String(s.status))
+}
+function svcStatusText(s) {
+  if (s.status === '4') return '已取消'
+  if (s.status === '3') return '已完成'
+  if (s.status === '2') return '服务中'
+  if (s.payStatus === '0' && Number(s.totalAmount || 0) > 0) return '待支付'
+  if (s.payStatus === '1') return s.status === '1' ? '已接单' : '已支付 · 待接单'
+  return '待接单'
+}
+function svcChip(s) {
+  if (s.status === '4') return ''
+  if (s.status === '2') return 'ui-chip--brand'
+  if (s.status === '3') return 'ui-chip--ok'
+  if (s.payStatus === '0' && Number(s.totalAmount || 0) > 0) return 'ui-chip--warn'
+  if (s.payStatus === '1') return 'ui-chip--brand'
+  return 'ui-chip--warn'
+}
+
+const shownSvc = computed(() => {
+  const list = serviceRows.value
+  if (svcFilter.value === 'unpaid') return list.filter(canPaySvc)
+  if (svcFilter.value === 'paid') return list.filter((s) => s.payStatus === '1')
+  if (svcFilter.value === 'canceled') return list.filter((s) => s.status === '4')
+  return list
+})
+const svcTabs = computed(() => [
+  { key: 'all', label: '全部', count: serviceRows.value.length },
+  { key: 'unpaid', label: '待支付', count: serviceRows.value.filter(canPaySvc).length },
+  { key: 'paid', label: '已支付', count: serviceRows.value.filter((s) => s.payStatus === '1').length },
+  { key: 'canceled', label: '已取消', count: serviceRows.value.filter((s) => s.status === '4').length }
+])
+const svcRangeStart = computed(() => (shownSvc.value.length ? (svcPage.value - 1) * PAGE_SIZE + 1 : 0))
+const svcRangeEnd = computed(() => Math.min(svcPage.value * PAGE_SIZE, shownSvc.value.length))
+watch(svcFilter, () => { svcPage.value = 1 })
+watch(() => shownSvc.value.length, (len) => {
+  if ((svcPage.value - 1) * PAGE_SIZE >= len) svcPage.value = 1
+})
+
+function cancelSvc(s) {
+  ElMessageBox.prompt(
+    `确认取消这笔服务预约（${s.itemName}）吗？已支付金额会原路退回平台余额。`,
+    '取消预约',
+    {
+      confirmButtonText: '确认取消',
+      cancelButtonText: '再想想',
+      inputPlaceholder: '如：时间冲突 / 临时有事（选填）',
+      inputValue: '',
+      type: 'warning'
+    }
+  ).then(async ({ value }) => {
+    cancelingSvc.value = s.serviceNo
+    try {
+      await cancelServiceBooking(s.serviceId, value || '客户取消')
+      ElMessage.success('预约已取消，退款已退回平台余额')
+      loadServiceOrders()
+      loadWallet()
+      window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
+    } catch (e) {
+      ElMessage.error(e?.msg || e?.message || '取消失败')
+    } finally {
+      cancelingSvc.value = null
+    }
+  }).catch(() => {})
+}
 
 // 收银台状态
 const cashierOpen = ref(false)
@@ -320,6 +511,7 @@ function chipClass(g) {
 const PAGE_SIZE = 3
 const page = ref(1)
 const pagedGroups = computed(() => shownGroups.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+const pagedSvc = computed(() => shownSvc.value.slice((svcPage.value - 1) * PAGE_SIZE, svcPage.value * PAGE_SIZE))
 const rangeStart = computed(() => (shownGroups.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
 const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, shownGroups.value.length))
 watch(filter, () => { page.value = 1 })
@@ -352,12 +544,34 @@ function expireText(g) {
 }
 
 function openCashier(g) {
-  current.value = g
+  current.value = {
+    ...g,
+    tip: g.isPet
+      ? '请带上身份证到门店接它回家，可在「我的订单」查看进度'
+      : '我们会尽快为你安排发货，可在「我的订单」查看进度'
+  }
   paySuccess.value = false
   payMethod.value = 'alipay'
   cashierOpen.value = true
   loadWallet()
   startCountdown(g)
+}
+
+/** 服务预约单走同一套收银台，只是支付接口不同 */
+function openSvcCashier(s) {
+  current.value = {
+    orderNo: s.serviceNo,
+    createdAt: s.createTime,
+    total: Number(s.totalAmount || 0),
+    isService: true,
+    isPet: false,
+    tip: '门店会按预约时间联系你，可在「我的订单 → 服务预约」查看进度'
+  }
+  paySuccess.value = false
+  payMethod.value = 'alipay'
+  cashierOpen.value = true
+  loadWallet()
+  startCountdown(current.value)
 }
 
 function startCountdown(g) {
@@ -392,10 +606,15 @@ async function doPay() {
   }
   paying.value = true
   try {
-    await payOrder(current.value.orderNo, payMethod.value)
+    if (current.value.isService) {
+      await payServiceBooking(current.value.orderNo, payMethod.value)
+    } else {
+      await payOrder(current.value.orderNo, payMethod.value)
+    }
     paySuccess.value = true
     if (countdownTimer) clearInterval(countdownTimer)
     getList()
+    loadServiceOrders()
     // 支付成功会生成站内通知，通知铃铛立即刷新
     window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
   } catch (e) {
@@ -510,6 +729,7 @@ function getList() {
 onMounted(() => {
   getList()
   loadWallet()
+  loadServiceOrders()
 })
 onBeforeUnmount(() => {
   if (countdownTimer) clearInterval(countdownTimer)
@@ -518,6 +738,30 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 // 页头 / 空态 / 标签来自 .ui-* 基元；本页新增「状态标签页」「订单区块」「商品行」三段结构。
+
+/* ---------- 单据类型切换：商品订单 / 服务预约 ---------- */
+.scope-bar { display: flex; gap: 10px; margin-top: 18px; }
+.scope-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: 1px solid var(--border-1);
+  border-radius: 999px;
+  background: var(--bg-card);
+  font-size: 13.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.scope-btn.on {
+  border-color: var(--brand-500, #6366f1);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 600;
+}
+.scope-n { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.scope-btn.on .scope-n { color: var(--brand-600); }
 
 /* ---------- 状态筛选：文本标签页 ---------- */
 .tabs {

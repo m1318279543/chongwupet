@@ -100,6 +100,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="petName != null and petName != ''">
                 AND (o.pet_name like concat('%', #{petName}, '%')
                      or o.customer_name like concat('%', #{petName}, '%')
+                     or o.contact_phone like concat('%', #{petName}, '%')
                      or o.service_no like concat('%', #{petName}, '%'))
             </if>
             <if test="queryDate != null and queryDate != ''">
