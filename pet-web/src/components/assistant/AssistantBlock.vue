@@ -115,7 +115,7 @@
     <template v-else-if="block.type === 'knowledge'">
       <div class="kb-line">
         <span class="kb-title">{{ data.title }}</span>
-        <span class="kb-chip kb-chip--kb">知识库</span>
+        <span class="kb-chip kb-chip--kb">参考资料</span>
       </div>
       <p class="kb-text">{{ data.content }}</p>
     </template>

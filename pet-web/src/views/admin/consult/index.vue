@@ -57,7 +57,7 @@
       </el-descriptions>
       <div class="draft-bar">
         <el-button size="small" :loading="drafting" @click="aiDraft">AI 起草</el-button>
-        <span class="draft-hint">依据知识库与客户订单生成，发送前请核对</span>
+        <span class="draft-hint">由 AI 大模型依据业务数据生成，发送前请核对</span>
       </div>
       <el-input v-model="replyText" type="textarea" :rows="4" maxlength="800" show-word-limit placeholder="请输入回复内容" />
       <template #footer>

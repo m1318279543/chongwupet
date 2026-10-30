@@ -167,14 +167,23 @@ public class AssistantService
             }
         }
 
-        // 模型改写：只在有事实基础时进行，避免空回答被润色成"看起来对"的幻觉
-        if (llmClient.available() && StringUtils.isNotBlank(answer.content))
+        // 模型主导生成：门店数据作为已核实事实注入上下文，
+        // 由 Pollinations 大模型生成最终回答；模型不可用时才降级为本地模板。
+        if (llmClient.available())
         {
-            String polished = polish(req.scene, message, answer, onDelta);
-            if (StringUtils.isNotBlank(polished))
+            // 记录是否已有增量输出：流式出字后再降级会导致模板全文叠加，必须跳过
+            boolean[] streamed = { false };
+            Consumer<String> wrapped = onDelta == null ? null
+                    : delta -> { streamed[0] = true; onDelta.accept(delta); };
+            String generated = generate(req.scene, message, answer, wrapped);
+            if (StringUtils.isNotBlank(generated))
             {
-                answer.content = cleanMarkdown(polished);
+                answer.content = cleanMarkdown(generated);
                 answer.source = "openai";
+            }
+            else if (onDelta != null && !streamed[0])
+            {
+                onDelta.accept(answer.content);
             }
         }
         else if (onDelta != null)
@@ -855,6 +864,11 @@ public class AssistantService
         String cat = catOf(SceneRouter.prefer(message));
         String keyword = goodsKeyword(message);
         List<Map<String, Object>> goods = tools.searchGoods(keyword, cat, 3);
+        // 关键词太具体（如"咨询一些关于狗粮"）召回为空时，退回按品类直接取在售商品
+        if (goods.isEmpty() && StringUtils.isNotBlank(keyword))
+        {
+            goods = tools.searchGoods(null, cat, 3);
+        }
         answer.tools.add("goods.search");
         if (goods.isEmpty())
         {
@@ -1238,9 +1252,10 @@ public class AssistantService
         answer.tools.add("knowledge.search");
         if (hits.isEmpty())
         {
-            answer.content = "这个问题我这边没有查到可靠的资料，不想给你编一个答案。\n可以换个说法，或者我帮你转人工客服，由门店的同事来回答。";
-            answer.handoff = true;
-            answer.actions.add(action("handoff", "转人工客服"));
+            // 知识库未命中时不再模板拒答：给模型一个中性的事实底座，
+            // 由大模型基于通用养宠知识回答（模型不可用时这句本身就是兜底文案）。
+            answer.content = "知识库里暂无现成资料，可基于通用养宠知识回答；如涉及具体病症请以兽医诊断为准。";
+            answer.actions.add(action("handoff", "还有问题，转人工"));
             return answer;
         }
         knowledgeService.hit(hits);
@@ -1331,9 +1346,15 @@ public class AssistantService
         return answer;
     }
 
-    /* ---------- 模型改写 ---------- */
+    /* ---------- 模型生成 ---------- */
 
-    private String polish(String scene, String message, Answer answer, Consumer<String> onDelta)
+    /**
+     * 模型主导回答：门店业务数据（订单/宠物/商品/知识命中）作为已核实事实注入，
+     * 大模型组织语言作答。事实覆盖不到的部分（通用养护知识）允许模型用自己的
+     * 知识回答；涉及门店价格、库存、订单状态必须以事实为准，没有就如实说明。
+     * 失败返回 null，由调用方降级为本地模板。
+     */
+    private String generate(String scene, String message, Answer answer, Consumer<String> onDelta)
     {
         try
         {
@@ -1341,14 +1362,41 @@ public class AssistantService
             messages.add(LlmClient.msg("system", systemPrompt(scene)));
             StringBuilder user = new StringBuilder();
             user.append("用户问题：").append(message).append("\n\n");
-            user.append("【已核实的事实】\n").append(answer.content).append("\n\n");
-            user.append("请基于以上事实，用自然口语重新组织回答。不要新增事实、不要改变数字和状态，不要输出 Markdown 标题或表格，控制在 220 字以内。");
+            user.append("【门店已核实数据】\n")
+                .append(StringUtils.isBlank(answer.content) ? "（与该问题无关或暂无数据）" : answer.content)
+                .append("\n\n");
+            user.append("回答要求：\n")
+                .append("1. 数据里有和问题相关的内容（订单、宠物、商品、价格、库存）时，严格按数据回答，不得改动数字、单号和状态。\n")
+                .append("2. 数据与问题无关或为空时，直接忽略数据，用你自己的养宠知识正常回答用户，不要说“没有相关记录”这类推脱的话。\n")
+                .append("3. 涉及本店没有给出的价格、库存、到货时间，不要编造，建议用户查看商品页或咨询门店。\n")
+                .append("4. 用简体中文，口语化，不用 Markdown 标题、表格和加粗，控制在 350 字以内。");
             messages.add(LlmClient.msg("user", user.toString()));
-            return llmClient.chat(messages, onDelta);
+            try
+            {
+                return llmClient.chat(messages, onDelta);
+            }
+            catch (Exception first)
+            {
+                // 免费档限流（402 FREE_LIMIT，每 IP 30 秒 1 次）：按上游提示的秒数等待后重试一次
+                String reason = String.valueOf(first.getMessage());
+                long waitMs = 3000L;
+                Matcher retryHint = Pattern.compile("[Rr]etry after (\\d+)").matcher(reason);
+                if (retryHint.find())
+                {
+                    waitMs = Math.min(60, Long.parseLong(retryHint.group(1)) + 2) * 1000L;
+                }
+                else if (reason.contains("FREE_LIMIT"))
+                {
+                    waitMs = 32000L;
+                }
+                log.warn("模型生成失败，等待 {} 秒后重试一次：{}", waitMs / 1000, guard.mask(reason));
+                Thread.sleep(waitMs);
+                return llmClient.chat(messages, onDelta);
+            }
         }
         catch (Exception e)
         {
-            log.warn("模型生成失败，降级为本地模板：{}", guard.mask(e.getMessage()));
+            log.warn("模型重试后仍失败，降级为本地模板：{}", guard.mask(e.getMessage()));
             return null;
         }
     }
@@ -1362,7 +1410,7 @@ public class AssistantService
         }
         else if ("order".equals(scene))
         {
-            sceneText = "用户正在处理订单或售后问题，需要明确的当前状态和下一步操作。";
+            sceneText = "用户在商城下单/售后流程中，既可能问订单状态，也可能顺带问商品和养护问题。";
         }
         else if ("match".equals(scene))
         {
@@ -1372,16 +1420,20 @@ public class AssistantService
         {
             sceneText = "你在帮门店客服起草回复，语气要专业、克制、可执行。";
         }
+        else if ("admin".equals(scene))
+        {
+            sceneText = "你在帮门店管理者解读经营数据。";
+        }
         else
         {
             sceneText = "用户在咨询养宠或平台规则问题。";
         }
-        return "你是重庆「宠物之家」的线上助手，服务三家直营门店。\n"
+        return "你是重庆「宠物之家」的线上助手，服务三家直营门店，底层由大模型驱动。\n"
                 + sceneText + "\n"
                 + "规则：\n"
-                + "1. 只依据给出的事实回答，没有依据就说没查到，不要编造。\n"
-                + "2. 不做疾病诊断、不承诺治愈；涉及用药一律建议咨询兽医。\n"
-                + "3. 不承诺价格、库存和到店时间，这些以页面和门店为准。\n"
+                + "1. 门店数据（订单、宠物档案、商品价格库存）只依据给出的事实回答，没有依据就说没有，不要编造。\n"
+                + "2. 通用养宠知识（喂养、训练、行为、日常护理）可以正常回答，必要时给出可执行的建议。\n"
+                + "3. 不做疾病诊断、不承诺治愈；涉及用药和急症一律建议咨询兽医或立即就医。\n"
                 + "4. 用简体中文，口语化，不用 Markdown 标题、表格和加粗。\n";
     }
 
@@ -1611,9 +1663,11 @@ public class AssistantService
         {
             return null;
         }
-        // "想买一袋猫粮" 这类句子会把动词和量词带进来，去掉后再检索
+        // "想咨询一些关于狗粮" 这类句子会把动词和量词带进来，去掉后再检索
         String word = matcher.group(0).replaceAll(
-                "^(想买|要买|帮我买|帮我|给我|麻烦|请|想|要|买|来|[一二两三四五几]?[袋包盒罐])+", "");
+                "^(想买|要买|帮我买|帮我|给我|麻烦|请|想|要|买|来|[一二两三四五几]?[袋包盒罐]"
+                        + "|咨询|问问|请问|想问|了解|关于|一些|介绍|看看|推荐)+", "");
+        word = word.replaceAll("(关于|一些|咨询|什么|的)$", "");
         return StringUtils.isBlank(word) ? matcher.group(0) : word;
     }
 

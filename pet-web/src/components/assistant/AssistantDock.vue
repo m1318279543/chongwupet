@@ -43,7 +43,6 @@
               <div v-if="m.role === 'assistant' && m.msgId" class="as-feedback">
                 <button type="button" :class="{ on: m.feedbackSent === '1' }" @click="feedback(m, '1')">有用</button>
                 <button type="button" :class="{ on: m.feedbackSent === '0' }" @click="feedback(m, '0')">没用</button>
-                <span v-if="m.source === 'local'" class="as-src">本地知识与业务数据</span>
               </div>
             </div>
           </div>
@@ -419,7 +418,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     &.on { color: var(--brand-700); background: var(--brand-50); }
   }
 }
-.as-src { margin-left: auto; font-size: var(--fs-1); color: var(--text-4); }
 
 .as-quick {
   flex-shrink: 0; padding: 0 14px 10px; display: flex; flex-wrap: wrap; gap: 6px;
