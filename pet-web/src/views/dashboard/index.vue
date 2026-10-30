@@ -34,6 +34,9 @@
         <el-button size="small" :loading="refreshing" @click="manualRefresh">
           <el-icon><Refresh /></el-icon>刷新
         </el-button>
+        <el-button size="small" type="primary" @click="router.push('/admin/bigscreen')">
+          <el-icon><Monitor /></el-icon>大屏
+        </el-button>
       </div>
     </header>
 
@@ -210,7 +213,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Monitor } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
 import { LineChart, BarChart, PieChart } from 'echarts/charts'

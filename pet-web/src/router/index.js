@@ -11,6 +11,7 @@ const routes = [
     redirect: '/admin/dashboard',
     children: [
       { path: 'dashboard', component: () => import('@/views/dashboard/index.vue'), meta: { title: '数据看板', perm: 'pet:dashboard:view', icon: 'DataLine' } },
+      { path: 'bigscreen', component: () => import('@/views/dashboard/bigscreen.vue'), meta: { title: '可视化大屏', perm: 'pet:dashboard:view', icon: 'Monitor', hideInMenu: true } },
       { path: 'category', component: () => import('@/views/admin/category/index.vue'), meta: { title: '宠物分类', perm: 'pet:category:list', icon: 'Files' } },
       { path: 'store', component: () => import('@/views/admin/store/index.vue'), meta: { title: '门店管理', perm: 'pet:store:list', icon: 'OfficeBuilding' } },
       { path: 'customer', component: () => import('@/views/admin/customer/index.vue'), meta: { title: '客户档案', perm: 'pet:customer:list', icon: 'User' } },
