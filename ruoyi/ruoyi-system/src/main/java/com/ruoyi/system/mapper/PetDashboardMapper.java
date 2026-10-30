@@ -125,6 +125,33 @@ public interface PetDashboardMapper
     List<Map<String, Object>> selectTopGoods(@Param("start") String start, @Param("end") String end);
 
     /**
+     * 支付方式分布（已支付且有效的商城订单）
+     */
+    @Select("SELECT IFNULL(pay_method,'other') AS name, COUNT(*) AS value, IFNULL(SUM(pay_amount),0) AS amount "
+            + "FROM pet_order WHERE pay_status = '1' AND status <> '3' "
+            + "AND create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY pay_method ORDER BY value DESC")
+    List<Map<String, Object>> selectPayMethod(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 服务项目热度榜（门店服务工单）
+     */
+    @Select("SELECT item_name AS name, COUNT(*) AS value, IFNULL(SUM(total_amount),0) AS amount "
+            + "FROM pet_service_order WHERE status <> '3' "
+            + "AND create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY item_name ORDER BY value DESC LIMIT 8")
+    List<Map<String, Object>> selectTopServices(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 取消原因 TOP（取消记录快照）
+     */
+    @Select("SELECT LEFT(IFNULL(NULLIF(TRIM(reason),''),'未填写'), 12) AS name, COUNT(*) AS value "
+            + "FROM pet_cancel_record WHERE del_flag = '0' "
+            + "AND create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY name ORDER BY value DESC LIMIT 6")
+    List<Map<String, Object>> selectCancelReasons(@Param("start") String start, @Param("end") String end);
+
+    /**
      * 24 小时活跃分布（下单 + 预约）
      */
     @Select("SELECT t.h AS hour, SUM(t.ord) AS orders, SUM(t.apt) AS appointments FROM ( "

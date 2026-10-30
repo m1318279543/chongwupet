@@ -200,6 +200,8 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         d.put("orderStatus", statusList(dashboardMapper.selectOrderStatus(start, end),
                 new String[] { "0", "3" }, ORDER_LABELS));
         d.put("category", normalize(dashboardMapper.selectCategoryDistribution()));
+        d.put("payMethods", normalize(dashboardMapper.selectPayMethod(start, end)));
+        d.put("cancelReasons", normalize(dashboardMapper.selectCancelReasons(start, end)));
         return d;
     }
 
@@ -228,6 +230,7 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("pets", normalize(dashboardMapper.selectTopPets(start, end)));
         r.put("goods", normalize(dashboardMapper.selectTopGoods(start, end)));
+        r.put("services", normalize(dashboardMapper.selectTopServices(start, end)));
         return r;
     }
 

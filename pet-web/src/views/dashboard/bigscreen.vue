@@ -26,11 +26,12 @@
 
       <!-- 三列主体 -->
       <section class="bs-body">
-        <!-- 左列 -->
+        <!-- 左列：四环 -->
         <div class="col">
           <div class="panel">
             <div class="panel-title">品类销售占比</div>
             <div ref="categoryRef" class="chart"></div>
+            <div v-if="!dist?.category?.length" class="empty center-empty">暂无数据</div>
           </div>
           <div class="panel">
             <div class="panel-title">订单状态分布</div>
@@ -39,6 +40,11 @@
           <div class="panel">
             <div class="panel-title">预约状态分布</div>
             <div ref="aptStatusRef" class="chart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">支付方式占比 <i>已支付有效订单</i></div>
+            <div ref="payMethodRef" class="chart"></div>
+            <div v-if="!dist?.payMethods?.length" class="empty center-empty">区间内暂无支付订单</div>
           </div>
         </div>
 
@@ -51,7 +57,7 @@
           <div class="panel feed-panel">
             <div class="panel-title">实时业务动态 <i>每 30 秒自动刷新</i></div>
             <ul class="feed">
-              <li v-for="(item, idx) in feed" :key="idx">
+              <li v-for="(item, idx) in feed" :key="idx + String(item.time)">
                 <span class="feed-icon">{{ typeMeta(item.type).icon }}</span>
                 <span class="feed-title">{{ item.title }}</span>
                 <span v-if="item.amount" class="feed-amount">¥{{ money(item.amount) }}</span>
@@ -60,6 +66,11 @@
             </ul>
             <div v-if="!feed.length" class="empty">暂无业务动态</div>
           </div>
+          <div class="panel cancel-panel">
+            <div class="panel-title">取消原因 TOP <i>近 6 类</i></div>
+            <div ref="cancelRef" class="chart"></div>
+            <div v-if="!dist?.cancelReasons?.length" class="empty center-empty">区间内暂无取消记录</div>
+          </div>
         </div>
 
         <!-- 右列 -->
@@ -67,10 +78,17 @@
           <div class="panel">
             <div class="panel-title">热销商品 TOP · 成交额</div>
             <div ref="topGoodsRef" class="chart"></div>
+            <div v-if="!rank?.goods?.length" class="empty center-empty">区间内暂无成交</div>
           </div>
           <div class="panel">
             <div class="panel-title">预约热度 TOP · 宠物</div>
             <div ref="topPetsRef" class="chart"></div>
+            <div v-if="!rank?.pets?.length" class="empty center-empty">区间内暂无预约</div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">服务项目热度 TOP <i>门店服务工单</i></div>
+            <div ref="topServicesRef" class="chart"></div>
+            <div v-if="!rank?.services?.length" class="empty center-empty">区间内暂无服务工单</div>
           </div>
           <div class="panel">
             <div class="panel-title">24 小时活跃分布</div>
@@ -83,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts/core'
 import { LineChart, BarChart, PieChart } from 'echarts/charts'
@@ -165,10 +183,16 @@ function fmtEventTime(time) {
 const categoryRef = ref(null)
 const orderStatusRef = ref(null)
 const aptStatusRef = ref(null)
+const payMethodRef = ref(null)
 const trendRef = ref(null)
 const topGoodsRef = ref(null)
 const topPetsRef = ref(null)
+const topServicesRef = ref(null)
 const hourlyRef = ref(null)
+const cancelRef = ref(null)
+
+const dist = computed(() => dashboard.value?.distribution || null)
+const rank = computed(() => dashboard.value?.ranking || null)
 
 const TOOLTIP = {
   backgroundColor: 'rgba(8,25,50,.92)',
@@ -188,14 +212,14 @@ function ringOption(items, colors) {
     color: colors,
     tooltip: { ...TOOLTIP, trigger: 'item', formatter: '{b}：{c}（{d}%）' },
     legend: {
-      orient: 'vertical', right: 6, top: 'center',
-      textStyle: { color: '#9cc3e8', fontSize: 11 },
-      itemWidth: 10, itemHeight: 10,
+      orient: 'vertical', right: 4, top: 'center',
+      textStyle: { color: '#9cc3e8', fontSize: 10 },
+      itemWidth: 9, itemHeight: 9, itemGap: 7,
     },
     series: [{
       type: 'pie',
-      radius: ['52%', '76%'],
-      center: ['38%', '50%'],
+      radius: ['46%', '70%'],
+      center: ['34%', '50%'],
       avoidLabelOverlap: true,
       itemStyle: { borderColor: '#081a30', borderWidth: 2 },
       label: { show: false },
@@ -218,6 +242,17 @@ function renderOrderStatus() {
 function renderAptStatus() {
   const c = initChart('aptStatus', aptStatusRef)
   c && c.setOption(ringOption(dashboard.value?.distribution?.appointmentStatus || [], ['#ffc46b', '#4da2ff', '#3ddc97', '#3d5a80']), true)
+}
+
+const PAY_LABELS = { alipay: '支付宝', wechat: '微信支付', balance: '余额支付', free: '免费体验', other: '其他' }
+function payName(n) {
+  return PAY_LABELS[n] || n
+}
+function renderPayMethod() {
+  const c = initChart('payMethod', payMethodRef)
+  if (!c) return
+  const items = (dashboard.value?.distribution?.payMethods || []).map((i) => ({ name: payName(i.name), value: i.value, amount: i.amount }))
+  c.setOption(ringOption(items, ['#25f0ee', '#ffc46b', '#b58bff', '#3ddc97', '#f78e3d', '#4da2ff']), true)
 }
 
 function renderTrend() {
@@ -254,20 +289,21 @@ function renderTrend() {
 function barOption(items, valueKey, color, fmt) {
   const list = (items || []).slice().reverse()
   return {
-    grid: { left: 8, right: 44, top: 8, bottom: 4, containLabel: true },
+    grid: { left: 8, right: 46, top: 6, bottom: 2, containLabel: true },
     tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'shadow' } },
-    xAxis: { type: 'value', splitLine: SPLIT, axisLabel: { ...AXIS, formatter: fmt } },
+    xAxis: { type: 'value', splitLine: SPLIT, axisLabel: { ...AXIS, fontSize: 10, formatter: fmt } },
     yAxis: {
       type: 'category', data: list.map((i) => i.name),
       axisTick: { show: false }, axisLine: { show: false },
-      axisLabel: { color: '#9cc3e8', fontSize: 11, width: 96, overflow: 'truncate' },
+      axisLabel: { color: '#9cc3e8', fontSize: 10, width: 92, overflow: 'truncate' },
     },
     series: [{
-      type: 'bar', data: list.map((i) => i[valueKey]), barWidth: 10,
-      itemStyle: { borderRadius: [0, 5, 5, 0], color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+      type: 'bar', data: list.map((i) => i[valueKey]), barWidth: 8,
+      itemStyle: { borderRadius: [0, 4, 4, 0], color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
         { offset: 0, color }, { offset: 1, color: 'rgba(37,240,238,.08)' },
       ]) },
       label: { show: true, position: 'right', color: '#7fa8cc', fontSize: 10, formatter: (p) => fmt(p.value) },
+      animationDuration: 900, animationEasing: 'cubicOut',
     }],
   }
 }
@@ -278,6 +314,14 @@ function renderTopGoods() {
 function renderTopPets() {
   const c = initChart('topPets', topPetsRef)
   c && c.setOption(barOption(dashboard.value?.ranking?.pets, 'value', '#4da2ff', (v) => v + ' 次'), true)
+}
+function renderTopServices() {
+  const c = initChart('topServices', topServicesRef)
+  c && c.setOption(barOption(dashboard.value?.ranking?.services, 'value', '#3ddc97', (v) => v + ' 单'), true)
+}
+function renderCancelReasons() {
+  const c = initChart('cancel', cancelRef)
+  c && c.setOption(barOption(dashboard.value?.distribution?.cancelReasons, 'value', '#f78e3d', (v) => v + ' 次'), true)
 }
 
 function renderHourly() {
@@ -306,8 +350,9 @@ function renderHourly() {
 }
 
 function renderAll() {
-  renderCategory(); renderOrderStatus(); renderAptStatus()
-  renderTrend(); renderTopGoods(); renderTopPets(); renderHourly()
+  renderCategory(); renderOrderStatus(); renderAptStatus(); renderPayMethod()
+  renderTrend(); renderTopGoods(); renderTopPets(); renderTopServices()
+  renderHourly(); renderCancelReasons()
   buildKpis()
 }
 
@@ -404,6 +449,18 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(37, 240, 238, .12);
     pointer-events: none;
   }
+  /* 缓慢下移的扫描光束 */
+  &::after {
+    content: '';
+    position: absolute; left: 0; right: 0; top: -120px;
+    height: 120px;
+    background: linear-gradient(180deg, transparent, rgba(37, 240, 238, .05) 55%, rgba(37, 240, 238, .12));
+    animation: bs-scan 10s linear infinite;
+    pointer-events: none;
+  }
+}
+@keyframes bs-scan {
+  to { transform: translateY(1340px); }
 }
 
 .bs-head {
@@ -418,8 +475,11 @@ onBeforeUnmount(() => {
     font-size: 30px;
     font-weight: 800;
     letter-spacing: 6px;
-    color: #e8f6ff;
-    text-shadow: 0 0 24px rgba(37, 240, 238, .55), 0 0 60px rgba(47, 123, 255, .3);
+    background: linear-gradient(180deg, #ffffff 8%, #9ad9ff 55%, #25f0ee 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 18px rgba(37, 240, 238, .45)) drop-shadow(0 0 46px rgba(47, 123, 255, .3));
   }
   .head-side {
     display: flex;
@@ -467,6 +527,19 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20, 55, 95, .45), rgba(8, 26, 48, .35));
   overflow: hidden;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(37, 240, 238, .45);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, .35), 0 0 14px rgba(37, 240, 238, .18);
+  }
+  &::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #25f0ee, transparent);
+    opacity: .7;
+  }
   &::after {
     content: '';
     position: absolute; left: 0; top: 0;
@@ -495,10 +568,10 @@ onBeforeUnmount(() => {
 }
 .col {
   display: grid;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 12px;
   min-height: 0;
-  &.center { grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); }
+  &.center { grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr) 138px; }
 }
 .panel {
   position: relative;
@@ -509,17 +582,31 @@ onBeforeUnmount(() => {
   padding: 12px 14px 8px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   &.grow { flex: 1; }
   &::before, &::after {
     content: '';
-    position: absolute;
-    width: 14px; height: 14px;
-    border-color: #25f0ee;
-    border-style: solid;
-    opacity: .8;
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background-repeat: no-repeat;
   }
-  &::before { left: -1px; top: -1px; border-width: 2px 0 0 2px; border-radius: 8px 0 0 0; }
-  &::after { right: -1px; bottom: -1px; border-width: 0 2px 2px 0; border-radius: 0 0 8px 0; }
+  /* 四角科技描边：上两角 + 下两角 */
+  &::before {
+    background-image:
+      linear-gradient(#25f0ee, #25f0ee), linear-gradient(#25f0ee, #25f0ee),
+      linear-gradient(#25f0ee, #25f0ee), linear-gradient(#25f0ee, #25f0ee);
+    background-position: left top, left top, right top, right top;
+    background-size: 16px 2px, 2px 16px, 16px 2px, 2px 16px;
+    opacity: .75;
+  }
+  &::after {
+    background-image:
+      linear-gradient(#25f0ee, #25f0ee), linear-gradient(#25f0ee, #25f0ee),
+      linear-gradient(#25f0ee, #25f0ee), linear-gradient(#25f0ee, #25f0ee);
+    background-position: left bottom, left bottom, right bottom, right bottom;
+    background-size: 16px 2px, 2px 16px, 16px 2px, 2px 16px;
+    opacity: .75;
+  }
 }
 .panel-title {
   font-size: 15px;
@@ -527,6 +614,18 @@ onBeforeUnmount(() => {
   color: #d8ecff;
   letter-spacing: 1px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-bottom: 6px;
+  background: linear-gradient(90deg, rgba(37, 240, 238, .45), rgba(47, 123, 255, .15) 55%, transparent 85%) left bottom / 100% 1px no-repeat;
+  &::before {
+    content: '';
+    width: 4px; height: 14px;
+    border-radius: 2px;
+    margin-right: 8px;
+    background: linear-gradient(180deg, #25f0ee, #2f7bff);
+    box-shadow: 0 0 8px rgba(37, 240, 238, .8);
+  }
   i {
     font-style: normal;
     font-size: 11px;
@@ -556,7 +655,12 @@ onBeforeUnmount(() => {
     padding: 7px 4px;
     border-bottom: 1px dashed rgba(63, 120, 180, .2);
     font-size: 13px;
+    animation: feed-in .45s ease both;
   }
+}
+@keyframes feed-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 .feed-icon {
   width: 26px; height: 26px;
@@ -577,4 +681,12 @@ onBeforeUnmount(() => {
 .feed-amount { color: #ffc46b; font-weight: 600; font-variant-numeric: tabular-nums; }
 .feed-time { color: #5f86ad; font-size: 12px; font-variant-numeric: tabular-nums; }
 .empty { color: #5f86ad; font-size: 13px; padding: 16px 4px; }
+.center-empty {
+  position: absolute;
+  inset: 34px 0 8px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.cancel-panel { overflow: hidden; }
 </style>
