@@ -22,9 +22,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.common.utils.StringUtils;
 
 /**
- * 模型网关：统一走 OpenAI 兼容协议，可在豆包 / 通义 / Kimi / DeepSeek 之间切换。
+ * 模型网关：统一走 OpenAI 兼容协议，可在 Pollinations / 豆包 / 通义 / Kimi / DeepSeek 之间切换。
  *
- * 没有配置 Key 时 available() 返回 false，编排层会退化为"检索 + 模板"，
+ * 默认接入 Pollinations AI（https://text.pollinations.ai/v1）：
+ * 完全免费、无需 API Key。apiKey 留空时不携带 Authorization 头；
+ * 配了 Key 的商业模型仍然兼容。
+ *
+ * 未配置 base-url 时 available() 返回 false，编排层会退化为"检索 + 模板"，
  * 不会发起任何网络请求。
  *
  * @author ruoyi
@@ -40,12 +44,11 @@ public class LlmClient
 
     private volatile HttpClient client;
 
-    /** 是否具备远程生成能力 */
+    /** 是否具备远程生成能力（Pollinations 等免费通道无需 API Key，只要配了地址即可） */
     public boolean available()
     {
         return properties.isEnabled()
                 && "openai".equalsIgnoreCase(properties.getProvider())
-                && StringUtils.isNotBlank(properties.getApiKey())
                 && StringUtils.isNotBlank(properties.getBaseUrl());
     }
 
@@ -72,13 +75,19 @@ public class LlmClient
         body.put("temperature", properties.getTemperature());
         body.put("stream", stream);
 
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(stripSlash(properties.getBaseUrl()) + "/chat/completions"))
                 .timeout(Duration.ofSeconds(Math.max(10, properties.getTimeout())))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + properties.getApiKey())
-                .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body), StandardCharsets.UTF_8))
-                .build();
+                // 固定 UA，避免免密钥通道偶发 403
+                .header("User-Agent", "PetHome-RuoYi/1.0")
+                .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body), StandardCharsets.UTF_8));
+        // 仅在配置了 Key 时携带鉴权头（Pollinations 免密钥通道不带）
+        if (StringUtils.isNotBlank(properties.getApiKey()))
+        {
+            builder.header("Authorization", "Bearer " + properties.getApiKey());
+        }
+        HttpRequest request = builder.build();
 
         HttpResponse<java.io.InputStream> response = client().send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() < 200 || response.statusCode() >= 300)

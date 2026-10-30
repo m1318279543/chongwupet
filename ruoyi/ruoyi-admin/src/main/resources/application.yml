@@ -143,16 +143,17 @@ xss:
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
 
-# AI 助手（OpenAI 兼容协议，可在豆包 / 通义 / Kimi / DeepSeek 之间切换）
-# provider=local：不调用远程模型，用知识检索 + 业务数据生成回答，无需 API Key 即可运行
-# provider=openai：配置 base-url / api-key / model 后启用模型润色
+# AI 助手（OpenAI 兼容协议，可在 Pollinations / 豆包 / 通义 / Kimi / DeepSeek 之间切换）
+# 默认接入 Pollinations AI：完全免费、无需 API Key，开箱即用
+# provider=local：不调用远程模型，用知识检索 + 业务数据生成回答
+# provider=openai：base-url + model 即可启用模型润色；api-key 仅商业模型需要（留空则不带鉴权头）
 pet:
   ai:
     enabled: true
-    provider: ${PET_AI_PROVIDER:local}
-    base-url: ${LLM_BASE_URL:https://api.deepseek.com/v1}
+    provider: ${PET_AI_PROVIDER:openai}
+    base-url: ${LLM_BASE_URL:https://text.pollinations.ai/v1}
     api-key: ${LLM_API_KEY:}
-    model: ${LLM_MODEL:deepseek-chat}
+    model: ${LLM_MODEL:openai}
     timeout: 45
     rate-per-minute: 20
     knowledge-limit: 4

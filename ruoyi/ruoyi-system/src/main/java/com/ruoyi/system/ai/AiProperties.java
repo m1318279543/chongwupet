@@ -6,8 +6,9 @@ import org.springframework.stereotype.Component;
 /**
  * AI 助手配置
  *
- * provider=local 时不调用远程模型，直接用检索结果 + 业务数据生成回答，
- * 保证没有 API Key 的环境也能完整跑通；配好 Key 后切到 openai 即可。
+ * 默认接入 Pollinations AI（免费、无需 API Key）：provider=openai + base-url 即可。
+ * provider=local 时不调用远程模型，直接用检索结果 + 业务数据生成回答；
+ * 换商业模型（豆包/通义/Kimi/DeepSeek）填 apiKey 即可，协议完全一致。
  *
  * @author ruoyi
  */
@@ -19,16 +20,16 @@ public class AiProperties
     private boolean enabled = true;
 
     /** local | openai（OpenAI 兼容协议） */
-    private String provider = "local";
+    private String provider = "openai";
 
-    /** 接口地址，例如 https://api.deepseek.com/v1 */
-    private String baseUrl = "";
+    /** 接口地址，默认 Pollinations 免费通道；商业模型如 https://api.deepseek.com/v1 */
+    private String baseUrl = "https://text.pollinations.ai/v1";
 
-    /** API Key，建议用环境变量注入 */
+    /** API Key，建议用环境变量注入；免费通道留空即可 */
     private String apiKey = "";
 
     /** 模型名 */
-    private String model = "deepseek-chat";
+    private String model = "openai";
 
     /** 单次请求超时（秒） */
     private int timeout = 45;
