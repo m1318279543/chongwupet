@@ -40,6 +40,12 @@ public class AiProperties
     /** 生成温度 */
     private double temperature = 0.3;
 
+    /** 推理力度：low 可把 gpt-oss 系推理模型的首字时间从 ~25s 压到 ~5s；商业模型一般忽略该参数 */
+    private String reasoningEffort = "low";
+
+    /** 单次回复最大 token 数，0 不限制 */
+    private int maxTokens = 600;
+
     /** 带给模型的历史轮数 */
     private int maxHistory = 6;
 
@@ -124,6 +130,26 @@ public class AiProperties
     public void setTemperature(double temperature)
     {
         this.temperature = temperature;
+    }
+
+    public String getReasoningEffort()
+    {
+        return reasoningEffort;
+    }
+
+    public void setReasoningEffort(String reasoningEffort)
+    {
+        this.reasoningEffort = reasoningEffort;
+    }
+
+    public int getMaxTokens()
+    {
+        return maxTokens;
+    }
+
+    public void setMaxTokens(int maxTokens)
+    {
+        this.maxTokens = maxTokens;
     }
 
     public int getMaxHistory()

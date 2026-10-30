@@ -154,6 +154,8 @@ pet:
     base-url: ${LLM_BASE_URL:https://text.pollinations.ai/v1}
     api-key: ${LLM_API_KEY:}
     model: ${LLM_MODEL:openai}
+    reasoning-effort: ${LLM_REASONING:low}
+    max-tokens: 600
     timeout: 45
     rate-per-minute: 20
     knowledge-limit: 4

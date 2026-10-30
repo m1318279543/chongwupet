@@ -74,6 +74,15 @@ public class LlmClient
         body.put("messages", messages);
         body.put("temperature", properties.getTemperature());
         body.put("stream", stream);
+        // 压推理耗时：gpt-oss 系模型 low 档首字 ~5s（默认 ~25s）；不支持的供应商会忽略
+        if (StringUtils.isNotBlank(properties.getReasoningEffort()))
+        {
+            body.put("reasoning_effort", properties.getReasoningEffort());
+        }
+        if (properties.getMaxTokens() > 0)
+        {
+            body.put("max_tokens", properties.getMaxTokens());
+        }
 
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(stripSlash(properties.getBaseUrl()) + "/chat/completions"))
