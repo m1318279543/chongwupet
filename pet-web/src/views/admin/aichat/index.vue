@@ -130,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listAiChats, aiChatStats, aiChatHistory } from '@/api/pet/petAssistant'
 
@@ -181,6 +181,9 @@ const queryParams = reactive({
   'params[keyword]': ''
 })
 
+// 实时刷新定时器
+let timer = null
+
 const totalAll = computed(() => (stats.value.intents || []).reduce((s, i) => s + Number(i.total || 0), 0))
 const goodRate = computed(() => {
   const f = stats.value.feedback || {}
@@ -202,8 +205,8 @@ function pickIntent(intent) {
   handleQuery()
 }
 
-async function getList() {
-  loading.value = true
+async function getList(silent = false) {
+  if (!silent) loading.value = true
   try {
     const params = { ...queryParams }
     if (dateRange.value?.length === 2) {
@@ -214,9 +217,9 @@ async function getList() {
     list.value = res.rows || []
     total.value = res.total || 0
   } catch (e) {
-    ElMessage.error(e?.message || '加载失败')
+    if (!silent) ElMessage.error(e?.message || '加载失败')
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -259,6 +262,15 @@ async function openDetail(row) {
 onMounted(() => {
   getList()
   getStats()
+  // 实时更新：前台用户点「有用/没用」、新咨询进来后，后台 15 秒内自动跟上（静默，不闪 loading）
+  timer = setInterval(() => {
+    if (document.hidden || detailOpen.value) return
+    getStats()
+    getList(true)
+  }, 15000)
+})
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer)
 })
 </script>
 
