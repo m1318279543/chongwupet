@@ -8,7 +8,12 @@
         <p class="ui-sub">选项目、定时间就能下单，预约与具体宠物解耦：到店服务直接带宠物过来，上门服务填好地址等技师上门。</p>
       </div>
       <div class="ui-head__aside">
-        <span class="ui-count"><b>{{ orders.length }}</b>条服务预约</span>
+        <span class="ui-count as-rating" v-if="serviceRating">
+          <el-icon class="as-rating__star"><Star /></el-icon>
+          <b>{{ serviceRating.avg }}</b>
+          <span class="as-rating__label">服务评分</span>
+          <span class="as-rating__n">{{ serviceRating.count > 0 ? `（${serviceRating.count} 条评价）` : '（期待您的评价）' }}</span>
+        </span>
       </div>
     </header>
 
@@ -310,8 +315,9 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled, OfficeBuilding } from '@element-plus/icons-vue'
+import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled, OfficeBuilding, Star } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
+import { commentStatGroup } from '@/api/pet/petComment'
 import {
   listMyServiceOrders,
   evaluateServiceOrder,
@@ -701,6 +707,7 @@ onMounted(async () => {
   // 游客只加载价目区，避免 401 弹「登录已过期」
   loadServiceItems()
   loadStores()
+  loadServiceRating()
   if (!userStore.token) return
   loading.value = true
   try {
@@ -709,9 +716,52 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+/* 头部服务评分：汇总全部宠物评价（游客可读接口，无需登录） */
+const serviceRating = ref(null)
+async function loadServiceRating() {
+  try {
+    const res = await commentStatGroup('pet')
+    const rows = res.data || []
+    let total = 0
+    let weighted = 0
+    for (const row of rows) {
+      const c = Number(row.count) || 0
+      total += c
+      weighted += (Number(row.avg) || 0) * c
+    }
+    const avg = total > 0 ? (weighted / total).toFixed(1) : '5.0'
+    serviceRating.value = { avg, count: total }
+  } catch (e) {
+    // 接口异常时兜底显示满分，不挡住页面
+    serviceRating.value = { avg: '5.0', count: 0 }
+  }
+}
 </script>
 
 <style scoped lang="scss">
+/* 头部服务评分徽标 */
+.as-rating {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  &__star {
+    align-self: center;
+    color: #e6a23c;
+    font-size: 18px;
+  }
+  b {
+    color: #e6a23c;
+  }
+  &__label {
+    color: var(--text-2);
+    font-weight: 600;
+  }
+  &__n {
+    font-size: var(--fs-2);
+    color: var(--text-3);
+  }
+}
 .apt-note {
   display: flex;
   align-items: center;
