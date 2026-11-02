@@ -33,6 +33,32 @@ export function listStoreStaff(storeId) {
   })
 }
 
+// 新增员工
+export function addStoreStaff(storeId, data) {
+  return request({
+    url: '/pet/store/' + storeId + '/staff',
+    method: 'post',
+    data
+  })
+}
+
+// 修改员工（含在职/离职状态）
+export function updateStoreStaff(storeId, data) {
+  return request({
+    url: '/pet/store/' + storeId + '/staff',
+    method: 'put',
+    data
+  })
+}
+
+// 删除员工
+export function delStoreStaff(storeId, staffIds) {
+  return request({
+    url: '/pet/store/' + storeId + '/staff/' + staffIds,
+    method: 'delete'
+  })
+}
+
 // 新增门店
 export function addStore(data) {
   return request({

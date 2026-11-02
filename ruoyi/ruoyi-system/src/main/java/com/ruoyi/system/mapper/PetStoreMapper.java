@@ -31,4 +31,16 @@ public interface PetStoreMapper
 
     /** 按账号查员工档案（门店数据范围用） */
     public PetStaff selectStaffByUserId(Long userId);
+
+    /** 新增员工 */
+    public int insertPetStaff(PetStaff staff);
+
+    /** 修改员工 */
+    public int updatePetStaff(PetStaff staff);
+
+    /** 批量删除员工（物理删除，与门店一致） */
+    public int deletePetStaffByIds(Long[] staffIds);
+
+    /** 通过ID查询员工 */
+    public PetStaff selectPetStaffByStaffId(Long staffId);
 }

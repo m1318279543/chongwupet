@@ -154,35 +154,84 @@
     </el-dialog>
 
     <!-- 员工抽屉 -->
-    <el-drawer v-model="staffOpen" :title="staffTitle" size="560px">
-      <el-table :data="staffList" v-loading="staffLoading">
-        <el-table-column label="姓名" prop="staffName" width="100" />
-        <el-table-column label="岗位" prop="post" width="90">
+    <el-drawer v-model="staffOpen" :title="staffTitle" size="640px">
+      <div class="staff-toolbar">
+        <el-button type="primary" size="small" icon="Plus" @click="handleStaffAdd" v-hasPermi="['pet:store:edit']">新增员工</el-button>
+      </div>
+      <el-table :data="staffList" v-loading="staffLoading" border stripe>
+        <el-table-column label="姓名" prop="staffName" width="92" />
+        <el-table-column label="岗位" prop="post" width="92">
           <template #default="scope">
             <el-tag size="small" :type="scope.row.post === '店长' ? 'danger' : scope.row.post === '兽医' ? 'success' : 'info'">
               {{ scope.row.post }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="手机号" prop="phone" width="130" />
-        <el-table-column label="入职日期" prop="entryDate" width="120">
+        <el-table-column label="手机号" prop="phone" width="122" />
+        <el-table-column label="入职日期" prop="entryDate" width="102">
           <template #default="scope">{{ proxy.parseTime(scope.row.entryDate, '{y}-{m}-{d}') }}</template>
         </el-table-column>
-        <el-table-column label="账号" prop="userId" width="80">
+        <el-table-column label="账号" prop="userId" width="66">
           <template #default="scope">{{ scope.row.userId ? '已绑定' : '—' }}</template>
         </el-table-column>
-        <el-table-column label="状态" prop="status" width="80">
-          <template #default="scope">{{ scope.row.status === '0' ? '在职' : '离职' }}</template>
+        <el-table-column label="状态" prop="status" width="70">
+          <template #default="scope">
+            <el-tag size="small" :type="scope.row.status === '0' ? 'success' : 'info'">
+              {{ scope.row.status === '0' ? '在职' : '离职' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="158" class-name="small-padding fixed-width">
+          <template #default="scope">
+            <el-button link type="primary" icon="Edit" @click="handleStaffUpdate(scope.row)" v-hasPermi="['pet:store:edit']">修改</el-button>
+            <el-button link :type="scope.row.status === '0' ? 'warning' : 'success'" @click="toggleStaffStatus(scope.row)" v-hasPermi="['pet:store:edit']">
+              {{ scope.row.status === '0' ? '离职' : '复职' }}
+            </el-button>
+            <el-button link type="danger" icon="Delete" @click="handleStaffDelete(scope.row)" v-hasPermi="['pet:store:remove']">删除</el-button>
+          </template>
         </el-table-column>
       </el-table>
       <el-empty v-if="!staffLoading && staffList.length === 0" description="该门店暂无员工" />
     </el-drawer>
+
+    <!-- 员工新增/修改 -->
+    <el-dialog :title="staffFormTitle" v-model="staffFormOpen" width="460px" append-to-body>
+      <el-form ref="staffRef" :model="staffForm" :rules="staffRules" label-width="90px">
+        <el-form-item label="姓名" prop="staffName">
+          <el-input v-model="staffForm.staffName" placeholder="员工姓名" :disabled="!!staffForm.userId" />
+          <div v-if="staffForm.userId" class="form-tip">已绑定系统账号，姓名不可修改</div>
+        </el-form-item>
+        <el-form-item label="岗位" prop="post">
+          <el-select v-model="staffForm.post" style="width: 100%">
+            <el-option v-for="p in postOptions" :key="p" :label="p" :value="p" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="staffForm.phone" placeholder="员工手机号" maxlength="11" />
+        </el-form-item>
+        <el-form-item label="入职日期" prop="entryDate">
+          <el-date-picker v-model="staffForm.entryDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="staffForm.status">
+            <el-radio value="0">在职</el-radio>
+            <el-radio value="1">离职</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitStaffForm">确 定</el-button>
+          <el-button @click="staffFormOpen = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
-import { listStore, getStore, addStore, updateStore, delStore, listStoreStaff } from '@/api/pet/petStore'
+import { listStore, getStore, addStore, updateStore, delStore, listStoreStaff, addStoreStaff, updateStoreStaff, delStoreStaff } from '@/api/pet/petStore'
 
 const { proxy } = getCurrentInstance()
 
@@ -199,6 +248,25 @@ const staffOpen = ref(false)
 const staffLoading = ref(false)
 const staffList = ref([])
 const staffTitle = ref('')
+const staffFormOpen = ref(false)
+const staffFormTitle = ref('')
+const currentStoreId = ref(null)
+const postOptions = ['店长', '兽医', '美容师', '店员', '库管']
+
+const staffForm = reactive({
+  staffId: undefined,
+  staffName: '',
+  post: '店员',
+  phone: '',
+  entryDate: undefined,
+  status: '0',
+  userId: null
+})
+
+const staffRules = {
+  staffName: [{ required: true, message: '员工姓名不能为空', trigger: 'blur' }],
+  post: [{ required: true, message: '岗位不能为空', trigger: 'change' }]
+}
 
 const data = reactive({
   form: {},
@@ -299,14 +367,94 @@ function handleDelete(row) {
 }
 
 function openStaff(row) {
-  staffTitle.value = row.storeName + ' · 在职员工'
+  currentStoreId.value = row.storeId
+  staffTitle.value = row.storeName + ' · 员工管理'
   staffOpen.value = true
+  getStaffList()
+}
+
+function getStaffList() {
   staffLoading.value = true
   staffList.value = []
-  listStoreStaff(row.storeId).then((res) => {
+  listStoreStaff(currentStoreId.value).then((res) => {
     staffList.value = res.data || []
     staffLoading.value = false
   }).catch(() => { staffLoading.value = false })
+}
+
+function resetStaffForm() {
+  staffForm.staffId = undefined
+  staffForm.staffName = ''
+  staffForm.post = '店员'
+  staffForm.phone = ''
+  staffForm.entryDate = undefined
+  staffForm.status = '0'
+  staffForm.userId = null
+  proxy.resetForm('staffRef')
+}
+
+function handleStaffAdd() {
+  resetStaffForm()
+  staffFormTitle.value = '新增员工'
+  staffFormOpen.value = true
+}
+
+function handleStaffUpdate(row) {
+  resetStaffForm()
+  staffForm.staffId = row.staffId
+  staffForm.staffName = row.staffName
+  staffForm.post = row.post
+  staffForm.phone = row.phone
+  staffForm.entryDate = row.entryDate ? proxy.parseTime(row.entryDate, '{y}-{m}-{d}') : undefined
+  staffForm.status = row.status
+  staffForm.userId = row.userId
+  staffFormTitle.value = '修改员工'
+  staffFormOpen.value = true
+}
+
+function submitStaffForm() {
+  proxy.$refs['staffRef'].validate((valid) => {
+    if (!valid) return
+    const payload = {
+      staffId: staffForm.staffId,
+      staffName: staffForm.staffName,
+      post: staffForm.post,
+      phone: staffForm.phone,
+      entryDate: staffForm.entryDate,
+      status: staffForm.status
+    }
+    const action = staffForm.staffId
+      ? updateStoreStaff(currentStoreId.value, payload)
+      : addStoreStaff(currentStoreId.value, payload)
+    action.then(() => {
+      proxy.$modal.msgSuccess(staffForm.staffId ? '修改成功' : '新增成功')
+      staffFormOpen.value = false
+      getStaffList()
+      getList()
+    })
+  })
+}
+
+function toggleStaffStatus(row) {
+  const next = row.status === '0' ? '1' : '0'
+  const tip = next === '1' ? `确认将员工【${row.staffName}】设为离职吗？` : `确认将员工【${row.staffName}】恢复为在职吗？`
+  proxy.$modal.confirm(tip).then(() => {
+    return updateStoreStaff(currentStoreId.value, { staffId: row.staffId, status: next })
+  }).then(() => {
+    proxy.$modal.msgSuccess(next === '1' ? '已设为离职' : '已恢复在职')
+    getStaffList()
+    getList()
+  }).catch(() => {})
+}
+
+function handleStaffDelete(row) {
+  proxy.$modal.confirm(`确认删除员工【${row.staffName}】吗？删除后不可恢复。`).then(() => {
+    return delStoreStaff(currentStoreId.value, row.staffId)
+  }).then(() => {
+    proxy.$modal.msgSuccess('删除成功')
+    getStaffList()
+    getList()
+  }).catch(() => {})
 }
 
 onMounted(getList)
@@ -315,4 +463,6 @@ onMounted(getList)
 <style scoped>
 .metric { font-variant-numeric: tabular-nums; color: var(--text-2); }
 .head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.staff-toolbar { margin-bottom: 10px; display: flex; justify-content: flex-end; }
+.form-tip { font-size: 12px; color: var(--el-text-color-secondary); line-height: 1.4; margin-top: 2px; }
 </style>

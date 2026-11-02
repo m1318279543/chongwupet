@@ -135,4 +135,57 @@
         order by field(post, '店长', '兽医', '美容师', '店员', '库管'), staff_id
     </select>
 
+    <select id="selectPetStaffByStaffId" parameterType="Long" resultMap="PetStaffResult">
+        select staff_id, user_id, store_id, staff_name, post, phone, entry_date, status, del_flag
+        from pet_staff
+        where staff_id = #{staffId} and del_flag = '0'
+    </select>
+
+    <insert id="insertPetStaff" parameterType="PetStaff" useGeneratedKeys="true" keyProperty="staffId">
+        insert into pet_staff
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="storeId != null">store_id,</if>
+            <if test="staffName != null and staffName != ''">staff_name,</if>
+            <if test="post != null and post != ''">post,</if>
+            <if test="phone != null and phone != ''">phone,</if>
+            <if test="entryDate != null">entry_date,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time, del_flag
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="storeId != null">#{storeId},</if>
+            <if test="staffName != null and staffName != ''">#{staffName},</if>
+            <if test="post != null and post != ''">#{post},</if>
+            <if test="phone != null and phone != ''">#{phone},</if>
+            <if test="entryDate != null">#{entryDate},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate(), '0'
+        </trim>
+    </insert>
+
+    <update id="updatePetStaff" parameterType="PetStaff">
+        update pet_staff
+        <set>
+            <if test="staffName != null and staffName != ''">staff_name = #{staffName},</if>
+            <if test="post != null and post != ''">post = #{post},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="entryDate != null">entry_date = #{entryDate},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where staff_id = #{staffId}
+    </update>
+
+    <delete id="deletePetStaffByIds" parameterType="Long">
+        delete from pet_staff where staff_id in
+        <foreach item="staffId" collection="array" open="(" separator="," close=")">
+            #{staffId}
+        </foreach>
+    </delete>
+
 </mapper>

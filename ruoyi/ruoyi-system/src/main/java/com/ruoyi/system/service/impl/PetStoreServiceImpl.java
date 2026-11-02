@@ -81,4 +81,63 @@ public class PetStoreServiceImpl implements IPetStoreService
     {
         return petStoreMapper.selectStaffByStoreId(storeId);
     }
+
+    @Override
+    public PetStaff selectPetStaffByStaffId(Long staffId)
+    {
+        return petStoreMapper.selectPetStaffByStaffId(staffId);
+    }
+
+    @Override
+    public int insertPetStaff(PetStaff staff)
+    {
+        if (staff.getStoreId() == null || petStoreMapper.selectPetStoreByStoreId(staff.getStoreId()) == null)
+        {
+            throw new ServiceException("所属门店不存在");
+        }
+        if (StringUtils.isEmpty(staff.getStaffName()))
+        {
+            throw new ServiceException("员工姓名不能为空");
+        }
+        if (StringUtils.isEmpty(staff.getPost()))
+        {
+            staff.setPost("店员");
+        }
+        if (StringUtils.isEmpty(staff.getStatus()))
+        {
+            staff.setStatus("0");
+        }
+        return petStoreMapper.insertPetStaff(staff);
+    }
+
+    @Override
+    public int updatePetStaff(PetStaff staff)
+    {
+        PetStaff db = petStoreMapper.selectPetStaffByStaffId(staff.getStaffId());
+        if (db == null)
+        {
+            throw new ServiceException("员工不存在或已被删除");
+        }
+        // 已绑定账号的员工不允许修改姓名，保持账号档案一致
+        if (db.getUserId() != null && StringUtils.isNotEmpty(staff.getStaffName())
+                && !staff.getStaffName().equals(db.getStaffName()))
+        {
+            throw new ServiceException("该员工已绑定系统账号，不能修改姓名");
+        }
+        return petStoreMapper.updatePetStaff(staff);
+    }
+
+    @Override
+    public int deletePetStaffByIds(Long[] staffIds)
+    {
+        for (Long staffId : staffIds)
+        {
+            PetStaff staff = petStoreMapper.selectPetStaffByStaffId(staffId);
+            if (staff != null && staff.getUserId() != null)
+            {
+                throw new ServiceException("员工【" + staff.getStaffName() + "】已绑定系统账号，请先解除绑定或将其设为离职");
+            }
+        }
+        return petStoreMapper.deletePetStaffByIds(staffIds);
+    }
 }
