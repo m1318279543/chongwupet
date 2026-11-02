@@ -35,17 +35,19 @@
             </el-tag>
           </div>
           <div class="desc">{{ p.desc }}</div>
-          <div class="price-row">
-            <span class="rating-tag" v-if="foodRating(p.fid)"><el-icon><Star /></el-icon>{{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
-            <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
-            <span class="act-row">
+          <div class="buy">
+            <div class="price-row">
+              <span class="rating-tag" v-if="foodRating(p.fid)"><el-icon><Star /></el-icon>{{ foodRating(p.fid).avg }}（{{ foodRating(p.fid).count }}）</span>
+              <div class="price">¥{{ p.price }}<span class="unit">起</span></div>
+            </div>
+            <div class="act-row">
               <button type="button" class="quick-cart" :disabled="p.stock === 0"
                 :title="p.stock === 0 ? '暂时缺货' : '加入购物车'"
                 @click.stop="addToCart(p)">
                 <el-icon><ShoppingCart /></el-icon>加入购物车
               </button>
               <span class="go">详情<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
-            </span>
+            </div>
           </div>
         </div>
       </article>
@@ -240,10 +242,11 @@ function buyNow(p) {
 
 /* 网格：与首页宠物卡同一套扁平语言——无卡壳，靠图片圆角与 hover 细描边 */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 26px 20px; }
-.act-row { display: inline-flex; align-items: center; gap: 10px; }
+.act-row { display: flex; align-items: center; gap: 10px; }
 .quick-cart {
-  display: inline-flex; align-items: center; gap: 5px;
-  height: 30px; padding: 0 12px; border: 1px solid var(--brand-200);
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  flex: 1; white-space: nowrap;
+  height: 32px; padding: 0 12px; border: 1px solid var(--brand-200);
   border-radius: var(--radius-pill); background: var(--bg-card);
   font-size: 12.5px; font-weight: 600; color: var(--brand-700); cursor: pointer;
   transition: all .16s; font-family: inherit;
@@ -267,18 +270,24 @@ function buyNow(p) {
   .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .spec { font-size: 13px; color: var(--text-3); }
   .desc { font-size: 13px; color: var(--text-2); line-height: 1.6; min-height: 42px; margin-bottom: 10px; }
-  .price-row { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: var(--rule-soft); }
+  /* 底部购买区：评分+价格一行、按钮独立一行，任意卡宽都不挤压换行 */
+  .buy {
+    padding-top: 10px; border-top: var(--rule-soft);
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .price-row { display: flex; align-items: center; gap: 10px; min-height: 24px; }
   .price { color: var(--price); font-size: 19px; font-weight: 700; margin-left: auto;
+    white-space: nowrap;
     .unit { font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 2px; }
   }
   .go { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 600;
-    color: var(--text-3); transition: color .16s;
+    color: var(--text-3); transition: color .16s; flex-shrink: 0; white-space: nowrap;
     svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
     .card:hover & { color: var(--brand-700); }
   }
 }
 .rating-tag { font-size: 12px; color: var(--brand-700); background: var(--brand-50); border-radius: var(--radius-pill);
-  padding: 2px 8px; white-space: nowrap; }
+  padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
 
 /* 换粮贴士：去底色面板，改 1px 顶线 + 标题承接 */
 .tip {
@@ -337,7 +346,8 @@ function buyNow(p) {
       .spec { font-size: 12px; }
     }
     .desc { display: none; }   /* 详情弹窗里有完整简介，列表卡只留名称规格价格 */
-    .price-row { gap: 6px; padding-top: 8px; }
+    .buy { gap: 7px; padding-top: 8px; }
+    .price-row { gap: 6px; }
   .rating-tag { font-size: 11px; padding: 1px 6px; }
   .price { font-size: 15px;
       .unit { font-size: 11px; }
