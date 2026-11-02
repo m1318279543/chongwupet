@@ -130,7 +130,7 @@
 import { ref, reactive, computed, inject, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { submitConsult, listMyConsult } from '@/api/pet/petConsult'
-import { listStore } from '@/api/pet/petStore'
+import { storeOptions } from '@/api/pet/petStore'
 import { useUserStore } from '@/store/modules/user'
 
 const userStore = useUserStore()
@@ -138,11 +138,12 @@ const openAuth = inject('openAuth', () => {})
 const isLogged = computed(() => !!userStore.token)
 
 // 右侧栏的门店电话；接口不可用时留空，对应那块自动不渲染
+// 注意用游客可读的 /pet/store/options，后台列表接口 /pet/store/list 要求 pet:store:list 权限，普通用户会被 403
 const stores = ref([])
 async function loadStores() {
   try {
-    const res = await listStore({})
-    stores.value = res.rows || res.data || []
+    const res = await storeOptions()
+    stores.value = res.data || []
   } catch (e) { /* 静默 */ }
 }
 

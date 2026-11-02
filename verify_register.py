@@ -48,3 +48,9 @@ print('3. 角色:', roles, '| 昵称:', (r.get('user') or {}).get('nickName'))
 # 4. 需登录接口
 r = http('/pet/wallet/mine', token=token)
 print('4. 钱包接口:', r.get('code'), 'balance=', (r.get('data') or {}).get('balance') if isinstance(r.get('data'), dict) else r.get('data'))
+
+# 5. 联系客服页依赖的接口（曾因误用后台门店列表接口 403）
+r = http('/pet/store/options', token=token)
+print('5. 门店选项:', r.get('code'), 'count=', len(r.get('data') or []))
+r = http('/pet/consult/my', token=token)
+print('6. 我的咨询:', r.get('code'), 'total=', (r.get('total') if isinstance(r.get('total'), int) else 0))
