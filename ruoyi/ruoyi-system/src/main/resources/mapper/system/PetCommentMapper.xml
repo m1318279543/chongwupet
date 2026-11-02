@@ -126,6 +126,7 @@
         update pet_comment
         <set>
             <if test="replyUser != null">reply_user = #{replyUser},</if>
+            <if test="score != null">score = #{score},</if>
             <if test="content != null and content != ''">content = #{content},</if>
             <if test="status != null and status != ''">status = #{status},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>

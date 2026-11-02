@@ -8,12 +8,30 @@
         <p class="ui-sub">选项目、定时间就能下单，预约与具体宠物解耦：到店服务直接带宠物过来，上门服务填好地址等技师上门。</p>
       </div>
       <div class="ui-head__aside">
-        <span class="ui-count as-rating" v-if="serviceRating">
-          <el-icon class="as-rating__star"><Star /></el-icon>
-          <b>{{ serviceRating.avg }}</b>
-          <span class="as-rating__label">服务评分</span>
-          <span class="as-rating__n">{{ serviceRating.count > 0 ? `（${serviceRating.count} 条评价）` : '（期待您的评价）' }}</span>
-        </span>
+        <!-- 顾客自己打分 + 写评价：点星快速评分，「写评价/评价列表」弹窗里可写文字 -->
+        <div v-if="ratingLoaded" class="as-rate" @mouseleave="hoverStar = 0">
+          <span class="as-rate__label">{{ myScore ? '您的评分' : '为本店服务打分' }}</span>
+          <div class="as-rate__stars" role="radiogroup" aria-label="服务评分">
+            <button
+              v-for="n in 5"
+              :key="n"
+              type="button"
+              class="as-rate__star"
+              :class="{ 'is-on': n <= (hoverStar || myScore), 'is-mine': !hoverStar && n <= myScore }"
+              :disabled="ratingSubmitting"
+              :aria-label="`${n} 星`"
+              :aria-checked="myScore === n"
+              role="radio"
+              @mouseenter="hoverStar = n"
+              @click="rateService(n)"
+            >
+              <el-icon><StarFilled /></el-icon>
+            </button>
+          </div>
+          <button type="button" class="as-rate__link" @click="openReviewDialog">
+            {{ ratingCount > 0 ? `${ratingCount} 条评价` : '写评价' }}
+          </button>
+        </div>
       </div>
     </header>
 
@@ -309,15 +327,50 @@
         <el-button type="primary" :loading="evalSubmitting" @click="submitEval">提交评价</el-button>
       </template>
     </el-dialog>
+
+    <!-- 门店服务评价：打分 + 文字，下方展示其他顾客的评价 -->
+    <el-dialog v-model="reviewOpen" title="门店服务评价" width="480px" append-to-body @open="loadReviews">
+      <div class="rv-box">
+        <div v-if="!userStore.token" class="rv-login">
+          <button type="button" class="ui-linkbtn" @click="openAuth('login')">登录</button>
+          后即可打分写评价
+        </div>
+        <div v-else class="rv-form">
+          <el-rate v-model="reviewForm.score" :texts="['很不满意','不满意','一般','满意','非常满意']" show-text />
+          <el-input v-model="reviewForm.content" type="textarea" :rows="3" maxlength="500" show-word-limit
+            placeholder="说说我们的服务怎么样（选填）" style="margin-top:12px" />
+          <el-button type="primary" size="small" :loading="reviewSubmitting" style="margin-top:10px" @click="submitReview">
+            {{ myScore ? '更新我的评价' : '提交评价' }}
+          </el-button>
+        </div>
+
+        <p class="rv-box__title">大家的评价<span v-if="ratingCount">（{{ ratingCount }} 条）</span></p>
+        <div v-loading="reviewsLoading" class="rv-list">
+          <p v-if="!reviewsLoading && !reviews.length" class="rv-empty">还没有评价，来当第一位吧～</p>
+          <div v-for="rv in reviews" :key="rv.commentId" class="rv-item">
+            <div class="rv-item__ava" :style="{ background: avatarBg(rv.userName) }">{{ (rv.userName || '客').charAt(0).toUpperCase() }}</div>
+            <div class="rv-item__main">
+              <p class="rv-item__head">
+                <span class="rv-item__name">{{ rv.userName || '顾客' }}</span>
+                <el-rate :model-value="rv.score" disabled size="small" />
+                <span class="rv-item__time">{{ fmtTime(rv.createTime) }}</span>
+              </p>
+              <p class="rv-item__content">{{ rv.content }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled, OfficeBuilding, Star } from '@element-plus/icons-vue'
+import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled, OfficeBuilding, StarFilled } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
-import { commentStatGroup } from '@/api/pet/petComment'
+import { serviceRatingStat, submitServiceRating } from '@/api/pet/petServiceRating'
+import { listPetComment } from '@/api/pet/petComment'
 import {
   listMyServiceOrders,
   evaluateServiceOrder,
@@ -717,49 +770,151 @@ onMounted(async () => {
   }
 })
 
-/* 头部服务评分：汇总全部宠物评价（游客可读接口，无需登录） */
-const serviceRating = ref(null)
+/* 头部服务评分：顾客自己点星打分 + 评价弹窗（游客可看，打分需登录） */
+const ratingLoaded = ref(false)
+const myScore = ref(0)
+const hoverStar = ref(0)
+const ratingSubmitting = ref(false)
+const ratingCount = ref(0)
+const mineContent = ref('')
+
 async function loadServiceRating() {
   try {
-    const res = await commentStatGroup('pet')
-    const rows = res.data || []
-    let total = 0
-    let weighted = 0
-    for (const row of rows) {
-      const c = Number(row.count) || 0
-      total += c
-      weighted += (Number(row.avg) || 0) * c
-    }
-    const avg = total > 0 ? (weighted / total).toFixed(1) : '5.0'
-    serviceRating.value = { avg, count: total }
+    const res = await serviceRatingStat()
+    myScore.value = Number(res.data?.mine?.score) || 0
+    mineContent.value = res.data?.mine?.content || ''
+    ratingCount.value = Number(res.data?.count) || 0
   } catch (e) {
-    // 接口异常时兜底显示满分，不挡住页面
-    serviceRating.value = { avg: '5.0', count: 0 }
+    myScore.value = 0
+    mineContent.value = ''
+    ratingCount.value = 0
+  } finally {
+    ratingLoaded.value = true
   }
+}
+
+async function rateService(score) {
+  if (!userStore.token) {
+    ElMessage.warning('登录后即可为本店服务打分')
+    openAuth('login')
+    return
+  }
+  if (ratingSubmitting.value) return
+  ratingSubmitting.value = true
+  hoverStar.value = 0
+  try {
+    const res = await submitServiceRating({ score, content: '' })
+    myScore.value = score
+    ratingCount.value = Number(res.data?.count) || ratingCount.value
+    ElMessage.success('感谢您的评价，可点「写评价」补充文字')
+  } catch (e) {
+    // 错误提示由 request 统一弹出
+  } finally {
+    ratingSubmitting.value = false
+  }
+}
+
+/* 评价弹窗：打分 + 文字 + 评价列表 */
+const reviewOpen = ref(false)
+const reviewForm = reactive({ score: 0, content: '' })
+const reviewSubmitting = ref(false)
+const reviews = ref([])
+const reviewsLoading = ref(false)
+
+function openReviewDialog() {
+  reviewForm.score = myScore.value || 0
+  // 已有文字评价时回填，改起来顺手（占位文案不回填）
+  reviewForm.content = mineContent.value === '该顾客未填写文字评价' ? '' : mineContent.value
+  reviewOpen.value = true
+}
+async function loadReviews() {
+  reviewsLoading.value = true
+  try {
+    const res = await listPetComment({ petId: 0, targetType: 'service', pageNum: 1, pageSize: 20 })
+    reviews.value = res.rows || []
+  } catch (e) {
+    reviews.value = []
+  } finally {
+    reviewsLoading.value = false
+  }
+}
+async function submitReview() {
+  if (!reviewForm.score) {
+    ElMessage.warning('请先选择星级')
+    return
+  }
+  reviewSubmitting.value = true
+  try {
+    const res = await submitServiceRating({ score: reviewForm.score, content: reviewForm.content.trim() })
+    myScore.value = reviewForm.score
+    mineContent.value = reviewForm.content.trim() || '该顾客未填写文字评价'
+    ratingCount.value = Number(res.data?.count) || ratingCount.value
+    ElMessage.success('感谢您的评价')
+    reviewOpen.value = false
+    loadReviews()
+  } catch (e) {
+    // 错误提示由 request 统一弹出
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
+function avatarBg(name) {
+  const palette = ['#0e7a4a', '#b45309', '#64748b', '#a8542b', '#4f6df5', '#0e7490']
+  let h = 0
+  const s = String(name || '客')
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return palette[h % palette.length]
 }
 </script>
 
 <style scoped lang="scss">
-/* 头部服务评分徽标 */
-.as-rating {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  &__star {
-    align-self: center;
-    color: #e6a23c;
-    font-size: 18px;
-  }
-  b {
-    color: #e6a23c;
-  }
+/* 头部服务评分：可点击的五星 */
+.as-rate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   &__label {
-    color: var(--text-2);
+    font-size: var(--fs-3);
     font-weight: 600;
+    color: var(--text-2);
+    white-space: nowrap;
   }
-  &__n {
+  &__stars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  &__star {
+    display: inline-flex;
+    padding: 2px;
+    border: 0;
+    background: none;
+    color: var(--text-4);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color .12s, transform .12s;
+    &:hover:not(:disabled) { transform: scale(1.12); }
+    &:disabled { cursor: progress; }
+    &.is-on { color: #e6a23c; }
+    &.is-mine { filter: drop-shadow(0 1px 2px rgba(230, 162, 60, .3)); }
+  }
+  &__link {
+    border: 0;
+    background: none;
+    padding: 0;
     font-size: var(--fs-2);
-    color: var(--text-3);
+    color: var(--brand-700);
+    white-space: nowrap;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
+  }
+}
+@media (max-width: 768px) {
+  .as-rate {
+    gap: 6px;
+    &__star { font-size: 20px; }
+    &__hint { font-size: var(--fs-1); }
   }
 }
 .apt-note {
@@ -918,6 +1073,58 @@ async function loadServiceRating() {
 
 .eval-box {
   .eval-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-1); }
+}
+
+/* 门店服务评价弹窗 */
+.rv-box {
+  &__title {
+    margin: 18px 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    border-top: 1px dashed var(--border-1);
+    padding-top: 14px;
+  }
+}
+.rv-login {
+  font-size: 13.5px;
+  color: var(--text-3);
+}
+.rv-list { min-height: 80px; max-height: 320px; overflow: auto; }
+.rv-empty { margin: 20px 0; text-align: center; font-size: 13px; color: var(--text-3); }
+.rv-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  & + & { border-top: 1px solid var(--border-2); }
+  &__ava {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  &__main { flex: 1; min-width: 0; }
+  &__head {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  &__name { font-size: 13.5px; font-weight: 600; color: var(--text-1); }
+  &__time { font-size: 12px; color: var(--text-3); margin-left: auto; }
+  &__content {
+    margin: 4px 0 0;
+    font-size: 13.5px;
+    color: var(--text-2);
+    line-height: 1.55;
+    word-break: break-word;
+  }
 }
 
 @media (max-width: 768px) {
