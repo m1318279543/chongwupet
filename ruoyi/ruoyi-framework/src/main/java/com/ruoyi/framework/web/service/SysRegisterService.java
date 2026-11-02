@@ -1,10 +1,12 @@
 package com.ruoyi.framework.web.service;
 
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.UserConstants;
+import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.RegisterBody;
 import com.ruoyi.common.core.redis.RedisCache;
@@ -16,6 +18,7 @@ import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
+import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysUserService;
 
@@ -35,6 +38,12 @@ public class SysRegisterService
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private SysRoleMapper roleMapper;
+
+    /** 自助注册的默认角色标识 */
+    private static final String DEFAULT_ROLE_KEY = "common";
 
     /**
      * 注册
@@ -77,6 +86,7 @@ public class SysRegisterService
         else
         {
             sysUser.setNickName(username);
+            sysUser.setStatus("0");
             sysUser.setPwdUpdateDate(DateUtils.getNowDate());
             sysUser.setPassword(SecurityUtils.encryptPassword(password));
             boolean regFlag = userService.registerUser(sysUser);
@@ -86,10 +96,32 @@ public class SysRegisterService
             }
             else
             {
+                // 自助注册默认授予「普通角色」，否则新账号登录后没有任何业务权限
+                assignDefaultRole(sysUser.getUserId());
                 AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER, MessageUtils.message("user.register.success")));
             }
         }
         return msg;
+    }
+
+    /**
+     * 给新注册用户分配默认角色（普通角色）
+     */
+    private void assignDefaultRole(Long userId)
+    {
+        if (userId == null)
+        {
+            return;
+        }
+        SysRole query = new SysRole();
+        query.setRoleKey(DEFAULT_ROLE_KEY);
+        query.setStatus("0");
+        // 走 Mapper 层查询：Service 层 selectRoleList 带数据权限切面，匿名注册时拿不到登录用户会抛异常
+        List<SysRole> roles = roleMapper.selectRoleList(query);
+        if (roles != null && !roles.isEmpty())
+        {
+            userService.insertUserAuth(userId, new Long[] { roles.get(0).getRoleId() });
+        }
     }
 
     /**
