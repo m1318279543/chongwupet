@@ -1,40 +1,94 @@
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CHONGQING_SPOTS } from '@/utils/geo'
 
 /**
- * 顾客定位（实时）
+ * 顾客定位（实时 + 自定义）
  *
- * 优先用浏览器 Geolocation 的 watchPosition：顾客走动时距离会跟着变。
- * 注意：浏览器只在 HTTPS / localhost 下允许定位；线上是 http 时直接进 insecure 状态，
- * 由调用方引导顾客手动选地标（CHONGQING_SPOTS），保证功能仍可用。
+ * 1) 浏览器 Geolocation：watchPosition 持续更新，顾客走动距离实时变化
+ * 2) HTTPS 限制：浏览器只在 HTTPS / localhost 下允许定位，http 站点直接进 insecure 状态
+ * 3) 自定义位置：顾客可手动设名称 + 经纬度（或选常用地标），存 localStorage，全站共用
  */
 const SPOT_KEY = 'pet-my-spot'
+const SPOT_EVENT = 'pet-spot-changed'
+
+/** 读取上次保存的位置：兼容旧版（只存地标 key 字符串） */
+function loadSpot() {
+  try {
+    const raw = localStorage.getItem(SPOT_KEY)
+    if (!raw) return null
+    if (raw.startsWith('{')) {
+      const p = JSON.parse(raw)
+      if (p && typeof p.lng === 'number' && typeof p.lat === 'number') return p
+      return null
+    }
+    // 旧格式：地标 key
+    const spot = CHONGQING_SPOTS.find((s) => s.key === raw)
+    return spot ? { name: spot.name, lng: spot.lng, lat: spot.lat, key: spot.key } : null
+  } catch (e) {
+    return null
+  }
+}
+
+function persist(spot) {
+  try {
+    if (spot) localStorage.setItem(SPOT_KEY, JSON.stringify(spot))
+    else localStorage.removeItem(SPOT_KEY)
+  } catch (e) { /* 隐私模式忽略 */ }
+  // 同一个页面/其他标签页的定位实例同步
+  try { window.dispatchEvent(new CustomEvent(SPOT_EVENT, { detail: spot })) } catch (e) { /* 忽略 */ }
+}
 
 export function useGeolocation() {
   const supported = typeof navigator !== 'undefined' && !!navigator.geolocation
   const secure = typeof window === 'undefined' ? true : window.isSecureContext
   // idle | locating | granted | denied | insecure | unsupported | error | manual
   const status = ref('idle')
-  const coords = ref(null)          // { lat, lng, accuracy, updatedAt }
+  const coords = ref(null)          // { lat, lng, accuracy, updatedAt, label }
   const errorText = ref('')
-  const manualKey = ref(localStorage.getItem(SPOT_KEY) || '')
+  const savedSpot = ref(loadSpot())  // 自定义/地标位置 { name, lng, lat, key? }
 
   let watchId = null
 
   const active = computed(() => !!coords.value)
 
-  function applyManual(key) {
-    manualKey.value = key || ''
-    if (!key) {
+  function applySpot(spot) {
+    savedSpot.value = spot || null
+    if (!spot) {
       coords.value = null
       status.value = 'idle'
+      persist(null)
       return
     }
+    coords.value = {
+      lat: Number(spot.lat),
+      lng: Number(spot.lng),
+      accuracy: null,
+      updatedAt: Date.now(),
+      label: spot.name
+    }
+    status.value = 'manual'
+    persist(spot)
+  }
+
+  /** 常用地标 */
+  function applyManual(key) {
+    if (!key) return applySpot(null)
     const spot = CHONGQING_SPOTS.find((s) => s.key === key)
     if (!spot) return
-    coords.value = { lat: spot.lat, lng: spot.lng, accuracy: null, updatedAt: Date.now(), label: spot.name }
-    status.value = 'manual'
-    try { localStorage.setItem(SPOT_KEY, key) } catch (e) { /* 隐私模式忽略 */ }
+    applySpot({ name: spot.name, lng: spot.lng, lat: spot.lat, key: spot.key })
+  }
+
+  /** 顾客自定义位置（名称 + 经纬度） */
+  function setCustom(name, lng, lat) {
+    applySpot({
+      name: (name || '').trim() || '我的位置',
+      lng: Number(lng),
+      lat: Number(lat)
+    })
+  }
+
+  function clearSpot() {
+    applySpot(null)
   }
 
   function onOk(pos) {
@@ -46,10 +100,10 @@ export function useGeolocation() {
     }
     status.value = 'granted'
     errorText.value = ''
-    // 手动定位成功后清掉地标标记，避免下次误用
-    if (manualKey.value) {
-      manualKey.value = ''
-      try { localStorage.removeItem(SPOT_KEY) } catch (e) { /* 忽略 */ }
+    // 浏览器定位成功后清掉自定义位置，避免下次误用
+    if (savedSpot.value) {
+      savedSpot.value = null
+      persist(null)
     }
   }
 
@@ -82,17 +136,55 @@ export function useGeolocation() {
       navigator.geolocation.clearWatch(watchId)
     }
     watchId = null
-    status.value = manualKey.value ? 'manual' : 'idle'
-    coords.value = manualKey.value ? coords.value : null
+    if (savedSpot.value) {
+      coords.value = {
+        lat: Number(savedSpot.value.lat),
+        lng: Number(savedSpot.value.lng),
+        accuracy: null,
+        updatedAt: Date.now(),
+        label: savedSpot.value.name
+      }
+      status.value = 'manual'
+    } else {
+      coords.value = null
+      status.value = 'idle'
+    }
   }
 
-  // 刷新过页面还记着手动选的地标
-  if (manualKey.value) applyManual(manualKey.value)
+  function sync(e) {
+    const spot = e && e.detail ? e.detail : null
+    savedSpot.value = spot
+    if (!watchId && spot) {
+      coords.value = { lat: Number(spot.lat), lng: Number(spot.lng), accuracy: null, updatedAt: Date.now(), label: spot.name }
+      status.value = 'manual'
+    } else if (!watchId && !spot) {
+      coords.value = null
+      status.value = 'idle'
+    }
+  }
 
+  // 刷新后沿用上次保存的位置
+  if (savedSpot.value) {
+    coords.value = {
+      lat: Number(savedSpot.value.lat),
+      lng: Number(savedSpot.value.lng),
+      accuracy: null,
+      updatedAt: Date.now(),
+      label: savedSpot.value.name
+    }
+    status.value = 'manual'
+  }
+
+  onMounted(() => window.addEventListener(SPOT_EVENT, sync))
   onBeforeUnmount(() => {
+    window.removeEventListener(SPOT_EVENT, sync)
     if (watchId != null && supported) navigator.geolocation.clearWatch(watchId)
     watchId = null
   })
 
-  return { supported, secure, status, coords, errorText, active, manualKey, start, stop, applyManual }
+  return {
+    supported, secure, status, coords, errorText, active,
+    savedSpot, savedSpotName: computed(() => (savedSpot.value ? savedSpot.value.name : '')),
+    start, stop, applyManual, setCustom, clearSpot
+  }
 }

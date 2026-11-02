@@ -164,19 +164,20 @@
           <div class="sec-tools">
             <!-- 定位条：开启后按「离我多远」排序，走近走远会实时更新 -->
             <div class="loc">
-              <button v-if="geoStatus === 'idle'" type="button" class="loc-btn" @click="startLocate()">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-                按距离看门店
-              </button>
+              <template v-if="geoActive">
+                <span class="loc-state is-ok">
+                  <template v-if="geoStatus === 'granted'">
+                    已定位<span v-if="geoCoords && geoCoords.accuracy"> ±{{ Math.round(geoCoords.accuracy) }} m</span>
+                  </template>
+                  <template v-else>我的位置：{{ locName }}</template>
+                </span>
+                <button type="button" class="loc-btn loc-btn--text" @click="locOpen = true">更改</button>
+              </template>
               <span v-else-if="geoStatus === 'locating'" class="loc-state">定位中…</span>
-              <span v-else-if="geoStatus === 'granted'" class="loc-state is-ok">
-                已定位<span v-if="geoCoords && geoCoords.accuracy"> ±{{ Math.round(geoCoords.accuracy) }} m</span>
-              </span>
-              <span v-else-if="geoStatus === 'manual'" class="loc-state is-ok">我的位置：{{ geoCoords && geoCoords.label }}</span>
-              <span v-else class="loc-state is-warn">浏览器定位不可用，可选个地标</span>
-              <el-select v-model="spotKey" class="loc-sel" size="small" placeholder="或选择我的位置" clearable>
-                <el-option v-for="sp in CHONGQING_SPOTS" :key="sp.key" :label="sp.name" :value="sp.key" />
-              </el-select>
+              <button v-else type="button" class="loc-btn" @click="locOpen = true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                设置我的位置
+              </button>
             </div>
             <router-link class="more" to="/shop/appointment">
               预约到店
@@ -232,6 +233,8 @@
       </div>
     </section>
 
+    <!-- 我的位置：浏览器定位 / 常用地标 / 自定义坐标 -->
+    <LocationPicker v-model="locOpen" />
   </div>
 </template>
 
@@ -248,8 +251,9 @@ import { usePetFavorite } from '@/composables/usePetFavorite'
 import { usePetRatings } from '@/composables/usePetRatings'
 import { isImage, petGradient } from '@/utils/petDisplay'
 import { money } from '@/utils/money'
-import { CHONGQING_SPOTS, amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
+import { amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
 import { useGeolocation } from '@/composables/useGeolocation'
+import LocationPicker from '@/components/LocationPicker.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -284,11 +288,8 @@ const heroPets = computed(() => {
 // 首屏门店条：定位后取「离我最近」的那家，否则取列表第一家
 const geo = useGeolocation()
 // 解构到顶层：模板只对顶层 ref 自动解包，geo.status 这种嵌套 ref 不会
-const { status: geoStatus, coords: geoCoords, manualKey: geoManualKey, start: startLocate, applyManual } = geo
-const spotKey = computed({
-  get: () => geoManualKey.value,
-  set: (v) => applyManual(v)
-})
+const { status: geoStatus, coords: geoCoords, active: geoActive, savedSpotName: locName } = geo
+const locOpen = ref(false)
 
 // 门店带距离并按远近排序；没有坐标的门店排最后
 const sortedStores = computed(() => {
@@ -673,6 +674,11 @@ h1 {
   font-size: var(--fs-2); color: var(--text-3);
   &.is-ok { color: var(--brand-700); font-weight: 600; }
   &.is-warn { color: var(--warning-500); }
+}
+.loc-btn--text {
+  height: auto; padding: 0; border: 0; background: none;
+  color: var(--brand-700); font-size: var(--fs-2);
+  &:hover { text-decoration: underline; }
 }
 .loc-sel { width: 148px; }
 

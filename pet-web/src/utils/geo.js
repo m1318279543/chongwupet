@@ -55,6 +55,25 @@ export function amapMarkerUrl(store) {
   return `https://uri.amap.com/marker?position=${store.lng},${store.lat}&name=${name}&src=chongwupet&coordinate=gaode&callnative=0&address=${addr}`
 }
 
+/** 解析顾客粘贴的坐标：支持「经度,纬度」「纬度,经度」，用逗号/空格/分号分隔 */
+export function parseCoords(text) {
+  const nums = String(text || '').match(/-?\d+(?:\.\d+)?/g)
+  if (!nums || nums.length < 2) return null
+  const a = Number(nums[0])
+  const b = Number(nums[1])
+  if (Number.isNaN(a) || Number.isNaN(b)) return null
+  let lng
+  let lat
+  if (Math.abs(a) > 90) { lng = a; lat = b }
+  else if (Math.abs(b) > 90) { lng = b; lat = a }
+  // 国内经纬度：经度 73~135，纬度 3~54，用这个范围判断前后顺序
+  else if (a > 54 && b <= 54) { lng = a; lat = b }
+  else if (b > 54 && a <= 54) { lng = b; lat = a }
+  else { lng = a; lat = b }
+  if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return null
+  return { lng, lat }
+}
+
 /** 重庆常用地标：http 站点拿不到浏览器定位时，给顾客一个手动选择兜底 */
 export const CHONGQING_SPOTS = [
   { key: 'jfb', name: '解放碑', lng: 106.577315, lat: 29.557666 },

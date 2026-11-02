@@ -194,13 +194,11 @@
             <template v-if="pickedStore.distance != null"> · 距您 {{ formatDistance(pickedStore.distance) }}</template>
           </p>
           <div class="bkd-loc" v-if="pickedStore">
-            <button v-if="!geoActive" type="button" class="bkd-loc__btn" @click="startLocate()">定位</button>
-            <span v-else class="bkd-loc__state">
-              {{ geoStatus === 'manual' ? '我的位置：' + (geoCoords && geoCoords.label) : '已定位' }}
-            </span>
-            <el-select v-model="spotKey" size="small" class="bkd-loc__sel" placeholder="或选择我的位置" clearable>
-              <el-option v-for="sp in CHONGQING_SPOTS" :key="sp.key" :label="sp.name" :value="sp.key" />
-            </el-select>
+            <template v-if="geoActive">
+              <span class="bkd-loc__state">我的位置：{{ locName }}</span>
+              <button type="button" class="bkd-loc__btn" @click="locOpen = true">更改</button>
+            </template>
+            <button v-else type="button" class="bkd-loc__btn" @click="locOpen = true">设置我的位置</button>
             <a v-if="pickedStore.lng != null && pickedStore.lat != null" class="bkd-loc__nav"
                :href="amapNavUrl(pickedStore, geoCoords)" target="_blank" rel="noopener">
               导航到店
@@ -378,6 +376,9 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 我的位置：自定义坐标 / 常用地标 / 浏览器定位 -->
+    <LocationPicker v-model="locOpen" />
   </div>
 </template>
 
@@ -398,8 +399,9 @@ import {
 } from '@/api/pet/petService'
 import { getMyWallet, rechargeWallet } from '@/api/pet/petWallet'
 import { storeOptions } from '@/api/pet/petStore'
-import { CHONGQING_SPOTS, amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
+import { amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
 import { useGeolocation } from '@/composables/useGeolocation'
+import LocationPicker from '@/components/LocationPicker.vue'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
 
@@ -450,8 +452,8 @@ const rawStores = ref([])
 const pickedStore = computed(() => storeList.value.find((s) => s.storeId === form.storeId))
 // 顾客定位：解构到顶层，模板才会自动解包
 const geo = useGeolocation()
-const { status: geoStatus, coords: geoCoords, active: geoActive, manualKey: geoManualKey, start: startLocate, applyManual } = geo
-const spotKey = computed({ get: () => geoManualKey.value, set: (v) => applyManual(v) })
+const { coords: geoCoords, active: geoActive, savedSpotName: locName } = geo
+const locOpen = ref(false)
 
 // 门店 + 距离：定位变化（顾客走动/换地标）时自动重算并重排
 const storeList = computed(() => {
