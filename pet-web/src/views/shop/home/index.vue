@@ -556,7 +556,7 @@ h1 {
 
 /* ===== ④ 门店：去卡化，列间 1px 细线，与整页扁平语言一致 ===== */
 .stores { border-top: var(--rule); }
-.store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 44px; }
 .store {
   display: flex; flex-direction: column; gap: 12px;
   padding: 0 28px; border-left: var(--rule-soft);
@@ -603,7 +603,7 @@ h1 {
   .sec { padding: 64px 0; }
   .store-grid { grid-template-columns: 1fr; }
   .store { padding: 0; border-left: 0;
-    & + .store { margin-top: 20px; padding-top: 20px; border-top: var(--rule-soft); } }
+    & + .store { padding-top: 20px; border-top: var(--rule-soft); } }
   .cta-inner { flex-direction: column; align-items: flex-start; padding: 24px; }
   .cta-band { padding: 0 0 64px; }
 }

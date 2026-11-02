@@ -56,6 +56,7 @@
             </div>
 
             <div class="bk-meta">
+              <span class="bk-meta__i" v-if="o.storeName"><el-icon><OfficeBuilding /></el-icon>{{ o.storeName }}</span>
               <span class="bk-meta__i"><el-icon><Timer /></el-icon>{{ fmtTime(o.appointTime) }}</span>
               <span class="bk-meta__i"><el-icon><Van /></el-icon>{{ modeText(o.serviceMode) }}</span>
               <span class="bk-meta__i"><el-icon><User /></el-icon>{{ o.contactName || '—' }} {{ o.contactPhone }}</span>
@@ -154,6 +155,18 @@
             <el-radio-button value="2">上门服务</el-radio-button>
           </el-radio-group>
           <p class="bkd-tip">{{ form.serviceMode === '2' ? '技师按地址上门，请填清楚小区/楼栋/门牌' : '按预约时间把宠物带到门店即可，无需填地址' }}</p>
+        </div>
+
+        <div class="bkd-field">
+          <label>服务门店</label>
+          <el-select v-model="form.storeId" placeholder="选择服务门店" style="width: 100%">
+            <el-option v-for="s in storeList" :key="s.storeId" :value="s.storeId" :label="s.storeName">
+              <span>{{ s.storeName }}</span>
+              <span class="bkd-opt-addr">{{ [s.city, s.address].filter(Boolean).join('') }}</span>
+            </el-option>
+          </el-select>
+          <p class="bkd-tip" v-if="pickedStore">门店地址：{{ [pickedStore.city, pickedStore.address].filter(Boolean).join('') }}{{ pickedStore.businessHours ? ' · ' + pickedStore.businessHours : '' }}</p>
+          <p class="bkd-tip" v-else-if="!storeList.length">暂无可用门店信息</p>
         </div>
 
         <div class="bkd-field">
@@ -297,7 +310,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled } from '@element-plus/icons-vue'
+import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled, OfficeBuilding } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
 import {
   listMyServiceOrders,
@@ -308,6 +321,7 @@ import {
   cancelServiceBooking
 } from '@/api/pet/petService'
 import { getMyWallet, rechargeWallet } from '@/api/pet/petWallet'
+import { storeOptions } from '@/api/pet/petStore'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
 
@@ -343,6 +357,7 @@ const submitting = ref(false)
 const picked = reactive({ itemId: null, itemName: '', itemType: '', price: 0, duration: 0 })
 const form = reactive({
   serviceMode: '1',
+  storeId: null,
   appointTime: '',
   qty: 1,
   contactName: '',
@@ -351,6 +366,17 @@ const form = reactive({
   remark: ''
 })
 const formTotal = computed(() => (Number(picked.price) || 0) * (Number(form.qty) || 1))
+
+// 服务门店（来自后台「门店管理」，只列营业中的门店）
+const storeList = ref([])
+const pickedStore = computed(() => storeList.value.find((s) => s.storeId === form.storeId))
+async function loadStores() {
+  try {
+    const res = await storeOptions()
+    storeList.value = res.data || []
+    if (!form.storeId && storeList.value.length) form.storeId = storeList.value[0].storeId
+  } catch (e) { /* 门店接口不可用时保留手填流程 */ }
+}
 
 // 手机号严格校验：只允许数字输入，且必须是 11 位大陆手机号（1 开头，第二位 3-9）
 const phoneOk = computed(() => /^1[3-9]\d{9}$/.test(String(form.contactPhone || '').trim()))
@@ -390,6 +416,7 @@ function openBooking(it) {
   picked.price = Number(it.price) || 0
   picked.duration = it.duration
   form.serviceMode = '1'
+  if (storeList.value.length && !form.storeId) form.storeId = storeList.value[0].storeId
   form.appointTime = quickSlots.value[0] ? quickSlots.value[0].value : ''
   form.qty = 1
   form.contactName = userStore.nickName || userStore.name || ''
@@ -400,6 +427,7 @@ function openBooking(it) {
 }
 
 function validateBooking() {
+  if (!form.storeId) { ElMessage.warning('请选择服务门店'); return false }
   if (!form.appointTime) { ElMessage.warning('请选择预约时间'); return false }
   if (!form.contactName.trim()) { ElMessage.warning('请填写联系人'); return false }
   if (!phoneOk.value) { ElMessage.warning('请填写正确的手机号：11 位数字，1 开头，第二位为 3-9'); return false }
@@ -417,6 +445,7 @@ async function submitBooking() {
   try {
     const res = await createServiceBooking({
       itemId: picked.itemId,
+      storeId: form.storeId,
       serviceMode: form.serviceMode,
       appointTime: form.appointTime,
       qty: form.qty,
@@ -671,6 +700,7 @@ async function loadLegacy() {
 onMounted(async () => {
   // 游客只加载价目区，避免 401 弹「登录已过期」
   loadServiceItems()
+  loadStores()
   if (!userStore.token) return
   loading.value = true
   try {
@@ -785,6 +815,7 @@ onMounted(async () => {
 .bkd-row { display: flex; gap: 12px; }
 .bkd-field--half { flex: 1; min-width: 0; }
 .bkd-opt { font-style: normal; font-weight: 400; color: var(--text-4); margin-left: 4px; }
+.bkd-opt-addr { float: right; font-size: 11px; color: var(--text-4); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bkd-tip { margin: 0; font-size: 12px; color: var(--text-3); }
 .bkd-err { margin: 0; font-size: 12px; color: #d92d20; }
 .bkd-field .is-error :deep(.el-input__wrapper) { box-shadow: 0 0 0 1px #d92d20 inset; }

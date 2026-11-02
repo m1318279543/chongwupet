@@ -21,9 +21,11 @@ import com.ruoyi.system.domain.PetPaymentLog;
 import com.ruoyi.system.domain.PetServiceItem;
 import com.ruoyi.system.domain.PetServiceLog;
 import com.ruoyi.system.domain.PetServiceOrder;
+import com.ruoyi.system.domain.PetStore;
 import com.ruoyi.system.mapper.PetAppointmentMapper;
 import com.ruoyi.system.mapper.PetServiceItemMapper;
 import com.ruoyi.system.mapper.PetServiceOrderMapper;
+import com.ruoyi.system.mapper.PetStoreMapper;
 import com.ruoyi.system.service.IPetNotificationService;
 import com.ruoyi.system.service.IPetPaymentLogService;
 import com.ruoyi.system.service.IPetServiceOrderService;
@@ -52,6 +54,9 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
 
     @Autowired
     private PetAppointmentMapper petAppointmentMapper;
+
+    @Autowired
+    private PetStoreMapper petStoreMapper;
 
     @Autowired
     private IPetWalletService petWalletService;
@@ -158,7 +163,17 @@ public class PetServiceOrderServiceImpl implements IPetServiceOrderService
         PetServiceOrder order = new PetServiceOrder();
         order.setServiceNo(genServiceNo(null));
         Long storeId = booking.getStoreId() != null ? booking.getStoreId() : item.getStoreId();
-        order.setStoreId(storeId == null ? 1L : storeId);
+        if (storeId == null)
+        {
+            storeId = 1L;
+        }
+        // 前端选择的门店必须真实存在且营业中，防止脏 store_id 落库
+        PetStore store = petStoreMapper.selectPetStoreByStoreId(storeId);
+        if (store == null || !"0".equals(store.getStatus()))
+        {
+            throw new ServiceException("所选门店不存在或已停业，请重新选择");
+        }
+        order.setStoreId(storeId);
         order.setUserId(userId);
         order.setCustomerName(contactName);
         order.setContactName(contactName);
