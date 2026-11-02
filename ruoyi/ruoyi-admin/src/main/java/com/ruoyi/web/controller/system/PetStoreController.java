@@ -87,6 +87,45 @@ public class PetStoreController extends BaseController
         return success(list);
     }
 
+    /** 新增员工 */
+    @PreAuthorize("@ss.hasPermi('pet:store:edit')")
+    @Log(title = "门店员工", businessType = BusinessType.INSERT)
+    @PostMapping(value = "/{storeId}/staff")
+    public AjaxResult addStaff(@PathVariable("storeId") Long storeId, @RequestBody PetStaff staff)
+    {
+        petScopeService.assertStoreAccessible(storeId);
+        staff.setStoreId(storeId);
+        staff.setCreateBy(getUsername());
+        return toAjax(petStoreService.insertPetStaff(staff));
+    }
+
+    /** 修改员工（姓名/岗位/手机号/入职日期/在职状态） */
+    @PreAuthorize("@ss.hasPermi('pet:store:edit')")
+    @Log(title = "门店员工", businessType = BusinessType.UPDATE)
+    @PutMapping(value = "/{storeId}/staff")
+    public AjaxResult editStaff(@PathVariable("storeId") Long storeId, @RequestBody PetStaff staff)
+    {
+        petScopeService.assertStoreAccessible(storeId);
+        PetStaff db = petStoreService.selectPetStaffByStaffId(staff.getStaffId());
+        if (db == null || !storeId.equals(db.getStoreId()))
+        {
+            return error("员工不存在或不属于该门店");
+        }
+        staff.setStoreId(storeId);
+        staff.setUpdateBy(getUsername());
+        return toAjax(petStoreService.updatePetStaff(staff));
+    }
+
+    /** 删除员工 */
+    @PreAuthorize("@ss.hasPermi('pet:store:remove')")
+    @Log(title = "门店员工", businessType = BusinessType.DELETE)
+    @DeleteMapping(value = "/{storeId}/staff/{staffIds}")
+    public AjaxResult removeStaff(@PathVariable("storeId") Long storeId, @PathVariable Long[] staffIds)
+    {
+        petScopeService.assertStoreAccessible(storeId);
+        return toAjax(petStoreService.deletePetStaffByIds(staffIds));
+    }
+
     /** 新增门店 */
     @PreAuthorize("@ss.hasPermi('pet:store:add')")
     @Log(title = "门店管理", businessType = BusinessType.INSERT)
