@@ -13,15 +13,15 @@
           </span>
         </div>
 
-        <!-- 主导航：首页 + 在售宠物（完整列表）+ 服务入口，个人事务收进头像菜单 -->
+        <!-- 主导航：按名称字数由少到多排列（首页 2 → 宠物粮 3 → 在售宠物 4 → 智能选宠 4），个人事务收进头像菜单 -->
         <nav class="nav" aria-label="主导航">
           <router-link to="/shop/home" class="nav-item" :class="{ on: homeActive }">首页</router-link>
+          <router-link to="/shop/food" class="nav-item" :class="{ on: foodActive }">宠物粮</router-link>
           <router-link to="/shop/pets" class="nav-item" :class="{ on: petsActive }">在售宠物</router-link>
           <router-link to="/shop/match" class="nav-item nav-ai" :class="{ on: matchActive }">
             <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
             智能选宠
           </router-link>
-          <router-link to="/shop/food" class="nav-item">宠物粮</router-link>
         </nav>
 
         <div class="user-area">
@@ -73,11 +73,11 @@
       <transition name="m-drop">
         <div v-if="menuOpen" class="m-menu">
           <router-link to="/shop/home" class="m-item" @click="closeMenu">首页</router-link>
+          <router-link to="/shop/food" class="m-item" @click="closeMenu">宠物粮</router-link>
           <router-link to="/shop/pets" class="m-item" @click="closeMenu">在售宠物</router-link>
           <router-link to="/shop/match" class="m-item m-ai" @click="closeMenu">
             智能选宠<span class="m-tag">智能推荐</span>
           </router-link>
-          <router-link to="/shop/food" class="m-item" @click="closeMenu">宠物粮</router-link>
 
           <router-link to="/shop/cart" class="m-item" @click="closeMenu">
             购物车
@@ -136,10 +136,10 @@
           </div>
           <div class="foot-col">
             <h6>选购</h6>
-            <router-link to="/shop/home">在售宠物</router-link>
-            <router-link to="/shop/match">智能选宠</router-link>
             <router-link to="/shop/food">宠物粮</router-link>
             <router-link to="/shop/cart">购物车</router-link>
+            <router-link to="/shop/pets">在售宠物</router-link>
+            <router-link to="/shop/match">智能选宠</router-link>
           </div>
           <div class="foot-col">
             <h6>售后与联系</h6>
@@ -231,6 +231,7 @@ const detailFrom = computed(() => (route.path.startsWith('/shop/pet/') ? String(
 const petsActive = computed(() => route.path === '/shop/pets' || detailFrom.value === '/shop/pets')
 const homeActive = computed(() => route.path === '/shop/home' || detailFrom.value === '/shop/home')
 const matchActive = computed(() => route.path === '/shop/match' || detailFrom.value === '/shop/match')
+const foodActive = computed(() => route.path === '/shop/food' || detailFrom.value === '/shop/food')
 
 /* ---------- 手机端下拉菜单 ---------- */
 const menuOpen = ref(false)
