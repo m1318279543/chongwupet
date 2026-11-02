@@ -30,6 +30,10 @@ public class PetStore extends BaseEntity
     private String city;
     /** 详细地址 */
     private String address;
+    /** 经度（GCJ-02，用于顾客端距离计算与导航） */
+    private Double lng;
+    /** 纬度（GCJ-02） */
+    private Double lat;
     /** 营业时间 */
     private String businessHours;
     /** 可容纳宠物数 */
@@ -73,6 +77,12 @@ public class PetStore extends BaseEntity
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public Double getLng() { return lng; }
+    public void setLng(Double lng) { this.lng = lng; }
+
+    public Double getLat() { return lat; }
+    public void setLat(Double lat) { this.lat = lat; }
 
     public String getBusinessHours() { return businessHours; }
     public void setBusinessHours(String businessHours) { this.businessHours = businessHours; }

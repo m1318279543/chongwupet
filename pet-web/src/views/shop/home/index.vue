@@ -50,7 +50,10 @@
             </span>
             <span class="hs-main">
               <b>{{ nearestStore.storeName }}</b>
-              <em>{{ [nearestStore.city, nearestStore.address].filter(Boolean).join('') }}</em>
+              <em>
+                {{ [nearestStore.city, nearestStore.address].filter(Boolean).join('') }}
+                <i v-if="nearestStore.distance != null" class="hs-dist">· 距您 {{ formatDistance(nearestStore.distance) }}</i>
+              </em>
             </span>
             <span class="hs-time" v-if="nearestStore.businessHours">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -158,17 +161,39 @@
             <h2>重庆 {{ stores.length }} 家门店，欢迎先来看一眼</h2>
             <p>看宠建议提前预约，我们会安排独立的接待时间</p>
           </div>
-          <router-link class="more" to="/shop/appointment">
-            预约到店
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
-          </router-link>
+          <div class="sec-tools">
+            <!-- 定位条：开启后按「离我多远」排序，走近走远会实时更新 -->
+            <div class="loc">
+              <button v-if="geoStatus === 'idle'" type="button" class="loc-btn" @click="startLocate()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                按距离看门店
+              </button>
+              <span v-else-if="geoStatus === 'locating'" class="loc-state">定位中…</span>
+              <span v-else-if="geoStatus === 'granted'" class="loc-state is-ok">
+                已定位<span v-if="geoCoords && geoCoords.accuracy"> ±{{ Math.round(geoCoords.accuracy) }} m</span>
+              </span>
+              <span v-else-if="geoStatus === 'manual'" class="loc-state is-ok">我的位置：{{ geoCoords && geoCoords.label }}</span>
+              <span v-else class="loc-state is-warn">浏览器定位不可用，可选个地标</span>
+              <el-select v-model="spotKey" class="loc-sel" size="small" placeholder="或选择我的位置" clearable>
+                <el-option v-for="sp in CHONGQING_SPOTS" :key="sp.key" :label="sp.name" :value="sp.key" />
+              </el-select>
+            </div>
+            <router-link class="more" to="/shop/appointment">
+              预约到店
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </router-link>
+          </div>
         </div>
         <div class="store-grid">
-          <div class="store" v-for="s in stores" :key="s.storeId">
+          <div class="store" v-for="s in sortedStores" :key="s.storeId">
             <div class="store-top">
               <h4>{{ s.storeName }}</h4>
               <span class="tag">{{ s.storeType === '1' ? '加盟' : '直营' }}</span>
             </div>
+            <span class="store-dist" v-if="s.distance != null">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-12 4 8 3-5 4 9"/></svg>
+              距您 {{ formatDistance(s.distance) }}
+            </span>
             <div class="store-row">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.5"/></svg>
               <span>{{ [s.city, s.address].filter(Boolean).join('') }}</span>
@@ -181,7 +206,14 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
               <span>{{ s.businessHours }}</span>
             </div>
-            <router-link class="btn store-btn" to="/shop/appointment">预约到店</router-link>
+            <div class="store-acts">
+              <a v-if="s.lng != null && s.lat != null" class="btn store-btn store-btn--ghost"
+                 :href="amapNavUrl(s, geoCoords)" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
+                导航
+              </a>
+              <router-link class="btn store-btn" to="/shop/appointment">预约到店</router-link>
+            </div>
           </div>
         </div>
       </div>
@@ -216,6 +248,8 @@ import { usePetFavorite } from '@/composables/usePetFavorite'
 import { usePetRatings } from '@/composables/usePetRatings'
 import { isImage, petGradient } from '@/utils/petDisplay'
 import { money } from '@/utils/money'
+import { CHONGQING_SPOTS, amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
+import { useGeolocation } from '@/composables/useGeolocation'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -247,8 +281,32 @@ const heroPets = computed(() => {
   return (pick.length >= 3 ? pick : withImg).slice(0, 3)
 })
 
-// 首屏门店条：取列表第一家（后端已按排序返回，第一家即主推门店）
-const nearestStore = computed(() => stores.value[0] || null)
+// 首屏门店条：定位后取「离我最近」的那家，否则取列表第一家
+const geo = useGeolocation()
+// 解构到顶层：模板只对顶层 ref 自动解包，geo.status 这种嵌套 ref 不会
+const { status: geoStatus, coords: geoCoords, manualKey: geoManualKey, start: startLocate, applyManual } = geo
+const spotKey = computed({
+  get: () => geoManualKey.value,
+  set: (v) => applyManual(v)
+})
+
+// 门店带距离并按远近排序；没有坐标的门店排最后
+const sortedStores = computed(() => {
+  const me = geoCoords.value
+  const list = stores.value.map((s) => ({
+    ...s,
+    distance: me && s.lng != null && s.lat != null
+      ? distanceMeters(me.lat, me.lng, Number(s.lat), Number(s.lng))
+      : null
+  }))
+  return list.sort((a, b) => {
+    if (a.distance == null && b.distance == null) return 0
+    if (a.distance == null) return 1
+    if (b.distance == null) return -1
+    return a.distance - b.distance
+  })
+})
+const nearestStore = computed(() => sortedStores.value[0] || null)
 
 // 首页只放精选 12 只，完整列表（含品类筛选）在宠物售卖页
 const HOME_COUNT = 12
@@ -418,6 +476,7 @@ h1 {
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     em { display: block; margin-top: 2px; font-style: normal; font-size: var(--fs-2); color: var(--text-3);
          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hs-dist { font-style: normal; color: var(--brand-700); font-weight: 700; }
   }
   .hs-time {
     display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
@@ -581,7 +640,41 @@ h1 {
   margin-top: auto; width: 100%; height: 40px; font-size: var(--fs-4); border-radius: var(--radius-md);
   background: var(--bg-card); color: var(--brand-700); border: 1px solid var(--brand-200);
   &:hover { background: var(--brand-50); border-color: var(--brand-300); }
+  &--ghost {
+    width: auto; flex: 0 0 auto; padding: 0 14px; margin-top: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border-color: var(--border-2); color: var(--text-2);
+    svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+    &:hover { color: var(--brand-700); border-color: var(--brand-300); }
+  }
 }
+/* 距离 + 导航：定位后把「离我多远」摆在门店名下面 */
+.store-dist {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: var(--radius-pill);
+  background: var(--brand-50); color: var(--brand-700);
+  font-size: var(--fs-2); font-weight: 700; font-variant-numeric: tabular-nums;
+  svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+}
+.store-acts { margin-top: auto; display: flex; align-items: center; gap: 10px; }
+
+/* 定位条 */
+.sec-tools { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.loc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.loc-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 30px; padding: 0 11px; border-radius: var(--radius-pill);
+  border: 1px solid var(--brand-200); background: var(--brand-50); color: var(--brand-700);
+  font-family: inherit; font-size: var(--fs-2); font-weight: 700; cursor: pointer;
+  svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+  &:hover { border-color: var(--brand-300); }
+}
+.loc-state {
+  font-size: var(--fs-2); color: var(--text-3);
+  &.is-ok { color: var(--brand-700); font-weight: 600; }
+  &.is-warn { color: var(--warning-500); }
+}
+.loc-sel { width: 148px; }
 
 /* ===== 尾段行动区 ===== */
 .cta-band { padding: 0 0 96px; }

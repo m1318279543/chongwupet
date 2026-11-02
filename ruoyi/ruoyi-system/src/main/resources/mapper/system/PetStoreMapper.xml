@@ -12,6 +12,8 @@
         <result property="province"      column="province"       />
         <result property="city"          column="city"           />
         <result property="address"       column="address"        />
+        <result property="lng"           column="lng"            />
+        <result property="lat"           column="lat"            />
         <result property="businessHours" column="business_hours" />
         <result property="petCapacity"   column="pet_capacity"   />
         <result property="openDate"      column="open_date"      />
@@ -28,7 +30,7 @@
 
     <sql id="selectPetStoreVo">
         select s.store_id, s.store_code, s.store_name, s.store_type, s.manager_name, s.phone,
-               s.province, s.city, s.address, s.business_hours, s.pet_capacity, s.open_date,
+               s.province, s.city, s.address, s.lng, s.lat, s.business_hours, s.pet_capacity, s.open_date,
                s.status, s.create_by, s.create_time, s.update_by, s.update_time, s.remark,
                (select count(*) from pet_info p where p.store_id = s.store_id) as pet_count,
                (select count(*) from pet_staff st where st.store_id = s.store_id and st.del_flag = '0') as staff_count,
@@ -66,13 +68,14 @@
 
     <insert id="insertPetStore" parameterType="PetStore" useGeneratedKeys="true" keyProperty="storeId">
         insert into pet_store(
-            store_code, store_name, store_type, manager_name, phone, province, city, address,
+            store_code, store_name, store_type, manager_name, phone, province, city, address, lng, lat,
             business_hours, pet_capacity, open_date, status, del_flag,
             <if test="createBy != null and createBy != ''">create_by,</if>
             <if test="remark != null and remark != ''">remark,</if>
             create_time
         )values(
             #{storeCode}, #{storeName}, #{storeType}, #{managerName}, #{phone}, #{province}, #{city}, #{address},
+            #{lng}, #{lat},
             #{businessHours}, #{petCapacity}, #{openDate}, #{status}, '0',
             <if test="createBy != null and createBy != ''">#{createBy},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
@@ -91,6 +94,8 @@
             <if test="province != null">province = #{province},</if>
             <if test="city != null">city = #{city},</if>
             <if test="address != null">address = #{address},</if>
+            <if test="lng != null">lng = #{lng},</if>
+            <if test="lat != null">lat = #{lat},</if>
             <if test="businessHours != null">business_hours = #{businessHours},</if>
             <if test="petCapacity != null">pet_capacity = #{petCapacity},</if>
             <if test="openDate != null">open_date = #{openDate},</if>

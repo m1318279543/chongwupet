@@ -40,6 +40,7 @@ public class PetStoreServiceImpl implements IPetStoreService
         {
             throw new ServiceException("门店编码不能为空");
         }
+        checkGeo(petStore);
         petStore.setStatus(StringUtils.isBlank(petStore.getStatus()) ? "0" : petStore.getStatus());
         return petStoreMapper.insertPetStore(petStore);
     }
@@ -47,7 +48,27 @@ public class PetStoreServiceImpl implements IPetStoreService
     @Override
     public int updatePetStore(PetStore petStore)
     {
+        checkGeo(petStore);
         return petStoreMapper.updatePetStore(petStore);
+    }
+
+    /** 经纬度合法性：顾客端用它算距离，错了会显示"距您 8000 公里" */
+    private void checkGeo(PetStore store)
+    {
+        Double lng = store.getLng();
+        Double lat = store.getLat();
+        if (lng != null && (lng < -180 || lng > 180))
+        {
+            throw new ServiceException("经度需在 -180 ~ 180 之间");
+        }
+        if (lat != null && (lat < -90 || lat > 90))
+        {
+            throw new ServiceException("纬度需在 -90 ~ 90 之间");
+        }
+        if ((lng == null) != (lat == null))
+        {
+            throw new ServiceException("经度和纬度需同时填写");
+        }
     }
 
     /**

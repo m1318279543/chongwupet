@@ -186,9 +186,26 @@
             <el-option v-for="s in storeList" :key="s.storeId" :value="s.storeId" :label="s.storeName">
               <span>{{ s.storeName }}</span>
               <span class="bkd-opt-addr">{{ [s.city, s.address].filter(Boolean).join('') }}</span>
+              <span v-if="s.distance != null" class="bkd-opt-dist">距您 {{ formatDistance(s.distance) }}</span>
             </el-option>
           </el-select>
-          <p class="bkd-tip" v-if="pickedStore">门店地址：{{ [pickedStore.city, pickedStore.address].filter(Boolean).join('') }}{{ pickedStore.businessHours ? ' · ' + pickedStore.businessHours : '' }}</p>
+          <p class="bkd-tip" v-if="pickedStore">
+            门店地址：{{ [pickedStore.city, pickedStore.address].filter(Boolean).join('') }}{{ pickedStore.businessHours ? ' · ' + pickedStore.businessHours : '' }}
+            <template v-if="pickedStore.distance != null"> · 距您 {{ formatDistance(pickedStore.distance) }}</template>
+          </p>
+          <div class="bkd-loc" v-if="pickedStore">
+            <button v-if="!geoActive" type="button" class="bkd-loc__btn" @click="startLocate()">定位</button>
+            <span v-else class="bkd-loc__state">
+              {{ geoStatus === 'manual' ? '我的位置：' + (geoCoords && geoCoords.label) : '已定位' }}
+            </span>
+            <el-select v-model="spotKey" size="small" class="bkd-loc__sel" placeholder="或选择我的位置" clearable>
+              <el-option v-for="sp in CHONGQING_SPOTS" :key="sp.key" :label="sp.name" :value="sp.key" />
+            </el-select>
+            <a v-if="pickedStore.lng != null && pickedStore.lat != null" class="bkd-loc__nav"
+               :href="amapNavUrl(pickedStore, geoCoords)" target="_blank" rel="noopener">
+              导航到店
+            </a>
+          </div>
           <p class="bkd-tip" v-else-if="!storeList.length">暂无可用门店信息</p>
         </div>
 
@@ -381,6 +398,8 @@ import {
 } from '@/api/pet/petService'
 import { getMyWallet, rechargeWallet } from '@/api/pet/petWallet'
 import { storeOptions } from '@/api/pet/petStore'
+import { CHONGQING_SPOTS, amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
+import { useGeolocation } from '@/composables/useGeolocation'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
 
@@ -427,15 +446,42 @@ const form = reactive({
 const formTotal = computed(() => (Number(picked.price) || 0) * (Number(form.qty) || 1))
 
 // 服务门店（来自后台「门店管理」，只列营业中的门店）
-const storeList = ref([])
+const rawStores = ref([])
 const pickedStore = computed(() => storeList.value.find((s) => s.storeId === form.storeId))
+// 顾客定位：解构到顶层，模板才会自动解包
+const geo = useGeolocation()
+const { status: geoStatus, coords: geoCoords, active: geoActive, manualKey: geoManualKey, start: startLocate, applyManual } = geo
+const spotKey = computed({ get: () => geoManualKey.value, set: (v) => applyManual(v) })
+
+// 门店 + 距离：定位变化（顾客走动/换地标）时自动重算并重排
+const storeList = computed(() => {
+  const me = geoCoords.value
+  const list = rawStores.value.map((s) => ({
+    ...s,
+    distance: me && s.lng != null && s.lat != null
+      ? distanceMeters(me.lat, me.lng, Number(s.lat), Number(s.lng))
+      : null
+  }))
+  return list.sort((a, b) => {
+    if (a.distance == null && b.distance == null) return 0
+    if (a.distance == null) return 1
+    if (b.distance == null) return -1
+    return a.distance - b.distance
+  })
+})
+
 async function loadStores() {
   try {
     const res = await storeOptions()
-    storeList.value = res.data || []
+    rawStores.value = res.data || []
     if (!form.storeId && storeList.value.length) form.storeId = storeList.value[0].storeId
   } catch (e) { /* 门店接口不可用时保留手填流程 */ }
 }
+
+// 首次定位成功后自动切到最近门店（顾客还没手动选过时）
+watch(geoCoords, (v) => {
+  if (v && storeList.value.length) form.storeId = storeList.value[0].storeId
+})
 
 // 手机号严格校验：只允许数字输入，且必须是 11 位大陆手机号（1 开头，第二位 3-9）
 const phoneOk = computed(() => /^1[3-9]\d{9}$/.test(String(form.contactPhone || '').trim()))
@@ -1021,6 +1067,23 @@ function avatarBg(name) {
 .bkd-field--half { flex: 1; min-width: 0; }
 .bkd-opt { font-style: normal; font-weight: 400; color: var(--text-4); margin-left: 4px; }
 .bkd-opt-addr { float: right; font-size: 11px; color: var(--text-4); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bkd-opt-dist { margin-left: 8px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--brand-50); color: var(--brand-700); font-size: 11px; font-weight: 700; }
+/* 门店定位条：定位/换地标/一键导航到店 */
+.bkd-loc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.bkd-loc__btn {
+  height: 26px; padding: 0 10px; border-radius: var(--radius-pill);
+  border: 1px solid var(--brand-200); background: var(--brand-50); color: var(--brand-700);
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  &:hover { border-color: var(--brand-300); }
+}
+.bkd-loc__state { font-size: 12px; color: var(--text-3); }
+.bkd-loc__sel { width: 132px; }
+.bkd-loc__nav {
+  margin-left: auto; font-size: 12px; font-weight: 700; color: var(--brand-700);
+  text-decoration: none; padding: 3px 9px; border-radius: var(--radius-pill);
+  border: 1px solid var(--brand-200); background: var(--bg-card);
+  &:hover { border-color: var(--brand-300); }
+}
 .bkd-tip { margin: 0; font-size: 12px; color: var(--text-3); }
 .bkd-err { margin: 0; font-size: 12px; color: #d92d20; }
 .bkd-field .is-error :deep(.el-input__wrapper) { box-shadow: 0 0 0 1px #d92d20 inset; }

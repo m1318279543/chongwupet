@@ -131,6 +131,25 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="经度" prop="lng">
+              <el-input v-model.number="form.lng" placeholder="如 106.577315" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="纬度" prop="lat">
+              <el-input v-model.number="form.lat" placeholder="如 29.557666" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label=" ">
+              <p class="geo-tip">
+                坐标用 GCJ-02（火星坐标，与腾讯地图/高德一致），用于顾客端「距您多远」和到店导航。
+                获取方法：在高德/腾讯地图网页上找到门店，右键「复制坐标」或在地点详情里查看经纬度。
+                <a v-if="form.lng != null && form.lat != null" :href="mapPreviewUrl" target="_blank" rel="noopener">在地图上确认</a>
+              </p>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
                 <el-radio value="0">营业</el-radio>
@@ -230,7 +249,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, toRefs, getCurrentInstance, onMounted } from 'vue'
+import { ref, reactive, computed, toRefs, getCurrentInstance, onMounted } from 'vue'
 import { listStore, getStore, addStore, updateStore, delStore, listStoreStaff, addStoreStaff, updateStoreStaff, delStoreStaff } from '@/api/pet/petStore'
 
 const { proxy } = getCurrentInstance()
@@ -279,11 +298,30 @@ const data = reactive({
   },
   rules: {
     storeCode: [{ required: true, message: '门店编码不能为空', trigger: 'blur' }],
-    storeName: [{ required: true, message: '门店名称不能为空', trigger: 'blur' }]
+    storeName: [{ required: true, message: '门店名称不能为空', trigger: 'blur' }],
+    lng: [{ validator: geoRange(-180, 180, '经度'), trigger: 'blur' }],
+    lat: [{ validator: geoRange(-90, 90, '纬度'), trigger: 'blur' }]
   }
 })
 
 const { queryParams, form, rules } = toRefs(data)
+
+// 经纬度范围校验（留空则沿用旧坐标，不强制填）
+function geoRange(min, max, label) {
+  return (rule, value, cb) => {
+    if (value === undefined || value === null || value === '') return cb()
+    const n = Number(value)
+    if (Number.isNaN(n) || n < min || n > max) return cb(new Error(`${label}需在 ${min} ~ ${max} 之间`))
+    cb()
+  }
+}
+
+// 表单里的坐标速览：改用高德地图网页版打开，不引第三方 SDK
+const mapPreviewUrl = computed(() => {
+  const { lng, lat, storeName } = form.value
+  if (lng === undefined || lng === null || lng === '' || lat === undefined || lat === null || lat === '') return ''
+  return `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(storeName || '门店')}&src=chongwupet&coordinate=gaode&callnative=0`
+})
 
 function getList() {
   loading.value = true
@@ -319,6 +357,8 @@ function resetForm() {
     managerName: undefined,
     phone: undefined,
     address: undefined,
+    lng: undefined,
+    lat: undefined,
     businessHours: '09:00-21:00',
     petCapacity: 20,
     openDate: undefined,
@@ -465,4 +505,9 @@ onMounted(getList)
 .head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .staff-toolbar { margin-bottom: 10px; display: flex; justify-content: flex-end; }
 .form-tip { font-size: 12px; color: var(--el-text-color-secondary); line-height: 1.4; margin-top: 2px; }
+.geo-tip {
+  margin: 0; font-size: 12px; line-height: 1.6; color: var(--el-text-color-secondary);
+  a { margin-left: 4px; color: var(--brand-700); font-weight: 600; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+}
 </style>

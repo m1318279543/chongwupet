@@ -136,9 +136,9 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- ============================================================
 
 INSERT INTO pet_store (store_id, store_code, store_name, store_type, manager_name, phone, province, city, address, business_hours, pet_capacity, open_date, status, create_by, create_time, remark) VALUES
-(1, 'S001', '宠物之家·总店', '0', '陈明', '023-88880001', '重庆市', '重庆市', '渝中区解放碑步行街 88 号', '09:00-21:00', 60, '2021-05-01', '0', 'admin', NOW(), '旗舰店，含活体展示、医疗服务区'),
-(2, 'S002', '宠物之家·高新店', '0', '李婷', '023-88880002', '重庆市', '重庆市', '九龙坡区科园四路 12 号', '10:00-22:00', 40, '2023-03-18', '0', 'admin', NOW(), '社区店，主营养护与零售'),
-(3, 'S003', '宠物之家·江北店', '1', '王浩', '023-88880003', '重庆市', '重庆市', '江北区观音桥北城天街 5 号', '10:00-22:00', 30, '2024-09-10', '0', 'admin', NOW(), '加盟店，以猫舍与寄养为主')
+(1, 'S001', '宠物之家·总店', '0', '陈明', '023-88880001', '重庆市', '重庆市', '渝中区解放碑步行街88号', '09:00-21:00', 60, '2021-05-01', '0', 'admin', NOW(), '旗舰店，含活体展示、医疗服务区'),
+(2, 'S002', '宠物之家·高新店', '0', '李婷', '023-88880002', '重庆市', '重庆市', '九龙坡区科园四路12号', '10:00-22:00', 40, '2023-03-18', '0', 'admin', NOW(), '社区店，主营养护与零售'),
+(3, 'S003', '宠物之家·江北店', '1', '王浩', '023-88880003', '重庆市', '重庆市', '江北区观音桥北城天街5号', '10:00-22:00', 30, '2024-09-10', '0', 'admin', NOW(), '加盟店，以猫舍与寄养为主')
 ON DUPLICATE KEY UPDATE store_name = VALUES(store_name);
 
 INSERT INTO pet_staff (user_id, store_id, staff_name, post, phone, entry_date, status, create_by, create_time) VALUES
