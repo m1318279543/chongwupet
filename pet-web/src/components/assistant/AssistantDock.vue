@@ -1,11 +1,11 @@
 <template>
   <div class="assistant-dock" :class="{ 'is-admin': defaultScene === 'admin' }">
     <transition name="as-panel">
-      <section v-if="state.open" class="as-panel" role="dialog" aria-label="AI 助手">
-        <header class="as-head">
+      <section v-if="state.open" class="as-panel" :style="panelStyle" role="dialog" aria-label="AI 助手">
+        <header class="as-head" @pointerdown="startPanelDrag">
           <div class="as-brand">
-            <span class="as-logo" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>
+            <span class="as-logo as-bot-logo" aria-hidden="true">
+              <AssistantBot :talking="state.loading" />
             </span>
             <div class="as-name">
               <strong>宠物之家助手</strong>
@@ -14,13 +14,13 @@
           </div>
           <div class="as-head-act">
             <button type="button" @click="reset">新对话</button>
-            <button type="button" class="as-close" aria-label="关闭" @click="close">×</button>
+            <button type="button" class="as-close" aria-label="收起" @click="close">×</button>
           </div>
         </header>
 
         <div ref="bodyRef" class="as-body">
           <div v-for="m in state.messages" :key="m.id" class="as-row" :class="'is-' + m.role">
-            <div v-if="m.role === 'assistant'" class="as-avatar">AI</div>
+            <div v-if="m.role === 'assistant'" class="as-avatar"><AssistantBot mini /></div>
             <div class="as-stack">
               <div v-if="m.content" class="as-bubble">{{ m.content }}</div>
               <div v-if="m.loading && !m.content" class="as-typing"><i></i><i></i><i></i></div>
@@ -68,17 +68,23 @@
       </section>
     </transition>
 
-    <!-- 悬浮入口：仅在没有顶栏入口的场景（如独立页面）才渲染；
-         前后台布局已把入口收进顶栏铃铛左侧，传 :show-launcher="false" 即可 -->
+    <!-- 数字人悬浮球：可拖拽、位置记忆；点击展开悬浮聊天窗 -->
     <button
-      v-if="showLauncher && !state.open" type="button" class="as-launcher"
+      v-if="showLauncher && !state.open" type="button" class="as-orb"
+      :class="{ 'is-dragging': dragging }"
+      :style="orbStyle"
       aria-label="打开 AI 助手"
-      @click="openDefault"
+      @pointerdown="startOrbDrag"
+      @pointermove="onOrbMove"
+      @pointerup="onOrbUp"
+      @pointercancel="onOrbUp"
     >
-      <span class="as-launcher-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
-      </span>
-      <span class="as-txt">{{ defaultScene === 'admin' ? '问数据' : '问助手' }}</span>
+      <span class="as-orb-bot"><AssistantBot :talking="state.loading" /></span>
+      <span class="as-orb-txt">问我</span>
+      <i class="as-orb-dot" aria-hidden="true"></i>
+      <transition name="as-tip">
+        <span v-if="tipShow" class="as-orb-tip" :class="{ 'is-flip': tipFlip }" aria-hidden="true">有事问我～</span>
+      </transition>
     </button>
   </div>
 </template>
@@ -88,6 +94,7 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } fr
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AssistantBlock from './AssistantBlock.vue'
+import AssistantBot from './AssistantBot.vue'
 import { useAssistant } from './useAssistant'
 import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
@@ -134,7 +141,11 @@ watch(() => [
 ], scrollBottom, { deep: false })
 
 watch(() => state.open, (opened) => {
-  if (opened) scrollBottom()
+  if (!opened) return
+  hideTip()
+  // 首次打开时贴着悬浮球定位；之后沿用上次拖到的位置
+  if (!panelPos.value) panelPos.value = defaultPanelPos()
+  scrollBottom()
 })
 
 function openDefault() {
@@ -278,69 +289,243 @@ async function handoff() {
   }
 }
 
-/* ---------- 挂球位置 ----------
-   早期入口是右上角可拖动浮标（位置存 localStorage）；入口收进顶栏铃铛左侧后，
-   浮标与拖拽一并退休，仅保留 openDefault（见上）供 showLauncher 场景使用。 */
+/* ---------- 数字人悬浮球：可拖拽 + 位置记忆 ---------- */
+const ORB_KEY = 'pet-assistant-orb-pos'
+const ORB_SIZE = 68        // 与 .as-orb 保持一致
+const ORB_SIZE_SM = 58     // 手机端尺寸
+const isNarrow = () => window.innerWidth <= 768
+const orbSize = () => (isNarrow() ? ORB_SIZE_SM : ORB_SIZE)
+const dragging = ref(false)
+const orbPos = ref(loadOrbPos())
+const orbStyle = computed(() => ({ left: orbPos.value.x + 'px', top: orbPos.value.y + 'px' }))
+let orbDrag = null
+
+function defaultOrb() {
+  const s = orbSize()
+  // 手机端底部压着 5 栏标签栏（约 58px），球要落在它上方
+  const bottom = isNarrow() ? 74 : 32
+  const right = isNarrow() ? 14 : 26
+  return { x: window.innerWidth - s - right, y: window.innerHeight - s - bottom }
+}
+function clampOrb(p) {
+  const s = orbSize()
+  const w = window.innerWidth, h = window.innerHeight
+  return {
+    x: Math.min(Math.max(8, p.x), Math.max(8, w - s - 8)),
+    y: Math.min(Math.max(8, p.y), Math.max(8, h - s - 8))
+  }
+}
+function loadOrbPos() {
+  try {
+    const raw = localStorage.getItem(ORB_KEY)
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (typeof p.x === 'number' && typeof p.y === 'number') return clampOrb(p)
+    }
+  } catch (e) { /* 隐私模式读不到就算了 */ }
+  return defaultOrb()
+}
+function startOrbDrag(e) {
+  if (e.button != null && e.button !== 0) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  orbDrag = { px: e.clientX, py: e.clientY, x: rect.left, y: rect.top, moved: false }
+  dragging.value = false
+  e.currentTarget.setPointerCapture?.(e.pointerId)
+}
+function onOrbMove(e) {
+  if (!orbDrag) return
+  const dx = e.clientX - orbDrag.px, dy = e.clientY - orbDrag.py
+  if (!orbDrag.moved && Math.hypot(dx, dy) < 4) return
+  orbDrag.moved = true
+  dragging.value = true
+  orbPos.value = clampOrb({ x: orbDrag.x + dx, y: orbDrag.y + dy })
+}
+function onOrbUp() {
+  if (!orbDrag) return
+  const moved = orbDrag.moved
+  orbDrag = null
+  dragging.value = false
+  hideTip()
+  if (moved) {
+    try { localStorage.setItem(ORB_KEY, JSON.stringify(orbPos.value)) } catch (e) { /* 忽略 */ }
+  } else {
+    openDefault()
+  }
+}
+
+/* 首次进站的招呼气泡：只在一次会话里露一次，避免反复打扰 */
+const TIP_KEY = 'pet-assistant-tip-shown'
+const tipShow = ref(false)
+// 球在右半屏 → 气泡放左边（is-flip）；在左半屏 → 放右边，避免贴边被裁掉
+const tipFlip = computed(() => orbPos.value.x + orbSize() / 2 >= window.innerWidth / 2)
+let tipTimer = null
+
+function hideTip() {
+  tipShow.value = false
+  clearTimeout(tipTimer)
+}
+function scheduleTip() {
+  try {
+    if (sessionStorage.getItem(TIP_KEY)) return
+  } catch (e) { /* 隐私模式 */ }
+  tipTimer = setTimeout(() => {
+    if (state.open) return
+    tipShow.value = true
+    try { sessionStorage.setItem(TIP_KEY, '1') } catch (e) { /* 忽略 */ }
+    tipTimer = setTimeout(() => { tipShow.value = false }, 6000)
+  }, 2200)
+}
+
+/* ---------- 悬浮窗：贴着球展开，头部可拖动 ---------- */
+const panelPos = ref(null)
+const panelStyle = computed(() => panelPos.value
+  ? { left: panelPos.value.x + 'px', top: panelPos.value.y + 'px', right: 'auto', bottom: 'auto' }
+  : {})
+let panelDrag = null
+
+function clampPanel(p) {
+  const el = document.querySelector('.as-panel')
+  const w = el?.offsetWidth || 400
+  const h = el?.offsetHeight || Math.min(620, window.innerHeight - 132)
+  return {
+    x: Math.min(Math.max(0, p.x), Math.max(0, window.innerWidth - w)),
+    y: Math.min(Math.max(0, p.y), Math.max(0, window.innerHeight - h))
+  }
+}
+/** 默认位置：优先让窗口右缘与球右缘对齐、浮在球的上方；放不下就贴在球这一侧 */
+function defaultPanelPos() {
+  if (isNarrow()) return null   // 手机端全屏面板，不需要定位
+  const w = 400
+  const h = Math.min(620, window.innerHeight - 132)
+  const maxX = Math.max(16, window.innerWidth - w - 16)
+  const alignRight = orbPos.value.x + orbSize() - w
+  // 右对齐放不进屏幕时，退回「以球为参考向左展开」，避免窗口被甩到屏幕另一头
+  const x = alignRight >= 16
+    ? Math.min(alignRight, maxX)
+    : Math.min(Math.max(16, orbPos.value.x - 40), maxX)
+  const y = Math.min(Math.max(76, orbPos.value.y - h - 12), window.innerHeight - h - 16)
+  return { x, y }
+}
+function onResize() {
+  orbPos.value = clampOrb(orbPos.value)
+  if (panelPos.value && !isNarrow()) panelPos.value = clampPanel(panelPos.value)
+}
+
+function startPanelDrag(e) {
+  if (isNarrow()) return
+  if (e.target.closest('button')) return
+  const el = e.currentTarget.closest('.as-panel')
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  panelDrag = { px: e.clientX, py: e.clientY, x: r.left, y: r.top }
+  window.addEventListener('pointermove', onPanelMove)
+  window.addEventListener('pointerup', onPanelUp, { once: true })
+}
+function onPanelMove(e) {
+  if (!panelDrag) return
+  panelPos.value = clampPanel({
+    x: panelDrag.x + e.clientX - panelDrag.px,
+    y: panelDrag.y + e.clientY - panelDrag.py
+  })
+}
+function onPanelUp() {
+  panelDrag = null
+  window.removeEventListener('pointermove', onPanelMove)
+}
 
 function onKeydown(event) {
   if (event.key === 'Escape' && state.open) close()
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', onResize)
+  if (props.showLauncher) scheduleTip()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('pointermove', onPanelMove)
+  clearTimeout(tipTimer)
+})
 </script>
 
 <style scoped lang="scss">
 .assistant-dock { position: static; }
 
-/* 悬浮入口（仅无顶栏入口的场景渲染）：图标圆钮，默认悬在右上角（顶栏下方），悬停显示文字气泡 */
-.as-launcher {
-  position: fixed; top: calc(var(--topbar-h) + 12px); right: 22px; z-index: var(--z-float);
-  // 后台场景：右上角会压住统计卡，改默认右下角并收小，减少对管理页面的干扰
-  .is-admin & {
-    top: auto; bottom: 28px; width: 40px; height: 40px;
+/* 数字人悬浮球：可拖拽、位置记忆，点击展开悬浮聊天窗 */
+.as-orb {
+  position: fixed; z-index: var(--z-float);
+  width: 68px; height: 68px; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px solid var(--brand-200); border-radius: 50%;
+  background: var(--bg-card);
+  box-shadow: 0 10px 26px -12px rgba(22, 33, 29, .45), 0 2px 6px rgba(22, 33, 29, .06);
+  cursor: grab; touch-action: none; user-select: none;
+  font-family: inherit;
+  transition: box-shadow .18s, transform .18s;
+  &:hover { box-shadow: 0 14px 34px -12px rgba(22, 33, 29, .5); transform: translateY(-2px); }
+  // 拖拽中不要 hover 位移，否则手感和落点都会飘
+  &.is-dragging { cursor: grabbing; transform: none; transition: none; }
+}
+.as-orb-bot { width: 34px; height: 34px; display: block; }
+.as-orb-txt {
+  margin-top: 1px; font-size: 10px; font-weight: 700; line-height: 1;
+  color: var(--brand-700); letter-spacing: .04em;
+}
+.as-orb-dot {
+  position: absolute; top: 7px; right: 9px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger-500); box-shadow: 0 0 0 2px var(--bg-card);
+  animation: as-orb-pulse 2.4s ease-in-out infinite;
+}
+@keyframes as-orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(.68); opacity: .55; }
+}
+/* 首次进站的招呼气泡：从球侧面弹出，带一个小尖角指回数字人 */
+.as-orb-tip {
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+  padding: 7px 11px; border-radius: var(--radius-md);
+  background: var(--bg-card); border: 1px solid var(--brand-200);
+  box-shadow: 0 8px 20px -10px rgba(22, 33, 29, .4);
+  font-size: var(--fs-2); font-weight: 600; color: var(--brand-700); white-space: nowrap;
+  pointer-events: none;
+  &::after {
+    content: ''; position: absolute; left: -5px; top: 50%;
+    width: 8px; height: 8px; transform: translateY(-50%) rotate(45deg);
+    background: var(--bg-card);
+    border-left: 1px solid var(--brand-200); border-bottom: 1px solid var(--brand-200);
   }
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; padding: 0;
-  // 浮标是唯一保留 pill 圆角与投影的元素：它必须始终浮在内容之上
-  border: 1px solid var(--brand-200); border-radius: var(--radius-pill);
-  background: var(--bg-card); color: var(--brand-700);
-  font-family: inherit; font-size: var(--fs-5); font-weight: 700; cursor: pointer;
-  box-shadow: 0 2px 8px rgba(22, 25, 23, .10);
-  transition: box-shadow .16s;
-  touch-action: manipulation;  // 去掉双击缩放等待，点击更跟手
-  &:hover { box-shadow: 0 4px 14px rgba(22, 25, 23, .16); }
+  &.is-flip {
+    left: auto; right: calc(100% + 12px);
+    &::after {
+      left: auto; right: -5px;
+      transform: translateY(-50%) rotate(225deg);
+    }
+  }
 }
-.as-launcher-ico {
-  width: 26px; height: 26px; border-radius: var(--radius-md); display: grid; place-items: center;
-  background: var(--grad-brand);
-  svg { width: 15px; height: 15px; fill: var(--on-accent); }
-}
-/* 文字改悬停气泡：默认隐藏，移入浮标时从右侧弹出 */
-.as-txt {
-  position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%);
-  padding: 6px 11px; border-radius: var(--radius-sm);
-  background: var(--text-1); color: var(--on-accent);
-  font-size: var(--fs-3); font-weight: 600; white-space: nowrap;
-  opacity: 0; pointer-events: none;
-  transition: opacity .15s;
-}
-.as-launcher:hover .as-txt { opacity: 1; }
+.as-tip-enter-active, .as-tip-leave-active { transition: opacity .2s, transform .2s; }
+.as-tip-enter-from, .as-tip-leave-to { opacity: 0; transform: translateY(-50%) translateX(-6px); }
+.as-orb-tip.is-flip.as-tip-enter-from, .as-orb-tip.is-flip.as-tip-leave-to { transform: translateY(-50%) translateX(6px); }
 
-/* 面板：右侧全高抽屉 —— 聊天时左侧内容保持可见，边看边问 */
+/* 悬浮聊天窗：浮在页面右下角，头部可拖动；小屏降级为全屏 */
 .as-panel {
-  position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--z-drawer);
-  width: 424px; max-width: calc(100vw - 32px);
+  position: fixed; right: 24px; bottom: 96px; z-index: var(--z-drawer);
+  width: 400px; max-width: calc(100vw - 32px);
+  height: min(620px, calc(100vh - 132px));
   display: flex; flex-direction: column;
   background: var(--bg-page);
-  border: 0; border-left: 1px solid var(--border-1); border-radius: 0;
-  box-shadow: -26px 0 60px -32px rgba(22, 33, 29, .42);
+  border: 1px solid var(--border-1); border-radius: var(--radius-md);
+  box-shadow: 0 24px 60px -24px rgba(22, 33, 29, .45), 0 4px 14px rgba(22, 33, 29, .06);
   overflow: hidden;
 }
 .as-head {
   flex-shrink: 0; height: 60px; padding: 0 14px 0 16px;
   display: flex; align-items: center; justify-content: space-between;
   background: var(--bg-card); border-bottom: 1px solid var(--border-1);
+  cursor: move; user-select: none;
+  button { cursor: pointer; }
 }
 .as-brand { display: flex; align-items: center; gap: 10px; }
 .as-logo {
@@ -348,6 +533,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   background: var(--grad-brand);
   svg { width: 17px; height: 17px; fill: var(--on-accent); }
 }
+/* 数字人头部：底色改成浅色，让数字人的绿/靛配色自己跳出来 */
+.as-bot-logo { width: 34px; height: 34px; background: var(--brand-50); border-radius: 50%; }
 .as-name {
   display: flex; flex-direction: column; line-height: 1.25;
   strong { font-size: var(--fs-5); font-weight: 700; color: var(--text-1); }
@@ -371,9 +558,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .as-row { display: flex; gap: 8px; align-items: flex-start; }
 .as-row.is-user { justify-content: flex-end; }
 .as-avatar {
-  flex-shrink: 0; width: 26px; height: 26px; border-radius: var(--radius-sm); margin-top: 2px;
-  display: grid; place-items: center; background: var(--brand-50); color: var(--brand-700);
-  font-size: var(--fs-1); font-weight: 700;
+  flex-shrink: 0; width: 28px; height: 28px; margin-top: 2px;
+  display: grid; place-items: center;
 }
 .as-stack { max-width: 84%; display: flex; flex-direction: column; gap: 8px; }
 .is-user .as-stack { align-items: flex-end; max-width: 78%; }
@@ -457,28 +643,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   font-size: var(--fs-1); color: var(--text-4); text-align: center;
 }
 
-.as-panel-enter-active, .as-panel-leave-active { transition: opacity .18s, transform .24s; }
-.as-panel-enter-from, .as-panel-leave-to { opacity: 0; transform: translateX(28px); }
+.as-panel-enter-active, .as-panel-leave-active { transition: opacity .18s, transform .22s cubic-bezier(.22, .61, .36, 1); }
+.as-panel-enter-from, .as-panel-leave-to { opacity: 0; transform: translateY(14px) scale(.97); }
 
 @media (max-width: 768px) {
-  /* 移动端此前没有入口（launcher 被 display:none），手机上根本打不开 AI。
-     现在改为图标圆钮，悬在底部标签栏上方（管理端无标签栏，位置略高无碍）。
-     移动端不拖拽，忽略桌面端保存的位置。 */
-  .as-launcher {
-    display: inline-flex;
-    top: auto !important; left: auto !important; right: 14px !important;
-    /* bottom 可被页面注入 --as-dock-bottom 调整（如详情页吸底购买栏时抬升） */
-    bottom: calc(var(--as-dock-bottom, 74px) + env(safe-area-inset-bottom)) !important;
-    width: 46px; height: 46px; padding: 0; justify-content: center;
-    .as-txt { display: none; }
-    .as-launcher-ico { width: 26px; height: 26px; }
-  }
+  /* 手机上悬浮球同样可拖，但尺寸收小，默认落在底部标签栏上方 */
+  .as-orb { width: 58px; height: 58px; }
+  .as-orb-bot { width: 30px; height: 30px; }
+  .as-orb-txt { font-size: 9px; }
+  .as-orb-dot { top: 6px; right: 8px; }
+
+  /* 小屏没有空间做浮窗，改为全屏面板：位置/尺寸全部覆盖，忽略拖拽产生的内联样式 */
   .as-panel {
-    inset: 0; right: 0; bottom: 0; width: 100%; max-width: none;
-    height: 100%; border: 0; border-radius: 0;
+    inset: 0 !important; width: 100% !important; height: 100% !important;
+    max-width: none; border: 0; border-radius: 0;
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .as-head { height: 56px; }
+  .as-head { height: 56px; cursor: default; }
   .as-body { padding: 14px 12px 6px; }
   .as-stack { max-width: 88%; }
   .as-bubble { font-size: var(--fs-5); }

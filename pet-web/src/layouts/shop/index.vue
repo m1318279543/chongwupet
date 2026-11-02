@@ -183,8 +183,8 @@
 
     <!-- 登录注册对话框 -->
     <AuthDialog ref="authRef" @success="onAuthSuccess" />
-    <!-- AI 助手抽屉（platform-v2）：入口在顶栏 AssistantEntry，这里只挂抽屉本体 -->
-    <AssistantDock :show-launcher="false" />
+    <!-- AI 助手：右上角数字人悬浮球（可拖拽）+ 悬浮聊天窗；顶栏 AssistantEntry 为备用入口 -->
+    <AssistantDock />
   </div>
 </template>
 
