@@ -559,9 +559,12 @@ h1 {
 .store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 44px; }
 .store {
   display: flex; flex-direction: column; gap: 12px;
-  padding: 0 28px; border-left: var(--rule-soft);
-  &:first-child { border-left: 0; padding-left: 0; }
-  &:last-child { padding-right: 0; }
+  padding: 0 28px;
+  /* 列间细线与缩进按「列位置」匹配（3 列网格）：不能用 :first-child/:last-child，
+     它们只作用于第一行的首/尾卡，第二行起首列会带着缩进整体右移、与第一行错位 */
+  &:nth-child(3n + 2), &:nth-child(3n) { border-left: var(--rule-soft); }
+  &:nth-child(3n + 1) { padding-left: 0; }
+  &:nth-child(3n) { padding-right: 0; }
 }
 .store-top {
   display: flex; align-items: center; gap: 8px;
@@ -602,8 +605,9 @@ h1 {
   .media-badge { left: 12px; bottom: 12px; }
   .sec { padding: 64px 0; }
   .store-grid { grid-template-columns: 1fr; }
-  .store { padding: 0; border-left: 0;
-    & + .store { padding-top: 20px; border-top: var(--rule-soft); } }
+  /* 单列布局：清除桌面端按列定位的缩进与竖线（同特异性且靠后，确保覆盖） */
+  .store:nth-child(n) { padding: 0; border-left: 0; }
+  .store + .store { padding-top: 20px; border-top: var(--rule-soft); }
   .cta-inner { flex-direction: column; align-items: flex-start; padding: 24px; }
   .cta-band { padding: 0 0 64px; }
 }
