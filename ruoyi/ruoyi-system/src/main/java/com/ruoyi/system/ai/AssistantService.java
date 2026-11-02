@@ -167,15 +167,22 @@ public class AssistantService
             }
         }
 
+        // 多轮上下文：追问「它多少钱」「那这个呢」时，模型需要看到上文才能回答
+        List<Map<String, String>> history = loadHistory(req.convId);
+        // 订单/门店/时段/我的宠物/经营数据这类问题，本地模板已经是结构化事实，
+        // 模型只会原样改述却多花 5~12 秒：首轮直接给本地答案，有追问上下文时再交给模型
+        boolean skipModel = history.isEmpty() && isDataIntent(answer.intent);
+
         // 模型主导生成：门店数据作为已核实事实注入上下文，
-        // 由 Pollinations 大模型生成最终回答；模型不可用时才降级为本地模板。
-        if (llmClient.available())
+        // 由模型生成最终回答；模型不可用时才降级为本地模板。
+        if (llmClient.available() && !skipModel)
         {
             // 记录是否已有增量输出：流式出字后再降级会导致模板全文叠加，必须跳过
             boolean[] streamed = { false };
             Consumer<String> wrapped = onDelta == null ? null
                     : delta -> { streamed[0] = true; onDelta.accept(delta); };
-            String generated = generate(req.scene, message, answer, wrapped);
+            String cacheKey = cacheKey(req.scene, userId, message, answer.content);
+            String generated = generate(req.scene, message, answer, history, cacheKey, streamed, wrapped);
             if (StringUtils.isNotBlank(generated))
             {
                 answer.content = cleanMarkdown(generated);
@@ -815,17 +822,28 @@ public class AssistantService
         int count = 0;
         for (Map<String, Object> one : slots)
         {
+            Object available = one.get("available");
+            // 约满的时段不列出来，避免「剩余 0 位」这种没有意义的行
+            if (available instanceof Number && ((Number) available).intValue() <= 0)
+            {
+                continue;
+            }
             if (count++ >= 6)
             {
                 break;
             }
-            sb.append("· ").append(one.get("label") == null ? one.get("time") : one.get("label"));
-            Object remain = one.get("remain");
-            if (remain != null)
+            sb.append("· ").append(value(one.get("slot"), ""));
+            if (available != null)
             {
-                sb.append("（剩余 ").append(remain).append(" 位）");
+                sb.append("（剩余 ").append(available).append(" 位）");
             }
             sb.append("\n");
+        }
+        if (count == 0)
+        {
+            answer.content = date + " 的时段已经约满，可以换一天，或直接联系门店安排。";
+            answer.actions.add(action("link", "去预约", "/shop/appointment"));
+            return answer;
         }
         sb.append("\n选好时间后在宠物详情页提交预约即可。");
         answer.content = sb.toString();
@@ -1271,8 +1289,16 @@ public class AssistantService
         {
             PetKnowledge second = hits.get(1);
             sb.append("\n\n补充：").append(second.getTitle()).append("——")
-              .append(abbreviate(second.getContent(), 160));
+              .append(abbreviate(second.getContent(), 220));
             answer.citations.add(citation(second));
+        }
+        // 第三条只给短摘要：给模型多一点可组织的事实，又不把提示词撑大（体积直接拖慢首字）
+        if (hits.size() > 2 && !"high".equals(top.getSeverity()))
+        {
+            PetKnowledge third = hits.get(2);
+            sb.append("\n\n相关：").append(third.getTitle()).append("——")
+              .append(abbreviate(third.getContent(), 120));
+            answer.citations.add(citation(third));
         }
         if (knowledgeService.hasEmergency(hits))
         {
@@ -1355,44 +1381,63 @@ public class AssistantService
      * 知识回答；涉及门店价格、库存、订单状态必须以事实为准，没有就如实说明。
      * 失败返回 null，由调用方降级为本地模板。
      */
-    private String generate(String scene, String message, Answer answer, Consumer<String> onDelta)
+    private String generate(String scene, String message, Answer answer, List<Map<String, String>> history,
+                            String cacheKey, boolean[] streamed, Consumer<String> onDelta)
     {
+        // 同一账号重复问同一句（刷新页面、反复演示）直接回放上次答案：
+        // 省掉一次 3~14 秒的生成，也避开免费档「每 IP 30 秒 1 次」的限流
+        String cached = cacheGet(cacheKey);
+        if (cached != null)
+        {
+            if (onDelta != null)
+            {
+                onDelta.accept(cached);
+            }
+            return cached;
+        }
         try
         {
             List<Map<String, String>> messages = new ArrayList<>();
             messages.add(LlmClient.msg("system", systemPrompt(scene)));
+            if (history != null && !history.isEmpty())
+            {
+                messages.addAll(history);
+            }
             StringBuilder user = new StringBuilder();
             user.append("用户问题：").append(message).append("\n\n");
             user.append("【门店已核实数据】\n")
-                .append(StringUtils.isBlank(answer.content) ? "（与该问题无关或暂无数据）" : answer.content)
+                .append(StringUtils.isBlank(answer.content) ? "（与该问题无关或暂无数据）" : abbreviate(answer.content, 900))
                 .append("\n\n");
             user.append("回答要求：\n")
                 .append("1. 数据里有和问题相关的内容（订单、宠物、商品、价格、库存）时，严格按数据回答，不得改动数字、单号和状态。\n")
                 .append("2. 数据与问题无关或为空时，直接忽略数据，用你自己的养宠知识正常回答用户，不要说“没有相关记录”这类推脱的话。\n")
                 .append("3. 涉及本店没有给出的价格、库存、到货时间，不要编造，建议用户查看商品页或咨询门店。\n")
-                .append("4. 用简体中文，口语化，不用 Markdown 标题、表格和加粗，控制在 350 字以内。");
+                .append("4. 用户在追问上一轮内容（“它”“这个”“那款”）时，结合对话历史理解指代对象，不要反问用户指的是什么。\n")
+                .append("5. 直接给答案，不复述问题、不写思考过程、不用 Markdown 标题/表格/加粗。\n")
+                .append("6. 篇幅必须控制在 250 字以内，最多 4 条要点，每条一句话；宁短勿长。");
             messages.add(LlmClient.msg("user", user.toString()));
             try
             {
-                return llmClient.chat(messages, onDelta);
+                return callWithWatchdog(messages, cacheKey, onDelta);
             }
             catch (Exception first)
             {
-                // 免费档限流（402 FREE_LIMIT，每 IP 30 秒 1 次）：按上游提示的秒数等待后重试一次
                 String reason = String.valueOf(first.getMessage());
-                long waitMs = 3000L;
-                Matcher retryHint = Pattern.compile("[Rr]etry after (\\d+)").matcher(reason);
-                if (retryHint.find())
+                // 已经吐过字就不能重试，否则同一段话会出现两遍
+                if (streamed != null && streamed[0])
                 {
-                    waitMs = Math.min(60, Long.parseLong(retryHint.group(1)) + 2) * 1000L;
+                    log.warn("模型流式中断，保留已输出内容：{}", guard.mask(reason));
+                    return null;
                 }
-                else if (reason.contains("FREE_LIMIT"))
+                // 上游限流/额度用尽（免费档每 IP 30 秒 1 次）：干等 30 秒体验极差，
+                // 直接把已经核实好的本地模板交给用户，事实照样准确
+                if (isUpstreamLimited(reason))
                 {
-                    waitMs = 32000L;
+                    log.info("模型通道限流，本轮直接用本地模板回答：{}", guard.mask(reason));
+                    return null;
                 }
-                log.warn("模型生成失败，等待 {} 秒后重试一次：{}", waitMs / 1000, guard.mask(reason));
-                Thread.sleep(waitMs);
-                return llmClient.chat(messages, onDelta);
+                log.warn("模型生成失败，立即重试一次：{}", guard.mask(reason));
+                return callWithWatchdog(messages, cacheKey, onDelta);
             }
         }
         catch (Exception e)
@@ -1400,6 +1445,192 @@ public class AssistantService
             log.warn("模型重试后仍失败，降级为本地模板：{}", guard.mask(e.getMessage()));
             return null;
         }
+    }
+
+    /** 首字看门狗：上游免费通道偶发 40 秒才吐字，用户只会以为卡死，超时就直接给本地模板 */
+    private static final long FIRST_TOKEN_TIMEOUT_MS = 10000L;
+    private static final java.util.concurrent.ExecutorService GEN_POOL =
+            java.util.concurrent.Executors.newFixedThreadPool(8, r -> {
+                Thread thread = new Thread(r, "pet-ai-gen");
+                thread.setDaemon(true);
+                return thread;
+            });
+
+    private String callWithWatchdog(List<Map<String, String>> messages, String cacheKey, Consumer<String> onDelta)
+            throws Exception
+    {
+        java.util.concurrent.atomic.AtomicBoolean aborted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.atomic.AtomicBoolean firstToken = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.CompletableFuture<String> future = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try
+            {
+                return llmClient.chat(messages, delta -> {
+                    firstToken.set(true);
+                    // 已经放弃这个请求后，迟到的增量一律丢弃，避免和模板内容叠在一起
+                    if (!aborted.get() && onDelta != null)
+                    {
+                        onDelta.accept(delta);
+                    }
+                });
+            }
+            catch (Exception e)
+            {
+                throw new java.util.concurrent.CompletionException(e);
+            }
+        }, GEN_POOL);
+
+        long deadline = System.currentTimeMillis() + FIRST_TOKEN_TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline)
+        {
+            if (firstToken.get() || future.isDone())
+            {
+                break;
+            }
+            Thread.sleep(120);
+        }
+        if (!firstToken.get() && !future.isDone())
+        {
+            aborted.set(true);
+            future.cancel(true);
+            log.info("模型首字超过 {} 秒，本轮改用本地模板回答", FIRST_TOKEN_TIMEOUT_MS / 1000);
+            return null;
+        }
+        try
+        {
+            String text = future.get();
+            cachePut(cacheKey, text);
+            return text;
+        }
+        catch (java.util.concurrent.ExecutionException ee)
+        {
+            throw ee.getCause() instanceof Exception ? (Exception) ee.getCause() : ee;
+        }
+    }
+
+    /** 数据类问题：答案本身就是数据库里的结构化事实，不需要模型组织语言 */
+    private static boolean isDataIntent(String intent)
+    {
+        return SceneRouter.INTENT_ORDER_LIST.equals(intent) || SceneRouter.INTENT_ORDER_DETAIL.equals(intent)
+                || SceneRouter.INTENT_STORES.equals(intent) || SceneRouter.INTENT_SLOTS.equals(intent)
+                || SceneRouter.INTENT_APPOINTMENT.equals(intent) || SceneRouter.INTENT_MY_PETS.equals(intent)
+                || SceneRouter.INTENT_METRIC.equals(intent);
+    }
+
+    /** 上游限流、额度用尽：这类错误等待没有意义，直接降级 */
+    private static boolean isUpstreamLimited(String reason)
+    {
+        if (StringUtils.isBlank(reason))
+        {
+            return false;
+        }
+        String lower = reason.toLowerCase();
+        return lower.contains("free_limit") || lower.contains("retry after")
+                || lower.contains(" 402") || lower.contains(" 429") || lower.contains("rate limit");
+    }
+
+    /** 会话历史：只取最近 N 条并逐条截断——提示词体积直接决定首字时间 */
+    private List<Map<String, String>> loadHistory(Long convId)
+    {
+        List<Map<String, String>> history = new ArrayList<>();
+        if (convId == null)
+        {
+            return history;
+        }
+        try
+        {
+            int max = Math.max(0, properties.getMaxHistory());
+            if (max == 0)
+            {
+                return history;
+            }
+            List<PetAiMessage> all = conversationMapper.selectMessagesByConvId(convId);
+            if (all == null || all.isEmpty())
+            {
+                return history;
+            }
+            List<PetAiMessage> tail = all.size() <= max ? all : all.subList(all.size() - max, all.size());
+            for (PetAiMessage one : tail)
+            {
+                String role = one.getRole();
+                String content = one.getContent();
+                if (StringUtils.isBlank(content))
+                {
+                    continue;
+                }
+                if (!"user".equals(role) && !"assistant".equals(role))
+                {
+                    continue;
+                }
+                history.add(LlmClient.msg(role, abbreviate(content, 240)));
+            }
+        }
+        catch (Exception e)
+        {
+            log.warn("读取会话历史失败，本轮不带上下文：{}", e.getMessage());
+        }
+        return history;
+    }
+
+    /* ---------- 答案缓存：同一账号重复提问直接回放 ---------- */
+
+    private static final long CACHE_TTL_MS = 10 * 60 * 1000L;
+    private static final int CACHE_MAX = 200;
+    private final Map<String, CachedAnswer> answerCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final class CachedAnswer
+    {
+        final String text;
+        final long at;
+
+        CachedAnswer(String text)
+        {
+            this.text = text;
+            this.at = System.currentTimeMillis();
+        }
+
+        boolean expired()
+        {
+            return System.currentTimeMillis() - at > CACHE_TTL_MS;
+        }
+    }
+
+    /** 事实内容（订单/宠物/商品数据）参与 key：不同用户、不同数据不会串答案 */
+    private String cacheKey(String scene, Long userId, String message, String facts)
+    {
+        return scene + "|" + (userId == null ? "guest" : userId) + "|"
+                + String.valueOf(message).toLowerCase() + "|" + (facts == null ? 0 : facts.hashCode());
+    }
+
+    private String cacheGet(String key)
+    {
+        if (key == null)
+        {
+            return null;
+        }
+        CachedAnswer one = answerCache.get(key);
+        if (one == null)
+        {
+            return null;
+        }
+        if (one.expired())
+        {
+            answerCache.remove(key);
+            return null;
+        }
+        return one.text;
+    }
+
+    private void cachePut(String key, String text)
+    {
+        if (key == null || StringUtils.isBlank(text))
+        {
+            return;
+        }
+        if (answerCache.size() > CACHE_MAX)
+        {
+            answerCache.clear();
+        }
+        answerCache.put(key, new CachedAnswer(text));
     }
 
     private String systemPrompt(String scene)
@@ -1435,7 +1666,8 @@ public class AssistantService
                 + "1. 门店数据（订单、宠物档案、商品价格库存）只依据给出的事实回答，没有依据就说没有，不要编造。\n"
                 + "2. 通用养宠知识（喂养、训练、行为、日常护理）可以正常回答，必要时给出可执行的建议。\n"
                 + "3. 不做疾病诊断、不承诺治愈；涉及用药和急症一律建议咨询兽医或立即就医。\n"
-                + "4. 用简体中文，口语化，不用 Markdown 标题、表格和加粗。\n";
+                + "4. 先给结论再给要点，不要铺垫和客套，不复述问题。\n"
+                + "5. 用简体中文，口语化，不用 Markdown 标题、表格和加粗。\n";
     }
 
     /* ---------- 持久化 ---------- */

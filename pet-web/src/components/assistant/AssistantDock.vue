@@ -23,7 +23,10 @@
             <div v-if="m.role === 'assistant'" class="as-avatar"><AssistantBot mini /></div>
             <div class="as-stack">
               <div v-if="m.content" class="as-bubble">{{ m.content }}</div>
-              <div v-if="m.loading && !m.content" class="as-typing"><i></i><i></i><i></i></div>
+              <div v-if="m.loading && !m.content" class="as-typing">
+                <i></i><i></i><i></i>
+                <span v-if="waitSec >= 3" class="as-wait">思考中 {{ waitSec }}s</span>
+              </div>
 
               <div v-if="m.blocks && m.blocks.length" class="as-blocks">
                 <AssistantBlock v-for="(block, index) in m.blocks" :key="index" :block="block" @consult="consultOrder" />
@@ -146,6 +149,16 @@ watch(() => state.open, (opened) => {
   // 首次打开时贴着悬浮球定位；之后沿用上次拖到的位置
   if (!panelPos.value) panelPos.value = defaultPanelPos()
   scrollBottom()
+})
+
+/* 等待计时：推理型模型首字前有思考阶段，给个秒数比干转三个点更让人安心 */
+const waitSec = ref(0)
+let waitTimer = null
+watch(() => state.loading, (loading) => {
+  clearInterval(waitTimer)
+  waitSec.value = 0
+  if (!loading) return
+  waitTimer = setInterval(() => { waitSec.value += 1 }, 1000)
 })
 
 function openDefault() {
@@ -447,6 +460,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   window.removeEventListener('pointermove', onPanelMove)
   clearTimeout(tipTimer)
+  clearInterval(waitTimer)
 })
 </script>
 
@@ -578,10 +592,15 @@ onBeforeUnmount(() => {
 
 .as-typing {
   display: inline-flex; gap: 4px; padding: 12px 14px; width: fit-content;
+  align-items: center;
   background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md);
   i { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-400); animation: as-blink 1s infinite; }
   i:nth-child(2) { animation-delay: .15s; }
   i:nth-child(3) { animation-delay: .3s; }
+}
+.as-wait {
+  margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--border-1);
+  font-size: var(--fs-1); color: var(--text-3); white-space: nowrap;
 }
 @keyframes as-blink { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 

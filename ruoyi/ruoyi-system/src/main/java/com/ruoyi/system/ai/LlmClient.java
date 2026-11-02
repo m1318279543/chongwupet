@@ -132,18 +132,29 @@ public class LlmClient
                     continue;
                 }
                 String payload = line.substring(5).trim();
-                if (payload.isEmpty() || "[DONE]".equals(payload))
+                if (payload.isEmpty())
                 {
                     continue;
+                }
+                // 上游发完就不一定马上关连接，必须自己收尾，否则用户要多等十几秒才拿到 done
+                if ("[DONE]".equals(payload))
+                {
+                    break;
                 }
                 try
                 {
                     JsonNode node = JSON.readTree(payload);
-                    String delta = text(node.path("choices").path(0).path("delta").path("content"));
+                    JsonNode choice = node.path("choices").path(0);
+                    String delta = text(choice.path("delta").path("content"));
                     if (StringUtils.isNotEmpty(delta))
                     {
                         full.append(delta);
                         onDelta.accept(delta);
+                    }
+                    JsonNode finish = choice.path("finish_reason");
+                    if (!finish.isMissingNode() && !finish.isNull() && !finish.asText("").isEmpty())
+                    {
+                        break;
                     }
                 }
                 catch (Exception ignore)

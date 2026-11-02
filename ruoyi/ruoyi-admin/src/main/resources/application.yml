@@ -155,7 +155,11 @@ pet:
     api-key: ${LLM_API_KEY:}
     model: ${LLM_MODEL:openai}
     reasoning-effort: ${LLM_REASONING:low}
-    max-tokens: 600
+    # 600 会被推理型模型（gpt-oss）的思考过程吃掉，正文容易被截断；900 留够余量
+    max-tokens: 900
     timeout: 45
     rate-per-minute: 20
-    knowledge-limit: 4
+    # 召回条数：多给一条短摘要，模型可组织的事实更足
+    knowledge-limit: 5
+    # 追问答不上「它」「这个」是因为没带上下文，这里给最近 6 条
+    max-history: 6
