@@ -157,4 +157,54 @@ public class PetCartItemServiceImpl implements IPetCartItemService
     {
         return petCartItemMapper.deleteByUser(userId);
     }
+
+    @Override
+    public int consumeByOrderItems(Long userId, List<com.ruoyi.system.domain.PetCart> ordered)
+    {
+        if (ordered == null || ordered.isEmpty())
+        {
+            return 0;
+        }
+        List<PetCartItem> all = petCartItemMapper.selectByUser(userId);
+        if (all == null || all.isEmpty())
+        {
+            return 0;
+        }
+        List<Long> ids = new java.util.ArrayList<>();
+        for (PetCartItem row : all)
+        {
+            for (com.ruoyi.system.domain.PetCart o : ordered)
+            {
+                String type = StringUtils.isNotEmpty(o.getItemType()) ? o.getItemType() : TYPE_GOODS;
+                if (!type.equals(row.getItemType()))
+                {
+                    continue;
+                }
+                boolean match;
+                if (TYPE_PET.equals(type))
+                {
+                    match = o.getPetId() != null && o.getPetId().equals(row.getPetId());
+                }
+                else
+                {
+                    boolean sameGoods = o.getGoodsId() != null && o.getGoodsId().equals(row.getGoodsId());
+                    boolean sameSku = row.getSkuId() == null ? o.getSkuId() == null : row.getSkuId().equals(o.getSkuId());
+                    // 旧购物车数据可能没有 goodsId，兜底按商品名匹配
+                    match = (sameGoods && sameSku)
+                            || (row.getGoodsId() == null && StringUtils.isNotEmpty(o.getGoodsName())
+                                    && o.getGoodsName().equals(row.getGoodsName()));
+                }
+                if (match)
+                {
+                    ids.add(row.getCartItemId());
+                    break;
+                }
+            }
+        }
+        if (ids.isEmpty())
+        {
+            return 0;
+        }
+        return petCartItemMapper.deleteByIds(userId, ids);
+    }
 }

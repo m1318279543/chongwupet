@@ -33,4 +33,11 @@ public interface IPetCartItemService
 
     /** 清空购物车 */
     public int clear(Long userId);
+
+    /**
+     * 结算成单后消费购物车：删除与本次订单明细同款的条目
+     * （宠物按 petId、商品按 goodsId+skuId 匹配，旧数据 goodsId 为空时兜底按商品名）。
+     * 服务端兜底清车，保证「结算后购物车必清」，不依赖前端请求时序。
+     */
+    public int consumeByOrderItems(Long userId, List<com.ruoyi.system.domain.PetCart> ordered);
 }

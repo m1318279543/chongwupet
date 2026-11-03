@@ -572,8 +572,8 @@ async function doPay() {
       const res = await submitPetCart(items)
       const orderNo = res?.data?.orderNo
       if (orderNo) await payPetCart(orderNo, payMethod.value)
-      cartStore.clear()
-      cartStore.reloadFromServer()
+      // 清空已购条目：先等服务端删除完成再回填，避免 GET 抢在 DELETE 前把旧条目刷回来
+      await cartStore.clearAfterCheckout()
     }
     paySuccess.value = true
     if (countdownTimer) clearInterval(countdownTimer)

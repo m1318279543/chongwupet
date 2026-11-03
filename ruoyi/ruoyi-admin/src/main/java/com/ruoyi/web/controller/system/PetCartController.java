@@ -76,6 +76,9 @@ public class PetCartController extends BaseController
     @Autowired
     private IPetScopeService petScopeService;
 
+    @Autowired
+    private com.ruoyi.system.service.IPetCartItemService petCartItemService;
+
     /** 生成订单号：ORD + 时间戳 + 3 位随机数 */
     private static String genOrderNo()
     {
@@ -127,6 +130,14 @@ public class PetCartController extends BaseController
     public AjaxResult submit(@RequestBody List<PetCart> items)
     {
         PetOrder order = petOrderService.createOrder(items, SecurityUtils.getUserId(), SecurityUtils.getUsername());
+        // 成单即消费购物车：删除本人购物车中已下单的同款条目（服务端兜底清车，失败不影响下单）
+        try
+        {
+            petCartItemService.consumeByOrderItems(SecurityUtils.getUserId(), items);
+        }
+        catch (Exception ignored)
+        {
+        }
         Map<String, Object> data = new HashMap<>();
         data.put("orderNo", order.getOrderNo());
         data.put("count", order.getItemCount());

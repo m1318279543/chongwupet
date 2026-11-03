@@ -182,6 +182,28 @@ export const useCartStore = defineStore('cart', {
       return listCartItems()
         .then((res) => { this.items = (res.data || []).map(mapServerItem) })
         .catch(() => {})
+    },
+    // 结算支付成功后清空购物车：只清已勾选（已购）条目，保留未勾选的；
+    // 必须先等服务端删除完成再回填列表 —— 旧实现 clear() 不等待、随后立刻 GET，
+    // GET 抢在 DELETE 前返回会把刚买掉的条目重新刷回购物车（bug：结算后购物车未清空）。
+    async clearAfterCheckout() {
+      const bought = this.items.filter((i) => i.checked)
+      const rest = this.items.filter((i) => !i.checked)
+      this.items = rest
+      if (this.serverSynced) {
+        const ids = bought.map((i) => i.cartItemId).filter(Boolean)
+        try {
+          if (ids.length) await delCartItems(ids)
+        } catch (e) { /* 服务端已在成单时消费已购条目，这里失败不阻塞 */ }
+        try {
+          const res = await listCartItems()
+          // 双保险：以服务端为准，再把本地已购同款过滤一遍，防时序残留
+          const boughtKeys = new Set(bought.map((i) => i.id))
+          this.items = (res.data || []).map(mapServerItem).filter((i) => !boughtKeys.has(i.id))
+        } catch (e) { /* 网络异常时保留本地未勾选条目，下次 sync 对账 */ }
+      } else {
+        this.persist()
+      }
     }
   }
 })
