@@ -67,6 +67,15 @@ async function main() {
   check('内层精选大图 ≥ 5', innerCards >= 5, `n=${innerCards}`)
   const imgsOk = await evalJs(`Array.from(document.querySelectorAll('.ring-card img')).filter(i => i.complete && i.naturalWidth > 0).length`)
   check('卡片图片加载成功 ≥ 4', imgsOk >= 4, `ok=${imgsOk}`)
+  const dupInfo = await evalJs(`(() => {
+    const srcs = Array.from(document.querySelectorAll('.ring-card img')).map(i => i.getAttribute('src'))
+    const counter = {}
+    srcs.forEach(s => { counter[s] = (counter[s] || 0) + 1 })
+    const dups = Object.entries(counter).filter(([, v]) => v > 1)
+    return { total: srcs.length, uniq: new Set(srcs).size, dups: dups.length,
+             sample: dups.slice(0, 3).map(d => String(d[0]).split('/').pop() + '×' + d[1]).join(',') }
+  })()`)
+  check('环上同一张图片不再重复出现', dupInfo.dups === 0, `total=${dupInfo.total} uniq=${dupInfo.uniq} ${dupInfo.sample}`)
   const ringAnim = await evalJs(`getComputedStyle(document.querySelector('.ring')).animationName`)
   check('旋转动画生效', String(ringAnim).startsWith('ring-spin'), ringAnim)
 

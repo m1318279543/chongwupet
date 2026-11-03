@@ -119,7 +119,7 @@
 
           <div class="stage-glow"></div>
         </div>
-        <p class="stage-tip">全部 {{ petsTotal }} 只在售宠物环绕展示 · 悬停暂停 · 点击查看详情</p>
+        <p class="stage-tip">全部 {{ petsTotal }} 只在售宠物 · {{ uniquePets.length }} 张实拍图不重样 · 悬停暂停 · 点击查看详情</p>
         <div class="stage-strip">
           <div class="strip-item"><b>{{ petsTotal }}</b><span>在售宠物</span></div>
           <div class="strip-item"><b>{{ funnel.paidOrders || 0 }}</b><span>累计成交</span></div>
@@ -209,7 +209,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listPetInfo } from '@/api/pet/petInfo'
 import { getDisplayScreen } from '@/api/pet/dashboard'
@@ -232,14 +232,29 @@ const storeRating = computed(() => data.value?.storeRating || [])
 const keywords = computed(() => (data.value?.keywords || []).slice(0, 12))
 const recentCount = computed(() => data.value?.recentCommentCount ?? 0)
 
-// 环：内层精选 10 张大图 + 外层全部在售宠物（按 3 层圆柱叠放，每层同轴旋转）
-const innerPets = computed(() => pets.value.slice(0, 10))
+// 环：内层精选大图 + 外层其余宠物（3 层圆柱叠放）
+// 同一张图片全环只出现一次：数据里多只宠物可能共用一张图，内层取走后外层不再重复
+const uniquePets = computed(() => {
+  const seen = new Set()
+  const out = []
+  for (const p of pets.value) {
+    const key = p.image || 'id:' + p.petId
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(p)
+  }
+  return out
+})
+const INNER_COUNT = 10
+const innerPets = computed(() => uniquePets.value.slice(0, INNER_COUNT))
+const outerPets = computed(() => uniquePets.value.slice(INNER_COUNT))
 const OUTER_TIERS = 3
 const outerTiers = computed(() => {
   const tiers = Array.from({ length: OUTER_TIERS }, () => [])
-  pets.value.forEach((p, i) => tiers[i % OUTER_TIERS].push(p))
+  outerPets.value.forEach((p, i) => tiers[i % OUTER_TIERS].push(p))
   return tiers
 })
+const perTier = computed(() => Math.max(6, Math.ceil((outerPets.value.length || 68) / OUTER_TIERS)))
 
 // ---- 3D 环自适应半径：以容器可用宽高为上限，保证整圈都在中间区域内 ----
 const sceneRef = ref(null)
@@ -257,14 +272,23 @@ const computeRingSize = () => {
   const byWidth = w / 2 - Math.max(56, w * 0.1)
   // 竖直：3 层圆柱总高约 2*tierGap + 卡高，再加上 8° 倾斜后的椭圆投影
   const byHeight = h / 2 - 24
-  const r = Math.min(byWidth, byHeight, 340)
+  // 下限：每层卡片刚排开所需的最小半径（基准卡宽 56 + 8 间隙）
+  const needR = (perTier.value * 64) / (2 * Math.PI) * 1.04
+  const r = Math.min(Math.max(needR, 175), byWidth, byHeight, 340)
   outerR.value = Math.max(150, Math.round(r))
   tierGap.value = Math.max(52, Math.round(Math.min(78, outerR.value * 0.26)))
 }
 
-// 卡片按半径同比缩放，避免小屏时一圈挤在一起
-const ringScale = computed(() => Math.max(0.56, Math.min(1, outerR.value / 290)))
-const innerR = computed(() => Math.round(outerR.value * 0.64))
+// 卡片按环上实际间距缩放：宁可缩小也不重叠
+const ringScale = computed(() => {
+  const spacing = (2 * Math.PI * outerR.value) / perTier.value
+  return Math.max(0.44, Math.min(1, (spacing * 0.9) / 56))
+})
+const innerR = computed(() => Math.max(96, Math.round(outerR.value * 0.62)))
+const innerScale = computed(() => {
+  const spacing = (2 * Math.PI * innerR.value) / Math.max(1, innerPets.value.length)
+  return Math.max(0.4, Math.min(1, (spacing * 0.88) / 96))
+})
 const outerRingStyle = (tierIndex) => ({
   '--r': outerR.value + 'px',
   '--y': (tierIndex - 1) * tierGap.value + 'px',
@@ -274,7 +298,7 @@ const outerRingStyle = (tierIndex) => ({
 const innerRingStyle = computed(() => ({
   '--r': innerR.value + 'px',
   '--y': '0px',
-  '--sz': Math.min(1, ringScale.value + 0.18).toFixed(2),
+  '--sz': innerScale.value.toFixed(2),
   '--dur': '34s',
 }))
 // 中心大数字随环同比缩放，避免小屏时压到卡片
@@ -356,6 +380,8 @@ function tick() {
   const week = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
   clock.value.date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} 周${week}`
 }
+
+watch(outerPets, () => computeRingSize(), { flush: 'post' })
 
 onMounted(() => {
   tick()
@@ -571,7 +597,7 @@ onUnmounted(() => {
 .ring-card:hover { border-color: #53d1ff; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 22px rgba(83, 209, 255, 0.55); }
 .ring-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ring-card.big { width: calc(96px * var(--sz, 1)); height: calc(124px * var(--sz, 1)); }
-.ring-card.mini { width: calc(50px * var(--sz, 1)); height: calc(64px * var(--sz, 1)); border-radius: 5px; }
+.ring-card.mini { width: calc(56px * var(--sz, 1)); height: calc(72px * var(--sz, 1)); border-radius: 5px; }
 .ring-info {
   position: absolute;
   left: 0; right: 0; bottom: 0;
