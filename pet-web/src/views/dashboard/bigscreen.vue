@@ -1,6 +1,6 @@
 <template>
   <div class="bigscreen-wrap" ref="wrapRef">
-    <div class="screen" :style="{ transform: `scale(${scale})` }">
+    <div class="screen" :class="{ presenting }" :style="{ transform: `scale(${scale})` }">
       <!-- 顶部标题栏 -->
       <header class="bs-head">
         <div class="head-side left">
@@ -11,13 +11,14 @@
         <h1 class="head-title">宠物之家 · 经营监控大屏</h1>
         <div class="head-side right">
           <span class="clock">{{ clock }}</span>
+          <span class="chip spot-btn" @click="startPresent">亮点讲解</span>
           <span class="chip" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</span>
           <span class="chip" @click="backToDashboard">返回看板</span>
         </div>
       </header>
 
       <!-- KPI 指标行：客户与质量维度（看板是营收订单维度，两块屏互补） -->
-      <section class="kpi-row">
+      <section class="kpi-row" data-spot="kpi">
         <div v-for="k in kpis" :key="k.key" class="kpi">
           <span class="kpi-label">{{ k.label }}</span>
           <em class="kpi-value" :style="{ color: k.color }">{{ k.value }}</em>
@@ -29,7 +30,7 @@
       <section class="bs-body">
         <!-- 左列：漏斗 + 两个环形 -->
         <div class="col">
-          <div class="panel">
+          <div class="panel" data-spot="funnel">
             <div class="panel-title">经营转化漏斗 <i>咨询 → 下单 → 成交</i></div>
             <div ref="funnelRef" class="chart"></div>
             <div v-if="!funnel" class="empty center-empty">暂无数据</div>
@@ -56,11 +57,11 @@
 
         <!-- 中列：客户增长 + 最新评价 -->
         <div class="col center">
-          <div class="panel grow">
+          <div class="panel grow" data-spot="growth">
             <div class="panel-title">客户增长趋势 <i>每日新增注册（看板不看这件事）</i></div>
             <div ref="userTrendRef" class="chart chart-tall"></div>
           </div>
-          <div class="panel feed-panel">
+          <div class="panel feed-panel" data-spot="feed">
             <div class="panel-title">最新顾客评价 <i>每 30 秒自动刷新</i></div>
             <ul class="feed">
               <li v-for="(item, idx) in comments" :key="idx + String(item.createTime)">
@@ -78,17 +79,17 @@
 
         <!-- 右列：门店对比 + 评分分布 + 服务热度 -->
         <div class="col">
-          <div class="panel">
+          <div class="panel" data-spot="store">
             <div class="panel-title">门店经营对比 <i>成交金额</i></div>
             <div ref="storeRef" class="chart"></div>
             <div v-if="!storeCompare?.length" class="empty center-empty">区间内暂无成交</div>
           </div>
-          <div class="panel">
+          <div class="panel" data-spot="rating">
             <div class="panel-title">评分满意度分布 <i>区间内 {{ rating?.total || 0 }} 条评分</i></div>
             <div ref="ratingRef" class="chart"></div>
             <div v-if="!rating?.total" class="empty center-empty">区间内暂无评分</div>
           </div>
-          <div class="panel">
+          <div class="panel" data-spot="service">
             <div class="panel-title">服务项目热度 TOP <i>门店服务工单</i></div>
             <div ref="serviceTopRef" class="chart"></div>
             <div v-if="!rank?.services?.length" class="empty center-empty">区间内暂无服务工单</div>
@@ -96,6 +97,38 @@
         </div>
       </section>
     </div>
+
+    <!-- 亮点讲解：答辩演示模式（逐屏聚光 + 讲稿 + 自动播放） -->
+    <div v-if="presenting && spotRect" class="spotlight" :class="{ all: STEPS[step]?.spot === '__all__' }" :style="spotStyle">
+      <i class="sp-corner tl"></i><i class="sp-corner tr"></i>
+      <i class="sp-corner bl"></i><i class="sp-corner br"></i>
+      <span class="sp-tag">{{ STEPS[step]?.spotLabel || '本屏亮点' }}</span>
+    </div>
+    <transition name="pr-fade">
+      <section v-if="presenting" class="presenter" :style="tipStyle">
+        <div class="pr-top">
+          <span class="pr-badge">亮点讲解</span>
+          <span class="pr-count">{{ step + 1 }} / {{ STEPS.length }}</span>
+          <span class="pr-auto" :class="{ on: autoPlay }" @click="toggleAuto">{{ autoPlay ? '⏸ 暂停' : '▶ 自动' }}</span>
+          <span class="pr-close" @click="stopPresent">退出 (Esc)</span>
+        </div>
+        <h3 class="pr-title">{{ STEPS[step]?.title }}</h3>
+        <p class="pr-sub">{{ STEPS[step]?.sub }}</p>
+        <ul class="pr-points">
+          <li v-for="(p, i) in STEPS[step]?.points || []" :key="i">{{ p }}</li>
+        </ul>
+        <div class="pr-foot">
+          <span class="pr-nav" :class="{ dim: step === 0 }" @click="prev">‹ 上一屏</span>
+          <span class="pr-dots">
+            <i v-for="(s, i) in STEPS" :key="i" :class="{ on: i === step }" @click="goto(i)"></i>
+          </span>
+          <span class="pr-nav" @click="next">{{ step === STEPS.length - 1 ? '结束讲解' : '下一屏 ›' }}</span>
+        </div>
+        <div class="pr-bar" :key="step + '-' + (autoPlay ? 1 : 0)">
+          <i :class="{ running: autoPlay }"></i>
+        </div>
+      </section>
+    </transition>
   </div>
 </template>
 
@@ -119,6 +152,8 @@ function fit() {
   const w = window.innerWidth
   const h = window.innerHeight
   scale.value = Math.min(w / 1920, h / 1080)
+  // 全屏 / 窗口变化后重新贴合聚光框
+  nextTick(() => updateSpot())
 }
 
 /* ---------- 状态 ---------- */
@@ -388,6 +423,10 @@ async function toggleFullscreen() {
 }
 function onFsChange() {
   isFullscreen.value = !!document.fullscreenElement
+  fit()
+  // 浏览器原生全屏会吞掉第一次 Esc（用于退出全屏，不派发给页面）。
+  // 这里联动收尾，保证「按 Esc 退出讲解」在自动全屏时同样有效。
+  if (presenting.value && fsByPresent && !document.fullscreenElement) stopPresent()
 }
 
 function tick() {
@@ -396,9 +435,222 @@ function tick() {
   clock.value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
+/* ---------- 亮点讲解：逐屏聚光 + 讲稿 + 自动播放 ---------- */
+const STEPS = [
+  {
+    spot: '__all__', spotLabel: '整体设计',
+    title: '一套系统 · 两块大屏',
+    sub: '先说定位：这块屏不是数据看板的复制品',
+    points: [
+      '数据看板看「营收 / 订单 / 客流」，本屏看「客户质量 / 服务口碑」，两者互补',
+      '1920×1080 设计稿等比自适应，一键全屏，可直接投会议室或门店电视',
+      '按 ← → 翻屏、空格切换自动播放、Esc 退出；下面按 6 个亮点逐一讲解',
+    ],
+  },
+  {
+    spot: 'kpi', spotLabel: '亮点 1 · 客户质量',
+    title: '亮点 1 · 客户质量六指标',
+    sub: '顶部 KPI 全部由数据库实时聚合，没有一个写死的数字',
+    points: [
+      '新增客户 / 复购率 / 好评率 / 服务完成率 / 会员余额 / 平均客单价',
+      '复购率 = 多次成交客户 ÷ 成交客户；好评率 = 4~5 星 ÷ 有效评分',
+      '左上角 7 / 30 / 90 天一键切换，全部指标与图表同步重算',
+    ],
+  },
+  {
+    spot: 'funnel', spotLabel: '亮点 2 · 转化漏斗',
+    title: '亮点 2 · 经营转化漏斗',
+    sub: '把「咨询 → 下单 → 成交」拆成三段，直接暴露流失在哪一环',
+    points: [
+      'ECharts FunnelChart，宽度随真实数值自动缩放，不是装饰性示意图',
+      '左侧另有服务模式占比环 + 会员资产卡，回答「钱和服务从哪来」',
+      '待支付 / 已取消订单在 SQL 层已剔除，统计口径干净',
+    ],
+  },
+  {
+    spot: 'growth', spotLabel: '亮点 3 · 拉新趋势',
+    title: '亮点 3 · 客户增长趋势',
+    sub: '逐日新增注册曲线，这是数据看板完全没有的维度',
+    points: [
+      '后端按自然日补齐缺失日期（补零），曲线不会断、不会跳',
+      '渐变面积 + 平滑折线，拉新节奏与活动效果一眼看清',
+      '与 7 / 30 / 90 天切换联动，可验证一次活动是否真带来新客',
+    ],
+  },
+  {
+    spot: 'feed', spotLabel: '亮点 4 · 口碑闭环',
+    title: '亮点 4 · 顾客口碑闭环',
+    sub: '屏上每条评价，都是顾客自己在页面上打星 + 写出来的',
+    points: [
+      '顾客在「服务预约」页提交五星评分与文字，一人一条、支持改分',
+      '数据落 pet_comment，按 target_type 隔离宠物 / 粮食两类评论',
+      '大屏 30 秒轮询自动刷新，无需人工干预，差评第一时间可见',
+    ],
+  },
+  {
+    spot: 'rating', spotLabel: '亮点 5 · 满意度分布',
+    title: '亮点 5 · 满意度分布',
+    sub: '5 星到 1 星分层统计，比一个「平均分」敏感得多',
+    points: [
+      '后端按 5→1 星固定补全五档，缺的档位补 0，排序稳定不跳位',
+      '只看平均分会被大量好评掩盖，分层后低星异常立刻显形',
+      '与上方「好评率」互相印证，构成服务质量的两个观察角度',
+    ],
+  },
+  {
+    spot: 'store', spotLabel: '亮点 6 · 多门店',
+    title: '亮点 6 · 多门店横向对比',
+    sub: '6 家门店同屏 PK，成交额 / 订单 / 预约 / 工单四维可下钻',
+    points: [
+      'SQL 子查询按门店聚合，鼠标悬停 tooltip 展开另外三项明细',
+      '门店名过长自动截断，条形按金额降序，名次一目了然',
+      '右侧「服务项目热度 TOP」还能指导排班与备货',
+    ],
+  },
+  {
+    spot: 'service', spotLabel: '工程实现 · 收尾',
+    title: '收尾 · 真接口、真权限、真实时',
+    sub: '最后说实现，这块屏不是静态截图',
+    points: [
+      '/pet/dashboard/bigscreen 独立接口 + pet:dashboard:view 权限，游客不可见',
+      'ECharts 按需引入（仅 Line / Bar / Pie / Funnel），30 秒轮询、卸载即 dispose',
+      '前台另有游客可见的口碑大屏 /shop/display，共用同一套聚合逻辑',
+      '讲解结束，按 Esc 返回大屏 —— 谢谢老师',
+    ],
+  },
+]
+
+const AUTO_MS = 9000
+const presenting = ref(false)
+const step = ref(0)
+const autoPlay = ref(false)
+const spotRect = ref(null)
+let autoTimer = null
+let fsByPresent = false
+
+const spotStyle = computed(() => {
+  const r = spotRect.value
+  if (!r) return {}
+  return { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }
+})
+
+/* 讲解卡自动避让聚光区：四角候选中挑重叠面积最小的一处 */
+const tipStyle = computed(() => {
+  const r = spotRect.value
+  const W = window.innerWidth
+  const H = window.innerHeight
+  const cardW = Math.min(430, Math.max(290, Math.round(W * 0.34)))
+  const cardH = Math.min(340, H - 40)
+  const m = 22
+  const styleOf = (p) => ({ width: cardW + 'px', left: p.left + 'px', top: p.top + 'px' })
+  if (!r) return styleOf({ left: (W - cardW) / 2, top: H - cardH - m })
+  const candidates = [
+    { left: W - cardW - m, top: H - cardH - m },
+    { left: W - cardW - m, top: m },
+    { left: m, top: H - cardH - m },
+    { left: m, top: m },
+  ]
+  const overlapArea = (p) => {
+    const w = Math.min(p.left + cardW, r.left + r.width) - Math.max(p.left, r.left)
+    const h = Math.min(p.top + cardH, r.top + r.height) - Math.max(p.top, r.top)
+    return w > 0 && h > 0 ? w * h : 0
+  }
+  let best = candidates[0], bestA = overlapArea(best)
+  for (const c of candidates.slice(1)) {
+    const a = overlapArea(c)
+    if (a < bestA) { best = c; bestA = a }
+    if (a === 0) break
+  }
+  return styleOf(best)
+})
+
+function updateSpot() {
+  if (!presenting.value) return
+  const key = STEPS[step.value]?.spot
+  const wrap = wrapRef.value
+  if (!wrap) return
+  const base = wrap.getBoundingClientRect()
+  let rect
+  if (key === '__all__') {
+    rect = { left: 18, top: 18, width: base.width - 36, height: base.height - 36 }
+  } else {
+    const el = wrap.querySelector(`[data-spot="${key}"]`)
+    if (el) {
+      const r = el.getBoundingClientRect()
+      rect = { left: r.left - base.left - 10, top: r.top - base.top - 10, width: r.width + 20, height: r.height + 20 }
+    } else {
+      rect = { left: 18, top: 18, width: base.width - 36, height: base.height - 36 }
+    }
+  }
+  spotRect.value = rect
+}
+
+function clearAutoTimer() {
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer = null }
+}
+function scheduleAuto() {
+  clearAutoTimer()
+  if (!presenting.value || !autoPlay.value) return
+  if (step.value >= STEPS.length - 1) { autoPlay.value = false; return }
+  autoTimer = setTimeout(() => { if (presenting.value && autoPlay.value) goto(step.value + 1) }, AUTO_MS)
+}
+
+function goto(i) {
+  if (i < 0 || i >= STEPS.length) return
+  step.value = i
+  nextTick(() => { updateSpot(); scheduleAuto() })
+}
+function next() {
+  if (step.value >= STEPS.length - 1) { stopPresent(); return }
+  goto(step.value + 1)
+}
+function prev() {
+  if (step.value > 0) goto(step.value - 1)
+}
+function toggleAuto() {
+  autoPlay.value = !autoPlay.value
+  scheduleAuto()
+}
+async function startPresent() {
+  if (presenting.value) return
+  step.value = 0
+  presenting.value = true
+  autoPlay.value = false
+  await nextTick()
+  updateSpot()
+  try {
+    if (!document.fullscreenElement && wrapRef.value?.requestFullscreen) {
+      await wrapRef.value.requestFullscreen()
+      fsByPresent = true
+    }
+  } catch (e) { fsByPresent = false }
+  nextTick(updateSpot)
+}
+function stopPresent() {
+  clearAutoTimer()
+  presenting.value = false
+  autoPlay.value = false
+  spotRect.value = null
+  if (fsByPresent && document.fullscreenElement) {
+    Promise.resolve(document.exitFullscreen?.()).catch(() => {})
+  }
+  fsByPresent = false
+}
+function onKey(e) {
+  if (!presenting.value) {
+    if (e.key === 'F9') { e.preventDefault(); startPresent() }
+    return
+  }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'Enter') { e.preventDefault(); next() }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev() }
+  else if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); stopPresent() }
+  else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); toggleAuto() }
+}
+
 onMounted(async () => {
   fit()
   window.addEventListener('resize', fit)
+  window.addEventListener('keydown', onKey)
   document.addEventListener('fullscreenchange', onFsChange)
   tick()
   clockTimer = setInterval(tick, 1000)
@@ -408,7 +660,9 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fit)
+  window.removeEventListener('keydown', onKey)
   document.removeEventListener('fullscreenchange', onFsChange)
+  clearAutoTimer()
   clearInterval(mainTimer); clearInterval(clockTimer)
   Object.values(charts).forEach((c) => c && c.dispose())
 })
@@ -508,6 +762,19 @@ onBeforeUnmount(() => {
     font-variant-numeric: tabular-nums;
     margin-right: 6px;
   }
+  .spot-btn {
+    color: #ffe3a3;
+    border-color: rgba(255, 196, 107, .75);
+    background: linear-gradient(90deg, rgba(255, 196, 107, .18), rgba(37, 240, 238, .14));
+    font-weight: 600;
+    box-shadow: 0 0 14px rgba(255, 196, 107, .22);
+    animation: spot-breathe 2.6s ease-in-out infinite;
+    &:hover { color: #fff3d6; border-color: #ffc46b; box-shadow: 0 0 22px rgba(255, 196, 107, .5); }
+  }
+}
+@keyframes spot-breathe {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 196, 107, .18); }
+  50% { box-shadow: 0 0 22px rgba(255, 196, 107, .48); }
 }
 
 .kpi-row {
@@ -725,5 +992,203 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   padding: 0;
+}
+
+/* ================= 亮点讲解 / 演示模式 ================= */
+.spotlight {
+  position: absolute;
+  z-index: 3000;
+  border-radius: 14px;
+  pointer-events: none;
+  background: transparent;
+  box-shadow:
+    0 0 0 2px rgba(37, 240, 238, .9),
+    0 0 34px rgba(37, 240, 238, .38),
+    0 0 0 9999px rgba(2, 9, 20, .82);
+  transition: left .45s cubic-bezier(.4, 0, .2, 1), top .45s cubic-bezier(.4, 0, .2, 1),
+    width .45s cubic-bezier(.4, 0, .2, 1), height .45s cubic-bezier(.4, 0, .2, 1);
+  /* 开场整屏步：只描边不压暗，避免与讲解卡互相遮挡 */
+  &.all { box-shadow: 0 0 0 2px rgba(37, 240, 238, .55), 0 0 34px rgba(37, 240, 238, .22); }
+  .sp-corner {
+    position: absolute;
+    width: 26px; height: 26px;
+    border: 3px solid #25f0ee;
+    border-radius: 3px;
+    box-shadow: 0 0 12px rgba(37, 240, 238, .7);
+  }
+  .sp-corner.tl { left: -3px; top: -3px; border-right: 0; border-bottom: 0; }
+  .sp-corner.tr { right: -3px; top: -3px; border-left: 0; border-bottom: 0; }
+  .sp-corner.bl { left: -3px; bottom: -3px; border-right: 0; border-top: 0; }
+  .sp-corner.br { right: -3px; bottom: -3px; border-left: 0; border-top: 0; }
+  .sp-tag {
+    position: absolute;
+    left: 0; top: -34px;
+    padding: 4px 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #25f0ee, #2f7bff);
+    color: #04101f;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    box-shadow: 0 4px 18px rgba(37, 240, 238, .4);
+  }
+}
+
+.presenter {
+  position: absolute;
+  z-index: 3100;
+  width: 430px;
+  max-width: calc(100vw - 52px);
+  padding: 18px 20px 14px;
+  border: 1px solid rgba(37, 240, 238, .42);
+  border-radius: 14px;
+  background:
+    radial-gradient(500px 160px at 100% 0%, rgba(37, 240, 238, .14), transparent 70%),
+    linear-gradient(160deg, rgba(10, 32, 58, .97), rgba(4, 14, 28, .98));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .65), 0 0 28px rgba(37, 240, 238, .18);
+  color: #d8ecff;
+  transition: left .45s cubic-bezier(.4, 0, .2, 1), top .45s cubic-bezier(.4, 0, .2, 1);
+  overflow: hidden;
+}
+.pr-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(37, 240, 238, .18);
+  .pr-badge {
+    padding: 3px 10px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #ffc46b, #f78e3d);
+    color: #2a1600;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+  .pr-count {
+    font-size: 13px;
+    color: #7fa8cc;
+    font-variant-numeric: tabular-nums;
+  }
+  .pr-auto, .pr-close {
+    font-size: 12px;
+    color: #9cc3e8;
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 9px;
+    border: 1px solid rgba(37, 240, 238, .28);
+    border-radius: 999px;
+    transition: all .15s;
+    white-space: nowrap;
+    &:hover { color: #25f0ee; border-color: #25f0ee; }
+  }
+  .pr-auto { margin-left: auto; }
+  .pr-auto.on { color: #04101f; background: #25f0ee; border-color: #25f0ee; font-weight: 600; }
+  .pr-close:hover { color: #ff9a8a; border-color: #ff9a8a; }
+}
+.pr-title {
+  margin: 14px 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #ffffff, #9ad9ff 60%, #25f0ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.pr-sub {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #ffc46b;
+  line-height: 1.6;
+}
+.pr-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  li {
+    position: relative;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #c4dcf5;
+    &::before {
+      content: '';
+      position: absolute;
+      left: 2px; top: 8px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #25f0ee;
+      box-shadow: 0 0 8px rgba(37, 240, 238, .9);
+    }
+  }
+}
+.pr-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(37, 240, 238, .18);
+  .pr-nav {
+    font-size: 13px;
+    color: #9cc3e8;
+    cursor: pointer;
+    user-select: none;
+    transition: color .15s;
+    &:hover { color: #25f0ee; }
+    &.dim { opacity: .3; pointer-events: none; }
+  }
+  .pr-dots {
+    display: flex;
+    gap: 7px;
+    i {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(37, 240, 238, .22);
+      cursor: pointer;
+      transition: all .2s;
+      &:hover { background: rgba(37, 240, 238, .6); }
+      &.on {
+        width: 22px;
+        border-radius: 4px;
+        background: #25f0ee;
+        box-shadow: 0 0 10px rgba(37, 240, 238, .7);
+      }
+    }
+  }
+}
+.pr-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: rgba(37, 240, 238, .08);
+  i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #25f0ee, #ffc46b);
+  }
+  i.running { animation: pr-progress 9s linear forwards; }
+}
+@keyframes pr-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.pr-fade-enter-active, .pr-fade-leave-active { transition: opacity .3s ease, transform .3s ease; }
+.pr-fade-enter-from, .pr-fade-leave-to { opacity: 0; transform: translateY(14px); }
+
+@media (max-width: 1100px) {
+  .presenter { width: 360px; padding: 14px 16px 12px; }
+  .pr-title { font-size: 18px; }
+  .pr-points li, .pr-sub { font-size: 12px; }
+}
+@media (max-width: 700px) {
+  .presenter { width: calc(100vw - 32px); }
+  .sp-tag { font-size: 11px; top: -28px; }
 }
 </style>
