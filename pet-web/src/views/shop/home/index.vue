@@ -176,7 +176,7 @@
               <span v-else-if="geoStatus === 'locating'" class="loc-state">定位中…</span>
               <button v-else type="button" class="loc-btn" @click="locOpen = true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-                设置我的位置
+                调整我的位置
               </button>
             </div>
             <router-link class="more" to="/shop/appointment">
@@ -233,7 +233,7 @@
       </div>
     </section>
 
-    <!-- 我的位置：浏览器定位 / 常用地标 / 自定义坐标 -->
+    <!-- 我的位置：零输入自动定位 / 商圈点选（不需要地址或经纬度） -->
     <LocationPicker v-model="locOpen" />
   </div>
 </template>

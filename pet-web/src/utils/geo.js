@@ -29,7 +29,11 @@ export function formatDistance(meters) {
   return `${km < 10 ? km.toFixed(1) : Math.round(km)} km`
 }
 
-/** 驾车导航链接（高德 URI，移动端可直接唤起 App，桌面端打开网页版） */
+/**
+ * 驾车导航链接（高德 URI，移动端可直接唤起 App，桌面端打开网页版）
+ * 只有「精确定位 / 顾客主动选的商圈」才把 from 传给地图；
+ * 自动估算的市中心坐标不传，交给地图 App 用设备真实位置，避免把起点带偏。
+ */
 export function amapNavUrl(store, from) {
   if (!store || store.lng == null || store.lat == null) return ''
   const name = encodeURIComponent(store.storeName || '门店')
@@ -41,7 +45,7 @@ export function amapNavUrl(store, from) {
     'coordinate=gaode',
     'callnative=1',
   ]
-  if (from && from.lng != null && from.lat != null) {
+  if (from && from.lng != null && from.lat != null && from.source !== 'city') {
     params.splice(1, 0, `from=${from.lng},${from.lat},我的位置`)
   }
   return `https://uri.amap.com/navigation?${params.join('&')}`
@@ -55,26 +59,14 @@ export function amapMarkerUrl(store) {
   return `https://uri.amap.com/marker?position=${store.lng},${store.lat}&name=${name}&src=chongwupet&coordinate=gaode&callnative=0&address=${addr}`
 }
 
-/** 解析顾客粘贴的坐标：支持「经度,纬度」「纬度,经度」，用逗号/空格/分号分隔 */
-export function parseCoords(text) {
-  const nums = String(text || '').match(/-?\d+(?:\.\d+)?/g)
-  if (!nums || nums.length < 2) return null
-  const a = Number(nums[0])
-  const b = Number(nums[1])
-  if (Number.isNaN(a) || Number.isNaN(b)) return null
-  let lng
-  let lat
-  if (Math.abs(a) > 90) { lng = a; lat = b }
-  else if (Math.abs(b) > 90) { lng = b; lat = a }
-  // 国内经纬度：经度 73~135，纬度 3~54，用这个范围判断前后顺序
-  else if (a > 54 && b <= 54) { lng = a; lat = b }
-  else if (b > 54 && a <= 54) { lng = b; lat = a }
-  else { lng = a; lat = b }
-  if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return null
-  return { lng, lat }
-}
+/**
+ * 无法精确定位时的城市基准点（重庆主城中心 · 解放碑）。
+ * http 站点浏览器禁用 GPS，页面仍要能「直接按距离排序」，就用它做城市级估算，
+ * 并在界面上明确标注「估算」，不伪装成精确定位。
+ */
+export const CITY_CENTER = { key: 'city', name: '重庆主城中心（估算）', lng: 106.577315, lat: 29.557666 }
 
-/** 重庆常用地标：http 站点拿不到浏览器定位时，给顾客一个手动选择兜底 */
+/** 常用商圈：零输入，点一下就能把位置切到附近，http 站点同样可用 */
 export const CHONGQING_SPOTS = [
   { key: 'jfb', name: '解放碑', lng: 106.577315, lat: 29.557666 },
   { key: 'gyq', name: '观音桥', lng: 106.530573, lat: 29.573541 },

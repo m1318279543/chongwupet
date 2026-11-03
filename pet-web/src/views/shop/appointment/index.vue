@@ -198,7 +198,7 @@
               <span class="bkd-loc__state">我的位置：{{ locName }}</span>
               <button type="button" class="bkd-loc__btn" @click="locOpen = true">更改</button>
             </template>
-            <button v-else type="button" class="bkd-loc__btn" @click="locOpen = true">设置我的位置</button>
+            <button v-else type="button" class="bkd-loc__btn" @click="locOpen = true">调整我的位置</button>
             <a v-if="pickedStore.lng != null && pickedStore.lat != null" class="bkd-loc__nav"
                :href="amapNavUrl(pickedStore, geoCoords)" target="_blank" rel="noopener">
               导航到店
@@ -377,7 +377,7 @@
       </div>
     </el-dialog>
 
-    <!-- 我的位置：自定义坐标 / 常用地标 / 浏览器定位 -->
+    <!-- 我的位置：零输入自动定位 / 商圈点选（不需要地址或经纬度） -->
     <LocationPicker v-model="locOpen" />
   </div>
 </template>
