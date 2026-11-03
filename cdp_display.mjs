@@ -164,15 +164,31 @@ async function main() {
   fs.writeFileSync('deploy/display-remote.png', Buffer.from(shot.result.data, 'base64'))
   console.log('screenshot: deploy/display-local.png')
 
-  // 点击卡片跳转宠物详情（路由 /shop/pet/:id）
-  const navInfo = await evalJs(`(async () => {
-    const card = document.querySelector('.ring-card.mini')
-    if (!card) return { err: 'no card' }
-    card.click()
-    await new Promise(r => setTimeout(r, 2500))
-    return { url: location.pathname + location.search }
+  // 点击卡片跳转宠物详情（真实鼠标点击，避免 DOM click 掩盖 pointer 捕获问题）
+  const clickPt = await evalJs(`(() => {
+    const scene = document.querySelector('.scene').getBoundingClientRect()
+    const cx = scene.left + scene.width / 2, cy = scene.top + scene.height / 2
+    let best = null, bestD = 1e9
+    document.querySelectorAll('.ring-card').forEach(c => {
+      const r = c.getBoundingClientRect()
+      if (r.width < 30) return
+      const x = r.left + r.width / 2, y = r.top + r.height / 2
+      if (x < scene.left + 10 || x > scene.right - 10 || y < scene.top + 10 || y > scene.bottom - 10) return
+      const d = Math.hypot(x - cx, y - cy)
+      if (d < bestD) { bestD = d; best = { x: Math.round(x), y: Math.round(y) } }
+    })
+    return best
   })()`)
-  check('点击卡片跳转宠物详情', /^\/shop\/pet\/\d+$/.test(navInfo.url || ''), navInfo.url || navInfo.err || '')
+  if (clickPt) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: clickPt.x, y: clickPt.y })
+    await sleep(200)
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: clickPt.x, y: clickPt.y, button: 'left', clickCount: 1 })
+    await sleep(80)
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: clickPt.x, y: clickPt.y, button: 'left', clickCount: 1 })
+    await sleep(2500)
+  }
+  const navUrl = await evalJs('location.pathname')
+  check('真实鼠标点击卡片跳转详情', /^\/shop\/pet\/\d+$/.test(navUrl || ''), navUrl || 'no point')
 
   console.log(`\\n${pass} passed, ${fail} failed`)
   chrome.kill()

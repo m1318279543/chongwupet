@@ -323,6 +323,7 @@ const sceneStyle = computed(() => ({
 }))
 
 // ---- 用户拖拽旋转：水平拖动给整个轨道叠加 rotateY 偏移，松手后保持角度、自动旋转继续 ----
+// 注意：不能用 setPointerCapture —— 捕获后 click 会被重定向到舞台，卡片点不动
 const dragDeg = ref(0)
 const dragging = ref(false)
 let dragStartX = 0
@@ -334,7 +335,9 @@ const onDown = (e) => {
   dragMoved = false
   dragStartX = e.clientX
   dragBase = dragDeg.value
-  try { e.currentTarget.setPointerCapture(e.pointerId) } catch (_) {}
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
 }
 const onMove = (e) => {
   if (!dragging.value) return
@@ -345,6 +348,9 @@ const onMove = (e) => {
 const onUp = () => {
   if (!dragging.value) return
   dragging.value = false
+  window.removeEventListener('pointermove', onMove)
+  window.removeEventListener('pointerup', onUp)
+  window.removeEventListener('pointercancel', onUp)
   // 拖动后的 click 是误触，跳过一次跳转（click 在 pointerup 之后、宏任务之前触发）
   if (dragMoved) setTimeout(() => { dragMoved = false }, 0)
 }
@@ -592,6 +598,7 @@ onUnmounted(() => {
   overflow: hidden;
   cursor: grab;
   touch-action: pan-y;
+  user-select: none;
 }
 .scene.grabbing { cursor: grabbing; }
 /* 拖拽层：0x0 定位在舞台中心，整体叠加用户拖拽的 rotateY 偏移 */
@@ -653,7 +660,7 @@ onUnmounted(() => {
   transition: box-shadow 0.3s, border-color 0.3s;
 }
 .ring-card:hover { border-color: #53d1ff; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 22px rgba(83, 209, 255, 0.55); }
-.ring-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ring-card img { width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; user-select: none; pointer-events: none; }
 .ring-card.big { width: calc(96px * var(--sz, 1)); height: calc(124px * var(--sz, 1)); }
 .ring-card.mini { width: calc(64px * var(--sz, 1)); height: calc(84px * var(--sz, 1)); border-radius: 5px; }
 .ring-info {
