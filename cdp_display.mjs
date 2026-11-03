@@ -62,7 +62,7 @@ async function main() {
   const outerCards = await evalJs(`document.querySelectorAll('.ring-outer .ring-card').length`)
   check('外环放全部在售宠物 ≥ 50', outerCards >= 50, `n=${outerCards}`)
   const tiers = await evalJs(`document.querySelectorAll('.ring-outer').length`)
-  check('外环分 3 层圆柱叠放', tiers === 3, `n=${tiers}`)
+  check('外环分 4 层圆柱铺满', tiers === 4, `n=${tiers}`)
   const innerCards = await evalJs(`document.querySelectorAll('.ring-inner .ring-card').length`)
   check('内层精选大图 ≥ 5', innerCards >= 5, `n=${innerCards}`)
   const imgsOk = await evalJs(`Array.from(document.querySelectorAll('.ring-card img')).filter(i => i.complete && i.naturalWidth > 0).length`)
@@ -78,6 +78,33 @@ async function main() {
   check('环上同一张图片不再重复出现', dupInfo.dups === 0, `total=${dupInfo.total} uniq=${dupInfo.uniq} ${dupInfo.sample}`)
   const ringAnim = await evalJs(`getComputedStyle(document.querySelector('.ring')).animationName`)
   check('旋转动画生效', String(ringAnim).startsWith('ring-spin'), ringAnim)
+
+  // 拖拽旋转：pointer 拖动 200px → 轨道叠加 70° 偏移且松手保持
+  const dragInfo = await evalJs(`(async () => {
+    const s = document.querySelector('.scene')
+    if (!s) return { err: 'no scene' }
+    const r = s.getBoundingClientRect()
+    const base = { bubbles: true, pointerId: 9, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }
+    const before = document.querySelector('.orbit').style.getPropertyValue('--drag') || '0deg'
+    s.dispatchEvent(new PointerEvent('pointerdown', base))
+    s.dispatchEvent(new PointerEvent('pointermove', { ...base, clientX: base.clientX + 200 }))
+    s.dispatchEvent(new PointerEvent('pointerup', base))
+    await new Promise(r => setTimeout(r, 300))
+    const after = document.querySelector('.orbit').style.getPropertyValue('--drag')
+    return { before, after }
+  })()`)
+  const dragVal = parseFloat(dragInfo.after)
+  check('拖拽旋转生效（200px → 70°）', Math.abs(dragVal - 70) < 1, `before=${dragInfo.before} after=${dragInfo.after}`)
+
+  // 环的填充度：层间距应把竖直空间用起来（顶/底层卡片覆盖舞台高度 55%+）
+  const fill = await evalJs(`(() => {
+    const s = document.querySelector('.scene').getBoundingClientRect()
+    const ys = Array.from(document.querySelectorAll('.ring-outer .ring-card')).map(c => { const r = c.getBoundingClientRect(); return [r.top, r.bottom] })
+    if (!ys.length) return { cover: 0 }
+    const top = Math.min(...ys.map(v => v[0])), bot = Math.max(...ys.map(v => v[1]))
+    return { cover: Math.round((bot - top) / s.height * 100) }
+  })()`)
+  check('竖直填充度 ≥ 55%', fill.cover >= 55, `cover=${fill.cover}%`)
 
   // 关键：所有卡片必须收在中间 3D 舞台区域内，不得压到左右面板或超出屏幕
   const fit = await evalJs(`(() => {
@@ -132,10 +159,20 @@ async function main() {
 
   check('无运行时报错', errors.length === 0, errors.slice(0, 2).join(' | '))
 
-  // 截图
+  // 截图（在跳转测试前截，保证是展示页）
   const shot = await send('Page.captureScreenshot', { format: 'png' })
   fs.writeFileSync('deploy/display-remote.png', Buffer.from(shot.result.data, 'base64'))
   console.log('screenshot: deploy/display-local.png')
+
+  // 点击卡片跳转宠物详情（路由 /shop/pet/:id）
+  const navInfo = await evalJs(`(async () => {
+    const card = document.querySelector('.ring-card.mini')
+    if (!card) return { err: 'no card' }
+    card.click()
+    await new Promise(r => setTimeout(r, 2500))
+    return { url: location.pathname + location.search }
+  })()`)
+  check('点击卡片跳转宠物详情', /^\/shop\/pet\/\d+$/.test(navInfo.url || ''), navInfo.url || navInfo.err || '')
 
   console.log(`\\n${pass} passed, ${fail} failed`)
   chrome.kill()

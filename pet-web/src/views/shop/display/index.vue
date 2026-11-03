@@ -75,51 +75,65 @@
 
       <!-- 中：3D 旋转环（全部在售宠物，尺寸随容器自适应，不越界） -->
       <section class="stage">
-        <div ref="sceneRef" class="scene" :style="sceneStyle" @mouseenter="paused = true" @mouseleave="paused = false">
+        <div
+          ref="sceneRef"
+          class="scene"
+          :class="{ grabbing: dragging }"
+          :style="sceneStyle"
+          @mouseenter="paused = true"
+          @mouseleave="paused = false"
+          @pointerdown="onDown"
+          @pointermove="onMove"
+          @pointerup="onUp"
+          @pointercancel="onUp"
+        >
           <div class="core">
             <span class="core-num">{{ petsTotal }}</span>
             <span class="core-text">只在售宠物<br />全部完成健康筛查</span>
           </div>
 
-          <!-- 内层：精选大图（带名字价格） -->
-          <div class="ring ring-inner" :class="{ paused }" :style="innerRingStyle">
-            <div
-              v-for="(p, i) in innerPets"
-              :key="'i' + p.petId"
-              class="ring-card big"
-              :style="{ '--a': (360 / (innerPets.length || 1)) * i + 'deg' }"
-              @click="goPet(p)"
-            >
-              <img :src="p.image" :alt="p.petName" />
-              <div class="ring-info">
-                <span class="pet-name">{{ p.petName }}</span>
-                <span class="pet-price">¥{{ p.price }}</span>
+          <!-- 拖拽层：包住全部环，用户水平拖动时整体叠加一个 rotateY 偏移 -->
+          <div class="orbit" :style="{ '--drag': dragDeg + 'deg' }">
+            <!-- 内层：精选大图（带名字价格） -->
+            <div class="ring ring-inner" :class="{ paused }" :style="innerRingStyle">
+              <div
+                v-for="(p, i) in innerPets"
+                :key="'i' + p.petId"
+                class="ring-card big"
+                :style="{ '--a': (360 / (innerPets.length || 1)) * i + 'deg' }"
+                @click="goPet(p)"
+              >
+                <img :src="p.image" :alt="p.petName" />
+                <div class="ring-info">
+                  <span class="pet-name">{{ p.petName }}</span>
+                  <span class="pet-price">¥{{ p.price }}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- 外层：全部在售宠物，分 3 层圆柱叠放（同轴同速，纵向错开） -->
-          <div
-            v-for="(tier, ti) in outerTiers"
-            :key="'tier' + ti"
-            class="ring ring-outer"
-            :class="{ paused }"
-            :style="outerRingStyle(ti)"
-          >
+            <!-- 外层：全部在售宠物，分 4 层圆柱叠放（同轴同速，纵向铺满） -->
             <div
-              v-for="(p, i) in tier"
-              :key="'o' + p.petId"
-              class="ring-card mini"
-              :style="{ '--a': (360 / (tier.length || 1)) * i + 'deg' }"
-              @click="goPet(p)"
+              v-for="(tier, ti) in outerTiers"
+              :key="'tier' + ti"
+              class="ring ring-outer"
+              :class="{ paused }"
+              :style="outerRingStyle(ti)"
             >
-              <img :src="p.image" :alt="p.petName" loading="lazy" />
+              <div
+                v-for="(p, i) in tier"
+                :key="'o' + p.petId"
+                class="ring-card mini"
+                :style="{ '--a': (360 / (tier.length || 1)) * i + 'deg' }"
+                @click="goPet(p)"
+              >
+                <img :src="p.image" :alt="p.petName" loading="lazy" />
+              </div>
             </div>
           </div>
 
           <div class="stage-glow"></div>
         </div>
-        <p class="stage-tip">全部 {{ petsTotal }} 只在售宠物 · {{ uniquePets.length }} 张实拍图不重样 · 悬停暂停 · 点击查看详情</p>
+        <p class="stage-tip">全部 {{ petsTotal }} 只在售宠物 · {{ uniquePets.length }} 张实拍图不重样 · 自动旋转 · 可拖动 · 点击查看详情</p>
         <div class="stage-strip">
           <div class="strip-item"><b>{{ petsTotal }}</b><span>在售宠物</span></div>
           <div class="strip-item"><b>{{ funnel.paidOrders || 0 }}</b><span>累计成交</span></div>
@@ -248,7 +262,7 @@ const uniquePets = computed(() => {
 const INNER_COUNT = 10
 const innerPets = computed(() => uniquePets.value.slice(0, INNER_COUNT))
 const outerPets = computed(() => uniquePets.value.slice(INNER_COUNT))
-const OUTER_TIERS = 3
+const OUTER_TIERS = 4
 const outerTiers = computed(() => {
   const tiers = Array.from({ length: OUTER_TIERS }, () => [])
   outerPets.value.forEach((p, i) => tiers[i % OUTER_TIERS].push(p))
@@ -269,20 +283,22 @@ const computeRingSize = () => {
   const h = el.clientHeight || 0
   if (!w || !h) return
   // 水平：半径不超过可用宽度一半，留出卡片自身宽度与透视放大余量
-  const byWidth = w / 2 - Math.max(56, w * 0.1)
-  // 竖直：3 层圆柱总高约 2*tierGap + 卡高，再加上 8° 倾斜后的椭圆投影
-  const byHeight = h / 2 - 24
-  // 下限：每层卡片刚排开所需的最小半径（基准卡宽 56 + 8 间隙）
-  const needR = (perTier.value * 64) / (2 * Math.PI) * 1.04
-  const r = Math.min(Math.max(needR, 175), byWidth, byHeight, 340)
+  const byWidth = w / 2 - Math.max(64, w * 0.08)
+  // 下限：每层卡片刚排开所需的最小半径（基准卡宽 64 + 8 间隙）
+  const needR = (perTier.value * 72) / (2 * Math.PI) * 1.04
+  const r = Math.min(Math.max(needR, 175), byWidth, 430)
   outerR.value = Math.max(150, Math.round(r))
-  tierGap.value = Math.max(52, Math.round(Math.min(78, outerR.value * 0.26)))
+  // 竖直：按容器高度铺开层间距——顶层到底层的总高 ≈ (层数-1)*gap + 卡高
+  const spacing = (2 * Math.PI * outerR.value) / perTier.value
+  const s = Math.max(0.44, Math.min(1, (spacing * 0.9) / 64))
+  const half = (OUTER_TIERS - 1) / 2
+  tierGap.value = Math.round(Math.min(128, Math.max(58, (h / 2 - 30 - 84 * s * 0.8) / half)))
 }
 
 // 卡片按环上实际间距缩放：宁可缩小也不重叠
 const ringScale = computed(() => {
   const spacing = (2 * Math.PI * outerR.value) / perTier.value
-  return Math.max(0.44, Math.min(1, (spacing * 0.9) / 56))
+  return Math.max(0.44, Math.min(1, (spacing * 0.9) / 64))
 })
 const innerR = computed(() => Math.max(96, Math.round(outerR.value * 0.62)))
 const innerScale = computed(() => {
@@ -305,6 +321,33 @@ const innerRingStyle = computed(() => ({
 const sceneStyle = computed(() => ({
   '--core': Math.max(0.6, Math.min(1, outerR.value / 330)).toFixed(2),
 }))
+
+// ---- 用户拖拽旋转：水平拖动给整个轨道叠加 rotateY 偏移，松手后保持角度、自动旋转继续 ----
+const dragDeg = ref(0)
+const dragging = ref(false)
+let dragStartX = 0
+let dragBase = 0
+let dragMoved = false
+
+const onDown = (e) => {
+  dragging.value = true
+  dragMoved = false
+  dragStartX = e.clientX
+  dragBase = dragDeg.value
+  try { e.currentTarget.setPointerCapture(e.pointerId) } catch (_) {}
+}
+const onMove = (e) => {
+  if (!dragging.value) return
+  const dx = e.clientX - dragStartX
+  if (Math.abs(dx) > 6) dragMoved = true
+  dragDeg.value = dragBase + dx * 0.35
+}
+const onUp = () => {
+  if (!dragging.value) return
+  dragging.value = false
+  // 拖动后的 click 是误触，跳过一次跳转（click 在 pointerup 之后、宏任务之前触发）
+  if (dragMoved) setTimeout(() => { dragMoved = false }, 0)
+}
 
 const maxHits = computed(() => Math.max(1, ...keywords.value.map((k) => k.hits || 0)))
 const tagSize = (hits) => Math.round(11 + Math.min(hits / maxHits.value, 1) * 7)
@@ -348,7 +391,9 @@ function shortTime(t) {
   return t ? String(t).replace('T', ' ').slice(5, 10) : ''
 }
 function goPet(p) {
-  router.push('/shop/pet/detail?id=' + p.petId)
+  // 详情路由是 /shop/pet/:id（path 参数），不是 query
+  if (dragMoved) return
+  router.push('/shop/pet/' + p.petId)
 }
 
 async function loadPets() {
@@ -545,6 +590,19 @@ onUnmounted(() => {
   justify-content: center;
   min-height: 0;
   overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.scene.grabbing { cursor: grabbing; }
+/* 拖拽层：0x0 定位在舞台中心，整体叠加用户拖拽的 rotateY 偏移 */
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: rotateY(var(--drag, 0deg));
 }
 .core {
   position: absolute;
@@ -565,8 +623,8 @@ onUnmounted(() => {
 
 .ring {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 0;
+  top: 0;
   width: 0;
   height: 0;
   transform-style: preserve-3d;
@@ -597,7 +655,7 @@ onUnmounted(() => {
 .ring-card:hover { border-color: #53d1ff; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 22px rgba(83, 209, 255, 0.55); }
 .ring-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ring-card.big { width: calc(96px * var(--sz, 1)); height: calc(124px * var(--sz, 1)); }
-.ring-card.mini { width: calc(56px * var(--sz, 1)); height: calc(72px * var(--sz, 1)); border-radius: 5px; }
+.ring-card.mini { width: calc(64px * var(--sz, 1)); height: calc(84px * var(--sz, 1)); border-radius: 5px; }
 .ring-info {
   position: absolute;
   left: 0; right: 0; bottom: 0;
