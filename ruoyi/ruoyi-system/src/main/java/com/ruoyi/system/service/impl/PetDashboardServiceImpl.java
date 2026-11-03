@@ -103,6 +103,37 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         return result;
     }
 
+    /**
+     * 门店展示大屏（游客可读）：累计口径的好评 / 复购 / 口碑数据
+     */
+    public Map<String, Object> display()
+    {
+        LocalDate today = LocalDate.now();
+        String start = "2000-01-01 00:00:00";
+        String end = today.plusDays(1L).atStartOfDay().format(DATETIME_FMT);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("generatedAt", LocalDateTime.now().format(DATETIME_FMT));
+        result.put("kpi", bigscreenKpi(start, end));
+        result.put("funnel", normalize(dashboardMapper.selectFunnel(start, end)));
+        result.put("wallet", normalize(dashboardMapper.selectWallet()));
+
+        Map<String, Object> rating = rating(start, end);
+        long weighted = 0;
+        long total = 0;
+        for (Map<String, Object> item : (List<Map<String, Object>>) rating.get("dist"))
+        {
+            long v = num(item.get("value")).longValue();
+            int score = Integer.parseInt(String.valueOf(item.get("name")).replace(" 星", ""));
+            weighted += v * score;
+            total += v;
+        }
+        rating.put("avgScore", total == 0 ? 0 : round(weighted * 1.0 / total, 1));
+        result.put("rating", rating);
+        result.put("goodComments", normalize(dashboardMapper.selectTopGoodComments()));
+        return result;
+    }
+
     // ------------------------------------------------------------------ 大屏
 
     private Map<String, Object> bigscreenKpi(String start, String end)

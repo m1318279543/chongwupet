@@ -28,4 +28,9 @@ public interface IPetDashboardService
      * @param days 统计天数（含今天）
      */
     Map<String, Object> bigscreen(int days);
+
+    /**
+     * 门店展示大屏（游客可读）：好评 / 复购 / 评论口碑汇总，供顾客在店查看
+     */
+    Map<String, Object> display();
 }

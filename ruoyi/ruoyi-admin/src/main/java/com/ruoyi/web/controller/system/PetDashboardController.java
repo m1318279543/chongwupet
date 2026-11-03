@@ -56,4 +56,14 @@ public class PetDashboardController extends BaseController
     {
         return success(dashboardService.bigscreen(days == null ? 30 : days));
     }
+
+    /**
+     * 门店展示大屏（游客可读）：好评 / 复购 / 评论口碑，供顾客到店查看
+     * 只输出聚合口碑数据，不含客户明细与经营敏感信息
+     */
+    @GetMapping("/display")
+    public AjaxResult display()
+    {
+        return success(dashboardService.display());
+    }
 }

@@ -273,4 +273,16 @@ public interface PetDashboardMapper
             + "WHERE c.status = '0' AND c.del_flag = '0' AND c.parent_id = 0 "
             + "ORDER BY c.comment_id DESC LIMIT 12")
     List<Map<String, Object>> selectLatestComments();
+
+    /**
+     * 门店展示大屏：最新好评（4~5 星顶级评论）
+     */
+    @Select("SELECT c.score AS score, c.content AS content, c.create_time AS createTime, "
+            + "IFNULL(u.nick_name, u.user_name) AS userName, p.pet_name AS petName "
+            + "FROM pet_comment c "
+            + "LEFT JOIN sys_user u ON u.user_id = c.user_id "
+            + "LEFT JOIN pet_info p ON p.pet_id = c.pet_id "
+            + "WHERE c.status = '0' AND c.del_flag = '0' AND c.parent_id = 0 AND c.score >= 4 "
+            + "ORDER BY c.comment_id DESC LIMIT 10")
+    List<Map<String, Object>> selectTopGoodComments();
 }

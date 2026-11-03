@@ -70,6 +70,8 @@ const routes = [
     ]
   },
   { path: '/', redirect: '/shop/home' },
+  // 门店展示大屏：全屏沉浸（不带商城导航），游客可看
+  { path: '/shop/display', component: () => import('@/views/shop/display/index.vue'), meta: { title: '门店展示大屏' } },
   // 未匹配的地址给出明确的 404（以前一律静默重定向到商城首页）
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/error/404.vue'), meta: { title: '页面不存在' } }
 ]
@@ -86,7 +88,7 @@ const router = createRouter({
 
 // 路由守卫：登录态 + 用户信息加载
 // 游客可访问：首页、宠物详情、服务保障四页、我的收藏/预约（页面内提示登录）
-const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/order', '/shop/consult']
+const guestList = ['/shop/home', '/shop/pets', '/shop/match', '/shop/favorite', '/shop/appointment', '/shop/order', '/shop/consult', '/shop/display']
 function isGuestAllowed(path) {
   if (guestList.includes(path)) return true
   if (path.startsWith('/shop/pet/')) return true  // 宠物详情页游客可看
