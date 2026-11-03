@@ -73,16 +73,16 @@
         </div>
       </section>
 
-      <!-- 中：三层 3D 旋转环（全部在售宠物） -->
+      <!-- 中：3D 旋转环（全部在售宠物，尺寸随容器自适应，不越界） -->
       <section class="stage">
-        <div class="scene" @mouseenter="paused = true" @mouseleave="paused = false">
+        <div ref="sceneRef" class="scene" :style="sceneStyle" @mouseenter="paused = true" @mouseleave="paused = false">
           <div class="core">
             <span class="core-num">{{ petsTotal }}</span>
             <span class="core-text">只在售宠物<br />全部完成健康筛查</span>
           </div>
 
-          <!-- 内层：精选 10 张大图 -->
-          <div class="ring ring-inner" :class="{ paused }" :style="{ '--r': '250px' }">
+          <!-- 内层：精选大图（带名字价格） -->
+          <div class="ring ring-inner" :class="{ paused }" :style="innerRingStyle">
             <div
               v-for="(p, i) in innerPets"
               :key="'i' + p.petId"
@@ -98,26 +98,19 @@
             </div>
           </div>
 
-          <!-- 中层：每 3 只取 1 只 -->
-          <div class="ring ring-mid" :class="{ paused }" :style="{ '--r': '470px' }">
+          <!-- 外层：全部在售宠物，分 3 层圆柱叠放（同轴同速，纵向错开） -->
+          <div
+            v-for="(tier, ti) in outerTiers"
+            :key="'tier' + ti"
+            class="ring ring-outer"
+            :class="{ paused }"
+            :style="outerRingStyle(ti)"
+          >
             <div
-              v-for="(p, i) in midPets"
-              :key="'m' + p.petId"
-              class="ring-card mid"
-              :style="{ '--a': (360 / (midPets.length || 1)) * i + 'deg' }"
-              @click="goPet(p)"
-            >
-              <img :src="p.image" :alt="p.petName" loading="lazy" />
-            </div>
-          </div>
-
-          <!-- 外层：全部在售宠物 -->
-          <div class="ring ring-outer" :class="{ paused }" :style="{ '--r': '760px' }">
-            <div
-              v-for="(p, i) in pets"
+              v-for="(p, i) in tier"
               :key="'o' + p.petId"
               class="ring-card mini"
-              :style="{ '--a': (360 / (pets.length || 1)) * i + 'deg' }"
+              :style="{ '--a': (360 / (tier.length || 1)) * i + 'deg' }"
               @click="goPet(p)"
             >
               <img :src="p.image" :alt="p.petName" loading="lazy" />
@@ -239,9 +232,55 @@ const storeRating = computed(() => data.value?.storeRating || [])
 const keywords = computed(() => (data.value?.keywords || []).slice(0, 12))
 const recentCount = computed(() => data.value?.recentCommentCount ?? 0)
 
-// 三层环：内层精选 10、中层每 3 只取 1、外层全部
+// 环：内层精选 10 张大图 + 外层全部在售宠物（按 3 层圆柱叠放，每层同轴旋转）
 const innerPets = computed(() => pets.value.slice(0, 10))
-const midPets = computed(() => pets.value.filter((_, i) => i % 3 === 0).slice(0, 32))
+const OUTER_TIERS = 3
+const outerTiers = computed(() => {
+  const tiers = Array.from({ length: OUTER_TIERS }, () => [])
+  pets.value.forEach((p, i) => tiers[i % OUTER_TIERS].push(p))
+  return tiers
+})
+
+// ---- 3D 环自适应半径：以容器可用宽高为上限，保证整圈都在中间区域内 ----
+const sceneRef = ref(null)
+const outerR = ref(300)
+const tierGap = ref(74)
+let resizeObserver = null
+
+const computeRingSize = () => {
+  const el = sceneRef.value
+  if (!el) return
+  const w = el.clientWidth || 0
+  const h = el.clientHeight || 0
+  if (!w || !h) return
+  // 水平：半径不超过可用宽度一半，留出卡片自身宽度与透视放大余量
+  const byWidth = w / 2 - Math.max(56, w * 0.1)
+  // 竖直：3 层圆柱总高约 2*tierGap + 卡高，再加上 8° 倾斜后的椭圆投影
+  const byHeight = h / 2 - 24
+  const r = Math.min(byWidth, byHeight, 340)
+  outerR.value = Math.max(150, Math.round(r))
+  tierGap.value = Math.max(52, Math.round(Math.min(78, outerR.value * 0.26)))
+}
+
+// 卡片按半径同比缩放，避免小屏时一圈挤在一起
+const ringScale = computed(() => Math.max(0.56, Math.min(1, outerR.value / 290)))
+const innerR = computed(() => Math.round(outerR.value * 0.64))
+const outerRingStyle = (tierIndex) => ({
+  '--r': outerR.value + 'px',
+  '--y': (tierIndex - 1) * tierGap.value + 'px',
+  '--sz': ringScale.value.toFixed(2),
+  '--dur': '76s',
+})
+const innerRingStyle = computed(() => ({
+  '--r': innerR.value + 'px',
+  '--y': '0px',
+  '--sz': Math.min(1, ringScale.value + 0.18).toFixed(2),
+  '--dur': '34s',
+}))
+// 中心大数字随环同比缩放，避免小屏时压到卡片
+const sceneStyle = computed(() => ({
+  '--core': Math.max(0.6, Math.min(1, outerR.value / 330)).toFixed(2),
+}))
 
 const maxHits = computed(() => Math.max(1, ...keywords.value.map((k) => k.hits || 0)))
 const tagSize = (hits) => Math.round(11 + Math.min(hits / maxHits.value, 1) * 7)
@@ -325,8 +364,19 @@ onMounted(() => {
   loadSummary()
   setInterval(loadSummary, 60000)
   setInterval(loadPets, 300000)
+  // 环半径跟随容器尺寸，窗口/分栏变化时重算，保证旋转范围永远在中间区域内
+  computeRingSize()
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(computeRingSize)
+    if (sceneRef.value) resizeObserver.observe(sceneRef.value)
+  }
+  window.addEventListener('resize', computeRingSize)
 })
-onUnmounted(() => clearInterval(clockTimer))
+onUnmounted(() => {
+  clearInterval(clockTimer)
+  if (resizeObserver) resizeObserver.disconnect()
+  window.removeEventListener('resize', computeRingSize)
+})
 </script>
 
 <style scoped>
@@ -456,18 +506,19 @@ onUnmounted(() => clearInterval(clockTimer))
 }
 .tag i { font-style: normal; color: #53d1ff; font-size: 0.8em; opacity: 0.8; }
 
-/* 中：三层 3D 环 */
-.stage { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 0; }
+/* 中：3D 环（半径由 JS 按容器自适应，始终收在中间区域内） */
+.stage { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 0; overflow: hidden; }
 .scene {
   position: relative;
   flex: 1;
   width: 100%;
-  perspective: 2800px;
-  perspective-origin: 50% 45%;
+  perspective: 2400px;
+  perspective-origin: 50% 48%;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 0;
+  overflow: hidden;
 }
 .core {
   position: absolute;
@@ -477,14 +528,14 @@ onUnmounted(() => clearInterval(clockTimer))
 }
 .core-num {
   display: block;
-  font-size: clamp(40px, 5vw, 72px);
+  font-size: calc(clamp(34px, 4.2vw, 64px) * var(--core, 1));
   font-weight: 800;
   line-height: 1;
   color: #e8f8ff;
   text-shadow: 0 0 34px rgba(83, 209, 255, 0.65);
   font-variant-numeric: tabular-nums;
 }
-.core-text { display: block; margin-top: 4px; font-size: 11px; color: #7fb8e6; letter-spacing: 2px; line-height: 1.6; }
+.core-text { display: block; margin-top: 4px; font-size: calc(11px * var(--core, 1)); color: #7fb8e6; letter-spacing: 2px; line-height: 1.6; }
 
 .ring {
   position: absolute;
@@ -494,9 +545,8 @@ onUnmounted(() => clearInterval(clockTimer))
   height: 0;
   transform-style: preserve-3d;
 }
-.ring-inner { animation: ring-spin 34s linear infinite; }
-.ring-mid { animation: ring-spin-rev 52s linear infinite; }
-.ring-outer { animation: ring-spin 76s linear infinite; }
+.ring-inner { animation: ring-spin var(--dur, 34s) linear infinite; }
+.ring-outer { animation: ring-spin-rev var(--dur, 76s) linear infinite; }
 .ring.paused { animation-play-state: paused; }
 @keyframes ring-spin {
   from { transform: rotateX(-8deg) rotateY(0deg); }
@@ -515,22 +565,21 @@ onUnmounted(() => clearInterval(clockTimer))
   cursor: pointer;
   backface-visibility: hidden;
   background: #0d1e37;
-  transform: rotateY(var(--a)) translateZ(var(--r)) translate(-50%, -50%);
+  transform: rotateY(var(--a)) translateZ(var(--r)) translate(-50%, calc(-50% + var(--y, 0px)));
   transition: box-shadow 0.3s, border-color 0.3s;
 }
 .ring-card:hover { border-color: #53d1ff; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 22px rgba(83, 209, 255, 0.55); }
 .ring-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ring-card.big { width: 120px; height: 154px; }
-.ring-card.mid { width: 88px; height: 112px; }
-.ring-card.mini { width: 50px; height: 64px; border-radius: 6px; }
+.ring-card.big { width: calc(96px * var(--sz, 1)); height: calc(124px * var(--sz, 1)); }
+.ring-card.mini { width: calc(50px * var(--sz, 1)); height: calc(64px * var(--sz, 1)); border-radius: 5px; }
 .ring-info {
   position: absolute;
   left: 0; right: 0; bottom: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 7px;
-  font-size: 11px;
+  padding: calc(5px * var(--sz, 1)) calc(7px * var(--sz, 1));
+  font-size: calc(11px * var(--sz, 1));
   background: linear-gradient(transparent, rgba(4, 12, 24, 0.94));
 }
 .pet-name { color: #fff; font-weight: 600; }

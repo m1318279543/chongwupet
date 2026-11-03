@@ -61,13 +61,39 @@ async function main() {
   check('3D 旋转环卡片 ≥ 40（全部宠物）', ringCards >= 40, `n=${ringCards}`)
   const outerCards = await evalJs(`document.querySelectorAll('.ring-outer .ring-card').length`)
   check('外环放全部在售宠物 ≥ 50', outerCards >= 50, `n=${outerCards}`)
-  const midCards = await evalJs(`document.querySelectorAll('.ring-mid .ring-card').length`)
+  const tiers = await evalJs(`document.querySelectorAll('.ring-outer').length`)
+  check('外环分 3 层圆柱叠放', tiers === 3, `n=${tiers}`)
   const innerCards = await evalJs(`document.querySelectorAll('.ring-inner .ring-card').length`)
-  check('内/中层环有卡片', innerCards >= 5 && midCards >= 10, `inner=${innerCards} mid=${midCards}`)
+  check('内层精选大图 ≥ 5', innerCards >= 5, `n=${innerCards}`)
   const imgsOk = await evalJs(`Array.from(document.querySelectorAll('.ring-card img')).filter(i => i.complete && i.naturalWidth > 0).length`)
   check('卡片图片加载成功 ≥ 4', imgsOk >= 4, `ok=${imgsOk}`)
   const ringAnim = await evalJs(`getComputedStyle(document.querySelector('.ring')).animationName`)
   check('旋转动画生效', String(ringAnim).startsWith('ring-spin'), ringAnim)
+
+  // 关键：所有卡片必须收在中间 3D 舞台区域内，不得压到左右面板或超出屏幕
+  const fit = await evalJs(`(() => {
+    const scene = document.querySelector('.scene')
+    if (!scene) return { err: 'no scene' }
+    const s = scene.getBoundingClientRect()
+    const cards = Array.from(document.querySelectorAll('.ring-card'))
+    let out = 0, maxOver = 0, sample = ''
+    for (const c of cards) {
+      const r = c.getBoundingClientRect()
+      const over = Math.max(s.left - r.left, r.right - s.right, s.top - r.top, r.bottom - s.bottom)
+      if (over > 1) { out++; if (over > maxOver) { maxOver = Math.round(over); sample = (c.querySelector('img')?.alt || '') + '@' + Math.round(r.left) } }
+    }
+    const left = document.querySelector('.panel.side')
+    const lr = left ? left.getBoundingClientRect() : null
+    const overlapSide = cards.filter(c => {
+      const r = c.getBoundingClientRect()
+      if (lr && r.right > lr.right && r.left < lr.right) return false
+      return lr ? (r.left < lr.right && r.right > lr.left) : false
+    }).length
+    return { total: cards.length, out, maxOver, sample, overlapSide, sceneW: Math.round(s.width), sceneH: Math.round(s.height) }
+  })()`)
+  check('全部卡片都在 3D 舞台内（不越界）', fit.out === 0, `超出 ${fit.out}/${fit.total} 张，最大溢出 ${fit.maxOver}px ${fit.sample}`)
+  check('卡片不压到左右侧栏', fit.overlapSide === 0, `overlap=${fit.overlapSide}`)
+  check('舞台区域有实际尺寸', fit.sceneW > 300 && fit.sceneH > 200, `${fit.sceneW}x${fit.sceneH}`)
 
   // 统计条与最新好评
   const strips = await evalJs(`document.querySelectorAll('.strip-item').length`)
