@@ -285,4 +285,82 @@ public interface PetDashboardMapper
             + "WHERE c.status = '0' AND c.del_flag = '0' AND c.parent_id = 0 AND c.score >= 4 "
             + "ORDER BY c.comment_id DESC LIMIT 10")
     List<Map<String, Object>> selectTopGoodComments();
+
+    /**
+     * 展示大屏：评分走势（近 12 周，每周平均分 + 评价数）
+     */
+    @Select("SELECT MIN(DATE(create_time)) AS startDate, ROUND(AVG(score), 2) AS avgScore, COUNT(*) AS total "
+            + "FROM pet_comment WHERE score IS NOT NULL AND status = '0' AND del_flag = '0' "
+            + "AND create_time >= DATE_SUB(CURDATE(), INTERVAL 12 WEEK) "
+            + "GROUP BY YEARWEEK(create_time, 1) ORDER BY startDate")
+    List<Map<String, Object>> selectRatingTrend();
+
+    /**
+     * 展示大屏：按宠物品类的评分排行
+     */
+    @Select("SELECT cat.category_name AS name, ROUND(AVG(c.score), 1) AS score, COUNT(*) AS total "
+            + "FROM pet_comment c JOIN pet_info p ON p.pet_id = c.pet_id "
+            + "JOIN pet_category cat ON cat.category_id = p.category_id "
+            + "WHERE c.score IS NOT NULL AND c.status = '0' AND c.del_flag = '0' AND c.target_type = 'pet' "
+            + "GROUP BY cat.category_id, cat.category_name ORDER BY score DESC, total DESC LIMIT 6")
+    List<Map<String, Object>> selectCategoryRating();
+
+    /**
+     * 展示大屏：客户下单次数分布（1 单 / 2 单 / 3 单及以上）
+     */
+    @Select("SELECT t.cnt AS orders, COUNT(*) AS users FROM ("
+            + "SELECT user_id, COUNT(*) AS cnt FROM pet_order "
+            + "WHERE pay_status = '1' AND status <> '3' AND user_id IS NOT NULL GROUP BY user_id"
+            + ") t GROUP BY t.cnt ORDER BY t.cnt")
+    List<Map<String, Object>> selectRepeatDist();
+
+    /**
+     * 展示大屏：门店评分排行
+     */
+    @Select("SELECT s.store_name AS name, ROUND(AVG(c.score), 1) AS score, COUNT(*) AS total "
+            + "FROM pet_comment c JOIN pet_info p ON p.pet_id = c.pet_id "
+            + "JOIN pet_store s ON s.store_id = p.store_id "
+            + "WHERE c.score IS NOT NULL AND c.status = '0' AND c.del_flag = '0' AND c.target_type = 'pet' "
+            + "GROUP BY s.store_id, s.store_name ORDER BY score DESC, total DESC LIMIT 6")
+    List<Map<String, Object>> selectStoreRating();
+
+    /**
+     * 展示大屏：好评关键词命中次数（固定词典，真实统计评论内容）
+     */
+    @Select("SELECT '健康' AS word, COUNT(*) AS hits FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%健康%' "
+            + "UNION ALL SELECT '亲人', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%亲人%' "
+            + "UNION ALL SELECT '活泼', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%活泼%' "
+            + "UNION ALL SELECT '状态好', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%状态%' "
+            + "UNION ALL SELECT '客服及时', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%及时%' "
+            + "UNION ALL SELECT '解答清楚', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%解答%' "
+            + "UNION ALL SELECT '体验不错', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%体验%' "
+            + "UNION ALL SELECT '会回购', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%回购%' "
+            + "UNION ALL SELECT '品相一致', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%品相%' "
+            + "UNION ALL SELECT '包装用心', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%用心%' "
+            + "UNION ALL SELECT '值得信赖', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%信赖%' "
+            + "UNION ALL SELECT '专业', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%专业%' "
+            + "UNION ALL SELECT '干净', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%干净%' "
+            + "UNION ALL SELECT '热情', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%热情%' "
+            + "UNION ALL SELECT '耐心', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%耐心%' "
+            + "UNION ALL SELECT '满意', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%满意%' "
+            + "UNION ALL SELECT '推荐', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%推荐%' "
+            + "UNION ALL SELECT '划算', COUNT(*) FROM pet_comment WHERE status='0' AND del_flag='0' AND content LIKE '%划算%'")
+    List<Map<String, Object>> selectKeywordHits();
+
+    /**
+     * 展示大屏：复购客户统计（总客户数 / 复购客户数 / 人均下单次数）
+     */
+    @Select("SELECT COUNT(*) AS users, IFNULL(SUM(CASE WHEN cnt >= 2 THEN 1 ELSE 0 END), 0) AS repeatUsers, "
+            + "IFNULL(ROUND(AVG(cnt), 1), 0) AS avgOrders FROM ("
+            + "SELECT user_id, COUNT(*) AS cnt FROM pet_order "
+            + "WHERE pay_status = '1' AND status <> '3' AND user_id IS NOT NULL GROUP BY user_id"
+            + ") t")
+    Map<String, Object> selectRepeatStats();
+
+    /**
+     * 展示大屏：近 7 天新增评价数
+     */
+    @Select("SELECT COUNT(*) AS c FROM pet_comment WHERE status = '0' AND del_flag = '0' "
+            + "AND create_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)")
+    Map<String, Object> selectRecentCommentCount();
 }

@@ -49,7 +49,7 @@ async function main() {
 
   const body = await evalJs(`document.body.innerText`)
   check('标题为门店展示大屏', (body || '').includes('门店展示大屏'), '')
-  check('左侧顾客好评面板', (body || '').includes('顾客好评') && (body || '').includes('好评率'), '')
+  check('左侧顾客好评面板', (body || '').includes('顾客好评') && (body || '').includes('评分走势'), '')
   check('右侧复购口碑面板', (body || '').includes('复购率') && (body || '').includes('服务完成率'), '')
 
   // 评分数字（非 0 的评分均值或 0 也可，只要节点存在）
@@ -58,7 +58,12 @@ async function main() {
 
   // 3D 旋转环
   const ringCards = await evalJs(`document.querySelectorAll('.ring-card').length`)
-  check('3D 旋转环卡片 ≥ 6', ringCards >= 6, `n=${ringCards}`)
+  check('3D 旋转环卡片 ≥ 40（全部宠物）', ringCards >= 40, `n=${ringCards}`)
+  const outerCards = await evalJs(`document.querySelectorAll('.ring-outer .ring-card').length`)
+  check('外环放全部在售宠物 ≥ 50', outerCards >= 50, `n=${outerCards}`)
+  const midCards = await evalJs(`document.querySelectorAll('.ring-mid .ring-card').length`)
+  const innerCards = await evalJs(`document.querySelectorAll('.ring-inner .ring-card').length`)
+  check('内/中层环有卡片', innerCards >= 5 && midCards >= 10, `inner=${innerCards} mid=${midCards}`)
   const imgsOk = await evalJs(`Array.from(document.querySelectorAll('.ring-card img')).filter(i => i.complete && i.naturalWidth > 0).length`)
   check('卡片图片加载成功 ≥ 4', imgsOk >= 4, `ok=${imgsOk}`)
   const ringAnim = await evalJs(`getComputedStyle(document.querySelector('.ring')).animationName`)
@@ -66,11 +71,29 @@ async function main() {
 
   // 统计条与最新好评
   const strips = await evalJs(`document.querySelectorAll('.strip-item').length`)
-  check('底部统计条 4 项', strips === 4, `n=${strips}`)
+  check('底部统计条 5 项', strips === 5, `n=${strips}`)
   const gdItems = await evalJs(`document.querySelectorAll('.gd-item').length`)
   check('最新好评列表 ≥ 1', gdItems >= 1, `n=${gdItems}`)
   const distRows = await evalJs(`document.querySelectorAll('.dist-row').length`)
   check('星级分布 5 行', distRows === 5, `n=${distRows}`)
+  const trendPts = await evalJs(`document.querySelector('.trend-svg polyline')?.getAttribute('points') || ''`)
+  check('评分走势折线有数据', String(trendPts).split(' ').length >= 2, `pts=${String(trendPts).slice(0, 40)}`)
+  const tags = await evalJs(`document.querySelectorAll('.cloud .tag').length`)
+  check('好评关键词 ≥ 3 个', tags >= 3, `n=${tags}`)
+  const repRows = await evalJs(`document.querySelectorAll('.rep-cell').length`)
+  check('复购客户 3 个小卡', repRows === 3, `n=${repRows}`)
+  const svcRows = await evalJs(`document.querySelectorAll('.svc-row').length`)
+  check('服务热度 TOP ≥ 3', svcRows >= 3, `n=${svcRows}`)
+  const storeRows = await evalJs(`document.querySelectorAll('.store-row').length`)
+  check('门店评分排行 ≥ 1', storeRows >= 1, `n=${storeRows}`)
+
+  // 前台入口：商城首页导航应有「门店大屏」
+  await send('Page.navigate', { url: BASE + '/shop/home' })
+  await sleep(5000)
+  const entry = await evalJs(`Array.from(document.querySelectorAll('a')).some(a => a.getAttribute('href') === '/shop/display' && a.textContent.includes('门店大屏'))`)
+  check('商城导航有「门店大屏」入口', entry === true)
+  await send('Page.navigate', { url: BASE + '/shop/display' })
+  await sleep(7000)
 
   check('无运行时报错', errors.length === 0, errors.slice(0, 2).join(' | '))
 

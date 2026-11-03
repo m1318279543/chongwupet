@@ -131,6 +131,34 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         rating.put("avgScore", total == 0 ? 0 : round(weighted * 1.0 / total, 1));
         result.put("rating", rating);
         result.put("goodComments", normalize(dashboardMapper.selectTopGoodComments()));
+
+        // 评分走势 / 品类评分 / 门店评分
+        result.put("ratingTrend", normalize(dashboardMapper.selectRatingTrend()));
+        result.put("categoryRating", normalize(dashboardMapper.selectCategoryRating()));
+        result.put("storeRating", normalize(dashboardMapper.selectStoreRating()));
+
+        // 复购客户统计
+        result.put("repeatStats", normalize(dashboardMapper.selectRepeatStats()));
+
+        // 服务项目热度 TOP（顾客最关心的服务）
+        result.put("services", normalize(dashboardMapper.selectTopServices(start, end)));
+
+        // 好评关键词（过滤 0 命中，按命中次数降序）
+        List<Map<String, Object>> keywords = new ArrayList<>();
+        for (Map<String, Object> row : dashboardMapper.selectKeywordHits())
+        {
+            long hits = num(row.get("hits")).longValue();
+            if (hits <= 0) continue;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("word", row.get("word"));
+            item.put("hits", hits);
+            keywords.add(item);
+        }
+        keywords.sort((a, b) -> Long.compare(num(b.get("hits")).longValue(), num(a.get("hits")).longValue()));
+        result.put("keywords", keywords);
+
+        Map<String, Object> recent = normalize(dashboardMapper.selectRecentCommentCount());
+        result.put("recentCommentCount", num(recent.get("c")).longValue());
         return result;
     }
 
