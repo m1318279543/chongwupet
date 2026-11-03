@@ -29,6 +29,7 @@ public class SceneRouter
     public static final String INTENT_MY_PETS = "my_pets";
     public static final String INTENT_PET_CARE = "pet_care";
     public static final String INTENT_METRIC = "metric";
+    public static final String INTENT_DIAGNOSIS = "diagnosis";
 
     private static final Pattern ORDER_NO = Pattern.compile("ORD\\d{10,}", Pattern.CASE_INSENSITIVE);
     // 购宠预算要兼容两种说法：「3000 元 / 3000 以内」和「预算 3000」。
@@ -55,6 +56,11 @@ public class SceneRouter
         if ("admin".equals(scene))
         {
             return INTENT_METRIC;
+        }
+        // AI 经营诊断官：诊断数据已由前端拼进 message，直接交给模型生成经营建议
+        if ("diagnosis".equals(scene))
+        {
+            return INTENT_DIAGNOSIS;
         }
         Matcher order = ORDER_NO.matcher(text);
         if (order.find())

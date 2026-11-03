@@ -66,4 +66,15 @@ public class PetDashboardController extends BaseController
     {
         return success(dashboardService.display());
     }
+
+    /**
+     * AI 经营诊断官：经营健康分 + 五维雷达 + 自动诊断结论 + 上期环比。
+     * 全部结论基于业务表实时聚合，由规则引擎生成，前端可再交给 AI 助手流式解读。
+     */
+    @PreAuthorize("@ss.hasPermi('pet:dashboard:view')")
+    @GetMapping("/diagnosis")
+    public AjaxResult diagnosis(@RequestParam(value = "days", defaultValue = "30") Integer days)
+    {
+        return success(dashboardService.diagnosis(days == null ? 30 : days));
+    }
 }

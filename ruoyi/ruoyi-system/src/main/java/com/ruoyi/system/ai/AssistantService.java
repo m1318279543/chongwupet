@@ -228,6 +228,8 @@ public class AssistantService
                 return petCareAnswer(req.petId, message, userId, answer);
             case SceneRouter.INTENT_METRIC:
                 return metricAnswer(message, req.canViewMetric, answer);
+            case SceneRouter.INTENT_DIAGNOSIS:
+                return diagnosisAnswer(req, answer);
             case SceneRouter.INTENT_DRAFT:
                 return draftAnswer(req.bizId, answer);
             default:
@@ -1129,6 +1131,17 @@ public class AssistantService
         return answer;
     }
 
+    /**
+     * AI 经营诊断官：诊断数据（健康分 / 五维雷达 / 结论清单）已由前端拼进 message，
+     * 这里只把它标记为已核实事实交给模型生成建议；模型不可用时原样回显诊断内容。
+     */
+    private Answer diagnosisAnswer(ChatRequest req, Answer answer)
+    {
+        answer.tools.add("dashboard.diagnosis");
+        answer.content = req.message == null ? "" : req.message;
+        return answer;
+    }
+
     /** 后台经营问数：复用看板口径，不做自由 text-to-SQL */
     private Answer metricAnswer(String message, boolean allowed, Answer answer)
     {
@@ -1655,6 +1668,10 @@ public class AssistantService
         else if ("admin".equals(scene))
         {
             sceneText = "你在帮门店管理者解读经营数据。";
+        }
+        else if ("diagnosis".equals(scene))
+        {
+            sceneText = "你在帮门店管理者解读系统自动生成的经营诊断结果：用户消息里的健康分、五维雷达与诊断结论都是已核实的真实数据。请基于这些数据输出 3 条最优先、具体可落地的经营建议，每条 1~2 句，直接给结论，不要复述数据。";
         }
         else
         {

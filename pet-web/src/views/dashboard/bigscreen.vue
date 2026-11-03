@@ -26,6 +26,66 @@
         </div>
       </section>
 
+      <!-- 核心创新：AI 经营诊断官 —— 多指标融合健康分 + 自动诊断结论 -->
+      <section class="diag-bar" data-spot="diagnosis">
+        <div class="diag-head">
+          <span class="diag-badge">✦ AI 经营诊断官</span>
+          <span class="diag-sub">五维指标融合健康分 · 规则引擎自动生成结论 · 支持 AI 流式解读</span>
+          <span class="diag-time">{{ diag?.generatedAt?.slice(5, 16) || '' }}</span>
+          <span class="diag-ai-btn" @click="openAi">AI 深度解读 ›</span>
+        </div>
+        <div class="diag-body">
+          <!-- 健康分环形仪表 -->
+          <div class="diag-score">
+            <svg class="gauge" viewBox="0 0 120 120">
+              <defs>
+                <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#25f0ee" />
+                  <stop offset="100%" stop-color="#2f7bff" />
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(37,240,238,.13)" stroke-width="9" />
+              <circle cx="60" cy="60" r="50" fill="none" stroke="url(#gaugeGrad)" stroke-width="9"
+                stroke-linecap="round" :stroke-dasharray="gaugeDash" transform="rotate(-90 60 60)" />
+            </svg>
+            <div class="gauge-num">
+              <em>{{ diag?.score ?? '--' }}</em>
+              <i>经营健康分 · {{ diag?.grade || '计算中' }}</i>
+            </div>
+            <span class="diag-delta" :class="growthClass">拉新环比 {{ growthText }}</span>
+          </div>
+
+          <!-- 五维雷达（纯 SVG，避免额外图表依赖） -->
+          <div class="diag-radar">
+            <svg viewBox="0 0 200 160" class="radar-svg">
+              <polygon v-for="(g, i) in radarGrid" :key="'g' + i" :points="g"
+                fill="none" stroke="rgba(37,240,238,.16)" stroke-width="1" />
+              <line v-for="(a, i) in radarAxes" :key="'a' + i" v-bind="a"
+                stroke="rgba(37,240,238,.16)" stroke-width="1" />
+              <polygon :points="radarData" fill="rgba(37,240,238,.24)" stroke="#25f0ee" stroke-width="2" />
+              <circle v-for="(d, i) in radarDots" :key="'d' + i" :cx="d.x" :cy="d.y" r="3"
+                fill="#25f0ee" stroke="#04101f" stroke-width="1" />
+              <text v-for="(l, i) in radarLabels" :key="'l' + i" :x="l.x" :y="l.y"
+                :text-anchor="l.anchor" class="radar-label">{{ l.name }} {{ l.value }}</text>
+            </svg>
+          </div>
+
+          <!-- 自动诊断结论（按严重度取前 3 条） -->
+          <div class="diag-findings">
+            <div v-for="(f, i) in topFindings" :key="i" class="diag-card" :class="f.level">
+              <div class="dc-top">
+                <span class="dc-level">{{ levelText(f.level) }}</span>
+                <b>{{ f.title }}</b>
+                <em>{{ f.metric }}</em>
+              </div>
+              <p class="dc-detail">{{ f.detail }}</p>
+              <p class="dc-tip">建议 · {{ f.suggestion }}</p>
+            </div>
+            <div v-if="!topFindings.length" class="diag-empty">正在生成经营诊断…</div>
+          </div>
+        </div>
+      </section>
+
       <!-- 三列主体 -->
       <section class="bs-body">
         <!-- 左列：漏斗 + 两个环形 -->
@@ -129,6 +189,48 @@
         </div>
       </section>
     </transition>
+
+    <!-- AI 深度解读：左侧完整诊断，右侧流式经营建议（超时自动降级为规则引擎解读） -->
+    <transition name="ai-fade">
+      <div v-if="aiOpen" class="ai-mask" @click.self="closeAi">
+        <section class="ai-panel">
+          <header class="ai-head">
+            <span class="ai-badge">✦ AI 深度解读</span>
+            <span class="ai-status">{{ aiStatusText }}</span>
+            <span class="ai-close" @click="closeAi">关闭 ×</span>
+          </header>
+          <div class="ai-content">
+            <aside class="ai-left">
+              <h4>本屏诊断结论 <i>{{ findings.length }} 条</i></h4>
+              <ul class="ai-list">
+                <li v-for="(f, i) in findings" :key="i" :class="f.level">
+                  <span class="ai-lv">{{ levelText(f.level) }}</span>
+                  <div>
+                    <b>{{ f.title }}</b>
+                    <p>{{ f.detail }}</p>
+                    <small>建议：{{ f.suggestion }}</small>
+                  </div>
+                </li>
+              </ul>
+              <p class="ai-narrative">{{ diag?.narrative }}</p>
+            </aside>
+            <div class="ai-right">
+              <h4>经营建议 <i>{{ aiModeLabel }}</i></h4>
+              <div class="ai-text">
+                <div class="ai-rule-block"><i>规则引擎速览</i>{{ aiRuleText }}</div>
+                <div v-if="aiText" class="ai-llm-block">{{ aiText }}<span v-if="aiStatus === 'streaming'" class="ai-caret"></span></div>
+                <div v-if="aiStatus === 'slow'" class="ai-slow-tip">AI 响应较慢。上方速览与左侧诊断基于同一份真实数据，可点「重新解读」再试 AI。</div>
+              </div>
+              <div class="ai-actions">
+                <span @click="closeAi">返回大屏</span>
+                <span v-if="aiStatus === 'streaming'" @click="stopAi">停止生成</span>
+                <span v-if="aiStatus === 'slow' || aiStatus === 'done'" @click="openAi">重新解读</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -141,7 +243,8 @@ import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/compon
 import { CanvasRenderer } from 'echarts/renderers'
 
 echarts.use([LineChart, BarChart, PieChart, FunnelChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer])
-import { getDashboardBigscreen } from '@/api/pet/dashboard'
+import { getDashboardBigscreen, getDashboardDiagnosis } from '@/api/pet/dashboard'
+import { streamAssistant } from '@/api/pet/petAssistant'
 
 const router = useRouter()
 
@@ -197,6 +300,127 @@ function buildKpis() {
     { key: 'wallet', label: '会员总余额', value: '¥' + money(w.balance), color: '#b58bff', sub: `会员 ${fmtInt(w.users || 0)} 人` },
     { key: 'avg', label: '平均客单价', value: '¥' + money(k.avgOrderAmount), color: '#f78e3d', sub: '已支付订单' },
   ]
+}
+
+/* ---------- AI 经营诊断官：健康分 / 五维雷达 / 诊断结论 ---------- */
+const diag = ref(null)
+const findings = computed(() => diag.value?.findings || [])
+const topFindings = computed(() => findings.value.slice(0, 3))
+const growth = computed(() => Number(diag.value?.metrics?.growth || 0))
+const growthText = computed(() => (growth.value > 0 ? '+' : '') + growth.value.toFixed(1) + '%')
+const growthClass = computed(() => growth.value > 0 ? 'up' : growth.value < 0 ? 'down' : 'flat')
+const gaugeDash = computed(() => {
+  const c = 2 * Math.PI * 50
+  const s = Math.max(0, Math.min(100, Number(diag.value?.score || 0)))
+  return `${(s / 100 * c).toFixed(1)} ${c.toFixed(1)}`
+})
+
+const RADAR_R = 52
+function radarPoint(i, ratio) {
+  const a = (-90 + i * 72) * Math.PI / 180
+  return { x: 100 + Math.cos(a) * RADAR_R * ratio, y: 78 + Math.sin(a) * RADAR_R * ratio }
+}
+function radarPoints(values) {
+  return values.map((v, i) => {
+    const p = radarPoint(i, Math.max(0, Math.min(100, Number(v))) / 100)
+    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
+  }).join(' ')
+}
+const radarValues = computed(() => (diag.value?.radar || []).map((r) => Number(r.value || 0)))
+const radarGrid = computed(() => [33, 66, 100].map((r) => radarPoints([r, r, r, r, r])))
+const radarAxes = computed(() => Array.from({ length: 5 }, (_, i) => {
+  const p = radarPoint(i, 1)
+  return { x1: 100, y1: 78, x2: p.x, y2: p.y }
+}))
+const radarData = computed(() => radarPoints(radarValues.value.length ? radarValues.value : [0, 0, 0, 0, 0]))
+const radarDots = computed(() => (radarValues.value.length ? radarValues.value : [0, 0, 0, 0, 0])
+  .map((v, i) => radarPoint(i, v / 100)))
+const radarLabels = computed(() => {
+  const names = ['拉新', '复购', '口碑', '履约', '均衡']
+  const list = diag.value?.radar || []
+  return Array.from({ length: 5 }, (_, i) => {
+    const p = radarPoint(i, 1.3)
+    return {
+      x: p.x.toFixed(1), y: p.y.toFixed(1),
+      anchor: p.x > 106 ? 'start' : p.x < 94 ? 'end' : 'middle',
+      name: list[i]?.name || names[i],
+      value: list[i]?.value ?? 0,
+    }
+  })
+})
+
+const LEVEL_TEXT = { alert: '预警', warn: '关注', info: '提示', good: '良好' }
+function levelText(l) { return LEVEL_TEXT[l] || '提示' }
+
+/* ---------- AI 深度解读：打开即显示规则速览，AI 流式内容到达后追加 ---------- */
+const aiOpen = ref(false)
+const aiText = ref('')
+const aiStatus = ref('idle')
+let aiAbort = null
+let aiFallbackTimer = null
+
+const aiStatusText = computed(() => ({
+  idle: '准备中', loading: 'AI 正在思考，速览已就绪…', streaming: 'AI 正在生成建议…',
+  done: '生成完成', slow: 'AI 响应较慢 · 已展示规则引擎速览',
+}[aiStatus.value] || ''))
+const aiModeLabel = computed(() => aiText.value ? '规则引擎速览 + AI 补充' : '规则引擎速览')
+
+function ruleAdvice() {
+  const urgent = findings.value.filter((f) => f.level === 'alert' || f.level === 'warn').slice(0, 4)
+  const head = diag.value?.narrative || '暂无诊断数据'
+  const body = urgent.length
+    ? '\n\n【优先处置】\n' + urgent.map((f, i) => `${i + 1}. ${f.title}：${f.suggestion}`).join('\n')
+    : '\n\n【优先处置】\n各项指标健康，建议保持当前节奏，并把优质口碑同步到前台展示大屏。'
+  return head + body
+}
+const aiRuleText = computed(() => ruleAdvice())
+
+function openAi() {
+  if (aiAbort) { aiAbort(); aiAbort = null }
+  clearTimeout(aiFallbackTimer)
+  aiOpen.value = true
+  aiText.value = ''
+  aiStatus.value = 'loading'
+  const msg = '你是宠物连锁门店的经营分析顾问。系统基于真实业务数据生成了以下诊断：'
+    + (diag.value?.narrative || '')
+    + '\n诊断结论：' + findings.value.map((f) => `${levelText(f.level)}/${f.title}/${f.detail}`).join('；')
+    + '。请直接给出 3 条最优先、具体可落地的经营建议，每条 1~2 句，不要复述数据，不要客套。'
+  // 模型 TTFT 实测 1~16s：16 秒仍无首字则提示稍后再试（规则速览全程可见，不冷场）
+  aiFallbackTimer = setTimeout(() => { if (aiStatus.value === 'loading') aiStatus.value = 'slow' }, 16000)
+  try {
+    aiAbort = streamAssistant({ message: msg, scene: 'diagnosis' }, {
+      onDelta: (t) => {
+        if (!aiText.value) aiText.value = '—— AI 经营顾问 · 深度补充 ——\n\n'
+        aiStatus.value = 'streaming'
+        aiText.value += t
+      },
+      onDone: (p) => {
+        if (!aiText.value) {
+          const t = p?.text || p?.content || p?.answer || ''
+          if (t) aiText.value = '—— AI 经营顾问 · 深度补充 ——\n\n' + String(t)
+        }
+        clearTimeout(aiFallbackTimer)
+        aiStatus.value = aiText.value ? 'done' : 'slow'
+      },
+      onError: () => {
+        clearTimeout(aiFallbackTimer)
+        if (!aiText.value) aiStatus.value = 'slow'
+      },
+    })
+  } catch (e) {
+    clearTimeout(aiFallbackTimer)
+    aiStatus.value = 'slow'
+  }
+}
+function stopAi() {
+  if (aiAbort) { aiAbort(); aiAbort = null }
+  clearTimeout(aiFallbackTimer)
+  aiStatus.value = 'done'
+}
+function closeAi() {
+  if (aiAbort) { aiAbort(); aiAbort = null }
+  clearTimeout(aiFallbackTimer)
+  aiOpen.value = false
 }
 
 /* ---------- 图表 ---------- */
@@ -396,8 +620,12 @@ function renderAll() {
 
 /* ---------- 数据加载 ---------- */
 async function loadAll() {
-  const res = await getDashboardBigscreen(days.value)
-  data.value = res.data
+  const [bs, dg] = await Promise.all([
+    getDashboardBigscreen(days.value),
+    getDashboardDiagnosis(days.value).catch(() => null),
+  ])
+  data.value = bs.data
+  diag.value = dg?.data || null
   await nextTick()
   renderAll()
 }
@@ -637,6 +865,10 @@ function stopPresent() {
   fsByPresent = false
 }
 function onKey(e) {
+  if (aiOpen.value) {
+    if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeAi() }
+    return
+  }
   if (!presenting.value) {
     if (e.key === 'F9') { e.preventDefault(); startPresent() }
     return
@@ -663,6 +895,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   document.removeEventListener('fullscreenchange', onFsChange)
   clearAutoTimer()
+  clearTimeout(aiFallbackTimer)
+  if (aiAbort) aiAbort()
   clearInterval(mainTimer); clearInterval(clockTimer)
   Object.values(charts).forEach((c) => c && c.dispose())
 })
@@ -1190,5 +1424,336 @@ onBeforeUnmount(() => {
 @media (max-width: 700px) {
   .presenter { width: calc(100vw - 32px); }
   .sp-tag { font-size: 11px; top: -28px; }
+}
+
+/* ================= AI 经营诊断官 ================= */
+.diag-bar {
+  position: relative;
+  flex-shrink: 0;
+  height: 176px;
+  padding: 9px 16px 11px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(37, 240, 238, .3);
+  border-radius: 12px;
+  background:
+    radial-gradient(520px 140px at 0% 0%, rgba(255, 196, 107, .1), transparent 70%),
+    linear-gradient(100deg, rgba(16, 48, 84, .62), rgba(8, 26, 48, .5) 48%, rgba(12, 38, 70, .62));
+  box-shadow: inset 0 0 32px rgba(37, 240, 238, .06);
+  overflow: hidden;
+  &::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #ffc46b, #25f0ee 60%, transparent);
+  }
+}
+.diag-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 28px;
+  flex-shrink: 0;
+  .diag-badge {
+    padding: 3px 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #2a1600;
+    background: linear-gradient(90deg, #ffe3a3, #ffc46b);
+    box-shadow: 0 0 16px rgba(255, 196, 107, .35);
+  }
+  .diag-sub { font-size: 12px; color: #7fa8cc; }
+  .diag-time { margin-left: auto; font-size: 12px; color: #5f86ad; font-variant-numeric: tabular-nums; }
+  .diag-ai-btn {
+    padding: 4px 14px;
+    border: 1px solid rgba(37, 240, 238, .6);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #25f0ee;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(37, 240, 238, .08);
+    transition: all .15s;
+    &:hover { background: #25f0ee; color: #04101f; box-shadow: 0 0 18px rgba(37, 240, 238, .5); }
+  }
+}
+.diag-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 232px 236px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.diag-score {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  .gauge { width: 116px; height: 116px; filter: drop-shadow(0 0 10px rgba(37, 240, 238, .35)); }
+  .gauge-num {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -54%);
+    text-align: center;
+    em {
+      display: block;
+      font-style: normal;
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1.05;
+      color: #eaffff;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 20px rgba(37, 240, 238, .6);
+    }
+    i { font-style: normal; font-size: 11px; color: #9cc3e8; white-space: nowrap; }
+  }
+  .diag-delta {
+    position: absolute;
+    bottom: 0;
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(37, 240, 238, .1);
+    color: #9cc3e8;
+    &.up { color: #3ddc97; background: rgba(61, 220, 151, .12); }
+    &.down { color: #ff9a8a; background: rgba(255, 154, 138, .12); }
+  }
+}
+.diag-radar {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  .radar-svg { width: 100%; height: 148px; overflow: visible; }
+  .radar-label { fill: #9cc3e8; font-size: 10px; font-weight: 600; }
+}
+.diag-findings {
+  height: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+  padding: 4px 0;
+}
+.diag-card {
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(37, 240, 238, .14);
+  border-left: 3px solid #4da2ff;
+  border-radius: 7px;
+  background: rgba(8, 26, 48, .55);
+  overflow: hidden;
+  &.alert { border-left-color: #ff6b6b; background: rgba(255, 107, 107, .07); }
+  &.warn { border-left-color: #ffc46b; background: rgba(255, 196, 107, .06); }
+  &.info { border-left-color: #4da2ff; }
+  &.good { border-left-color: #3ddc97; }
+  .dc-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    .dc-level {
+      flex-shrink: 0;
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 3px;
+      color: #04101f;
+      background: #4da2ff;
+    }
+    b { font-size: 14px; color: #d8ecff; white-space: nowrap; }
+    em {
+      margin-left: auto;
+      font-style: normal;
+      font-size: 11px;
+      color: #7fa8cc;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+  .alert .dc-level { background: #ff6b6b; }
+  .warn .dc-level { background: #ffc46b; }
+  .good .dc-level { background: #3ddc97; }
+  p { margin: 6px 0 0; font-size: 11px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dc-detail { color: #9cc3e8; }
+  .dc-tip { color: #ffc46b; }
+}
+.diag-empty { grid-column: 1 / -1; display: grid; place-items: center; color: #5f86ad; font-size: 13px; }
+
+/* AI 深度解读浮层 */
+.ai-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 3300;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 9, 20, .88);
+  backdrop-filter: blur(6px);
+}
+.ai-panel {
+  width: 1180px;
+  height: 660px;
+  max-width: calc(100vw - 80px);
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(37, 240, 238, .42);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(10, 32, 58, .98), rgba(4, 14, 28, .99));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .72), 0 0 40px rgba(37, 240, 238, .18);
+  overflow: hidden;
+}
+.ai-head {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(37, 240, 238, .2);
+  .ai-badge {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #ffffff, #9ad9ff 55%, #25f0ee);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .ai-status { font-size: 12px; color: #7fa8cc; }
+  .ai-close {
+    margin-left: auto;
+    font-size: 13px;
+    color: #9cc3e8;
+    cursor: pointer;
+    user-select: none;
+    &:hover { color: #ff9a8a; }
+  }
+}
+.ai-content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #d8ecff;
+    i { font-style: normal; font-size: 11px; color: #5f86ad; margin-left: 8px; }
+  }
+}
+.ai-left, .ai-right { padding: 20px 24px; min-height: 0; display: flex; flex-direction: column; }
+.ai-left { border-right: 1px solid rgba(37, 240, 238, .16); overflow-y: auto; }
+.ai-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  li {
+    display: flex;
+    gap: 10px;
+    padding: 9px 11px;
+    border-left: 3px solid #4da2ff;
+    border-radius: 6px;
+    background: rgba(20, 55, 95, .3);
+    &.alert { border-left-color: #ff6b6b; }
+    &.warn { border-left-color: #ffc46b; }
+    &.good { border-left-color: #3ddc97; }
+    .ai-lv { flex-shrink: 0; font-size: 10px; color: #9cc3e8; padding-top: 2px; }
+    b { font-size: 13px; color: #d8ecff; }
+    p { margin: 3px 0; font-size: 12px; color: #9cc3e8; line-height: 1.6; }
+    small { font-size: 11px; color: #ffc46b; line-height: 1.5; }
+  }
+}
+.ai-narrative {
+  margin: 14px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(37, 240, 238, .06);
+  font-size: 12px;
+  line-height: 1.8;
+  color: #c4dcf5;
+}
+.ai-text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 15px;
+  line-height: 1.95;
+  color: #d8ecff;
+  padding: 16px;
+  border: 1px solid rgba(37, 240, 238, .16);
+  border-radius: 10px;
+  background: rgba(4, 14, 28, .6);
+  .ai-rule-block {
+    font-size: 13px;
+    line-height: 1.85;
+    color: #c4dcf5;
+    i {
+      display: inline-block;
+      font-style: normal;
+      font-size: 11px;
+      color: #04101f;
+      background: #ffc46b;
+      border-radius: 4px;
+      padding: 1px 8px;
+      margin-right: 8px;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+  }
+  .ai-llm-block {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(37, 240, 238, .3);
+    font-size: 15px;
+    color: #eaffff;
+  }
+  .ai-slow-tip {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #ffc46b;
+  }
+}
+.ai-caret {
+  display: inline-block;
+  width: 8px; height: 16px;
+  margin-left: 3px;
+  vertical-align: -3px;
+  background: #25f0ee;
+  animation: ai-blink .8s steps(2) infinite;
+}
+@keyframes ai-blink { 50% { opacity: 0; } }
+.ai-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  span {
+    padding: 6px 18px;
+    border: 1px solid rgba(37, 240, 238, .4);
+    border-radius: 999px;
+    font-size: 13px;
+    color: #9cc3e8;
+    cursor: pointer;
+    user-select: none;
+    &:hover { color: #25f0ee; border-color: #25f0ee; }
+  }
+}
+.ai-fade-enter-active, .ai-fade-leave-active { transition: opacity .25s ease; }
+.ai-fade-enter-from, .ai-fade-leave-to { opacity: 0; }
+
+@media (max-width: 1000px) {
+  .ai-panel { width: calc(100vw - 32px); height: calc(100vh - 32px); }
+  .ai-content { grid-template-columns: 1fr; overflow-y: auto; }
+  .ai-left { border-right: 0; border-bottom: 1px solid rgba(37, 240, 238, .16); }
 }
 </style>

@@ -104,6 +104,280 @@ public class PetDashboardServiceImpl implements IPetDashboardService
     }
 
     /**
+     * AI 经营诊断官
+     *
+     * 创新点：不再只把指标平铺出来，而是把「拉新 / 复购 / 口碑 / 履约 / 门店均衡」
+     * 五个维度的真实数据融合成一个经营健康分，并由规则引擎自动生成带具体数字、
+     * 等级与可执行建议的诊断结论。前端可把 narrative / metrics 交给 AI 助手做流式解读。
+     *
+     * 所有输入都来自业务表实时聚合，与上一个等长周期做环比，无任何写死数据。
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> diagnosis(int days)
+    {
+        int span = Math.max(1, Math.min(days, 365));
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(span - 1L);
+        LocalDate prevStartDate = startDate.minusDays(span);
+        String start = startDate.atStartOfDay().format(DATETIME_FMT);
+        String end = today.plusDays(1L).atStartOfDay().format(DATETIME_FMT);
+        String prevStart = prevStartDate.atStartOfDay().format(DATETIME_FMT);
+        String prevEnd = startDate.atStartOfDay().format(DATETIME_FMT);
+
+        Map<String, Object> cur = bigscreenKpi(start, end);
+        Map<String, Object> pre = bigscreenKpi(prevStart, prevEnd);
+        Map<String, Object> rating = rating(start, end);
+        List<Map<String, Object>> stores = normalize(dashboardMapper.selectStoreCompare(start, end));
+        Map<String, Object> funnel = normalize(dashboardMapper.selectFunnel(start, end));
+
+        long newUsers = num(cur.get("newUsers")).longValue();
+        long prevNewUsers = num(pre.get("newUsers")).longValue();
+        long paidUsers = num(cur.get("paidUsers")).longValue();
+        long scoreComments = num(cur.get("scoreComments")).longValue();
+        long serviceTotal = num(cur.get("serviceTotal")).longValue();
+        double repeatRate = num(cur.get("repeatRate")).doubleValue();
+        double prevRepeat = num(pre.get("repeatRate")).doubleValue();
+        double goodRate = num(cur.get("goodRate")).doubleValue();
+        double prevGood = num(pre.get("goodRate")).doubleValue();
+        double finishRate = num(cur.get("serviceFinishRate")).doubleValue();
+        double avgOrder = num(cur.get("avgOrderAmount")).doubleValue();
+
+        // 1~2 星差评占比
+        long lowStar = 0L;
+        long totalScore = 0L;
+        for (Map<String, Object> item : (List<Map<String, Object>>) rating.get("dist"))
+        {
+            long v = num(item.get("value")).longValue();
+            int star = Integer.parseInt(String.valueOf(item.get("name")).replace(" 星", ""));
+            totalScore += v;
+            if (star <= 2) lowStar += v;
+        }
+        double lowRate = totalScore == 0 ? 0 : round(lowStar * 100.0 / totalScore, 1);
+
+        // 门店集中度：TOP1 门店成交额占比
+        double totalRev = 0D;
+        double topRev = 0D;
+        String topStore = "";
+        for (Map<String, Object> s : stores)
+        {
+            double r = num(s.get("revenue")).doubleValue();
+            totalRev += r;
+            if (r > topRev)
+            {
+                topRev = r;
+                topStore = String.valueOf(s.get("storeName"));
+            }
+        }
+        double topShare = totalRev == 0 ? 0 : round(topRev * 100.0 / totalRev, 1);
+
+        // 下单 → 成交的支付转化
+        long orders = num(funnel.get("orders")).longValue();
+        long paidOrders = num(funnel.get("paidOrders")).longValue();
+        double payRate = orders == 0 ? 0 : round(paidOrders * 100.0 / orders, 1);
+
+        // 拉新环比（上期为 0 时按 100% 增长处理，避免除零）
+        double growth = prevNewUsers == 0
+                ? (newUsers > 0 ? 100D : 0D)
+                : round((newUsers - prevNewUsers) * 100.0 / prevNewUsers, 1);
+
+        // ---- 五维健康分（0~100）----
+        int acquisition = clampScore(50 + growth * 1.2);
+        int repurchase = clampScore(repeatRate / 40D * 100D);
+        int reputation = clampScore(goodRate - lowRate * 1.5);
+        int fulfillment = clampScore(finishRate);
+        int balance = clampScore(100 - Math.max(0D, topShare - 25D) * 1.5);
+
+        int score = clampScore(acquisition * 0.22 + repurchase * 0.20 + reputation * 0.22
+                + fulfillment * 0.20 + balance * 0.16);
+        String grade = score >= 85 ? "优秀" : score >= 70 ? "良好" : score >= 55 ? "待提升" : "需关注";
+
+        List<Map<String, Object>> radar = new ArrayList<>();
+        radar.add(radarItem("拉新", acquisition, "新增客户环比"));
+        radar.add(radarItem("复购", repurchase, "成交客户二次购买"));
+        radar.add(radarItem("口碑", reputation, "好评率与低星惩罚"));
+        radar.add(radarItem("履约", fulfillment, "服务工单完成率"));
+        radar.add(radarItem("均衡", balance, "门店成交额集中度"));
+
+        // ---- 诊断结论（按严重度排序）----
+        List<Map<String, Object>> findings = new ArrayList<>();
+        if (growth <= -10)
+        {
+            finding(findings, "warn", "拉新放缓",
+                    "近 " + span + " 天新增客户 " + newUsers + " 人，较上期 " + prevNewUsers + " 人下降 " + Math.abs(growth) + "%",
+                    "复盘投放渠道，推出新客首单券或老带新奖励", "环比 " + growth + "%");
+        }
+        else if (growth >= 10)
+        {
+            finding(findings, "good", "拉新提速",
+                    "近 " + span + " 天新增客户 " + newUsers + " 人，较上期增长 " + growth + "%",
+                    "趁势扩大投放，同步检查新客首单转化是否跟上", "环比 +" + growth + "%");
+        }
+        else
+        {
+            finding(findings, "info", "拉新平稳",
+                    "近 " + span + " 天新增客户 " + newUsers + " 人，环比 " + growth + "%",
+                    "保持现有节奏，重点关注新客 7 日留存", "环比 " + growth + "%");
+        }
+
+        if (repeatRate < 20)
+        {
+            finding(findings, "warn", "复购偏低",
+                    "复购率仅 " + repeatRate + "%，" + paidUsers + " 位成交客户中回头客偏少",
+                    "对已成交客户做二次触达，上线会员积分与回访提醒", "复购率 " + repeatRate + "%");
+        }
+        else if (repeatRate >= 35)
+        {
+            finding(findings, "good", "复购稳健",
+                    "复购率 " + repeatRate + "%，高于上期 " + prevRepeat + "%",
+                    "把高复购客户的偏好沉淀为标签，做精准推荐", "复购率 " + repeatRate + "%");
+        }
+        else
+        {
+            finding(findings, "info", "复购中等",
+                    "复购率 " + repeatRate + "%（上期 " + prevRepeat + "%）",
+                    "针对首单客户设计 30 天内二次到店激励", "复购率 " + repeatRate + "%");
+        }
+
+        if (goodRate < 80)
+        {
+            finding(findings, "alert", "口碑风险",
+                    "好评率仅 " + goodRate + "%（共 " + scoreComments + " 条有效评分）",
+                    "逐条排查低星评价，48 小时内回访并闭环", "好评率 " + goodRate + "%");
+        }
+        else if (lowRate > 10)
+        {
+            finding(findings, "alert", "低星评价集中",
+                    "1~2 星占比 " + lowRate + "%，好评率虽为 " + goodRate + "% 但差评仍有集中",
+                    "定位差评集中的门店与服务项目，专项整改", "低星 " + lowRate + "%");
+        }
+        else
+        {
+            finding(findings, "good", "口碑良好",
+                    "好评率 " + goodRate + "%（上期 " + prevGood + "%），低星仅占 " + lowRate + "%",
+                    "把优质评价同步到前台展示大屏，形成正向循环", "好评率 " + goodRate + "%");
+        }
+
+        if (finishRate < 85)
+        {
+            finding(findings, "warn", "服务履约待提升",
+                    "服务完成率 " + finishRate + "%，区间内共 " + serviceTotal + " 张工单",
+                    "检查待处理工单堆积情况，优化高峰时段排班", "完成率 " + finishRate + "%");
+        }
+        else
+        {
+            finding(findings, "good", "履约顺畅",
+                    "服务完成率 " + finishRate + "%，" + serviceTotal + " 张工单基本闭环",
+                    "保持排班节奏，可尝试扩充高热度服务项目", "完成率 " + finishRate + "%");
+        }
+
+        if (topShare > 45)
+        {
+            finding(findings, "warn", "门店依赖度偏高",
+                    stores.size() + " 家门店中「" + topStore + "」贡献 " + topShare + "% 成交额",
+                    "把头部门店的服务组合与活动复制到其余门店", "TOP1 " + topShare + "%");
+        }
+        else
+        {
+            finding(findings, "good", "门店经营较均衡",
+                    stores.size() + " 家门店，TOP1「" + topStore + "」占比 " + topShare + "%",
+                    "持续跟踪尾部门店，避免差距扩大", "TOP1 " + topShare + "%");
+        }
+
+        if (orders > 0 && payRate < 70)
+        {
+            finding(findings, "warn", "支付环节流失",
+                    "下单 " + orders + " 单、成交 " + paidOrders + " 单，支付转化 " + payRate + "%",
+                    "优化收银台流程，对未支付订单做站内提醒", "支付转化 " + payRate + "%");
+        }
+        else if (orders > 0)
+        {
+            finding(findings, "good", "支付转化顺畅",
+                    "下单 " + orders + " 单、成交 " + paidOrders + " 单，支付转化 " + payRate + "%",
+                    "可针对高客单价订单增加组合优惠", "支付转化 " + payRate + "%");
+        }
+
+        final Map<String, Integer> rank = new HashMap<>();
+        rank.put("alert", 0); rank.put("warn", 1); rank.put("info", 2); rank.put("good", 3);
+        findings.sort((a, b) -> Integer.compare(
+                rank.getOrDefault(String.valueOf(a.get("level")), 9),
+                rank.getOrDefault(String.valueOf(b.get("level")), 9)));
+
+        // 最弱 / 最强维度，用于一句话总结
+        Map<String, Object> weakest = radar.get(0);
+        Map<String, Object> strongest = radar.get(0);
+        for (Map<String, Object> r : radar)
+        {
+            if (num(r.get("value")).intValue() < num(weakest.get("value")).intValue()) weakest = r;
+            if (num(r.get("value")).intValue() > num(strongest.get("value")).intValue()) strongest = r;
+        }
+        String narrative = "近 " + span + " 天经营健康分 " + score + " 分（" + grade + "）。"
+                + "五维中「" + strongest.get("name") + "」表现最好（" + strongest.get("value") + " 分），"
+                + "「" + weakest.get("name") + "」最需关注（" + weakest.get("value") + " 分）。"
+                + "本期新增客户 " + newUsers + " 人（环比 " + growth + "%）、复购率 " + repeatRate
+                + "%、好评率 " + goodRate + "%、服务完成率 " + finishRate + "%、平均客单价 ¥" + avgOrder + "。"
+                + "系统共生成 " + findings.size() + " 条诊断结论，建议优先处理高等级项。";
+
+        Map<String, Object> metrics = new LinkedHashMap<>();
+        metrics.put("newUsers", newUsers);
+        metrics.put("prevNewUsers", prevNewUsers);
+        metrics.put("growth", growth);
+        metrics.put("paidUsers", paidUsers);
+        metrics.put("repeatRate", repeatRate);
+        metrics.put("prevRepeatRate", prevRepeat);
+        metrics.put("goodRate", goodRate);
+        metrics.put("prevGoodRate", prevGood);
+        metrics.put("lowStarRate", lowRate);
+        metrics.put("scoreComments", scoreComments);
+        metrics.put("serviceFinishRate", finishRate);
+        metrics.put("serviceTotal", serviceTotal);
+        metrics.put("avgOrderAmount", avgOrder);
+        metrics.put("topStore", topStore);
+        metrics.put("topStoreShare", topShare);
+        metrics.put("storeCount", stores.size());
+        metrics.put("payRate", payRate);
+        metrics.put("orders", orders);
+        metrics.put("paidOrders", paidOrders);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("generatedAt", LocalDateTime.now().format(DATETIME_FMT));
+        result.put("range", range(span, startDate, today));
+        result.put("score", score);
+        result.put("grade", grade);
+        result.put("radar", radar);
+        result.put("findings", findings);
+        result.put("metrics", metrics);
+        result.put("narrative", narrative);
+        return result;
+    }
+
+    private static int clampScore(double value)
+    {
+        return (int) Math.max(0, Math.min(100, Math.round(value)));
+    }
+
+    private static Map<String, Object> radarItem(String name, int value, String desc)
+    {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", name);
+        m.put("value", value);
+        m.put("desc", desc);
+        return m;
+    }
+
+    private static void finding(List<Map<String, Object>> list, String level, String title,
+                                String detail, String suggestion, String metric)
+    {
+        Map<String, Object> f = new LinkedHashMap<>();
+        f.put("level", level);
+        f.put("title", title);
+        f.put("detail", detail);
+        f.put("suggestion", suggestion);
+        f.put("metric", metric);
+        list.add(f);
+    }
+
+    /**
      * 门店展示大屏（游客可读）：累计口径的好评 / 复购 / 口碑数据
      */
     public Map<String, Object> display()

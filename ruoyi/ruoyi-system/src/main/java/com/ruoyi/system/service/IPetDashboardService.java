@@ -33,4 +33,13 @@ public interface IPetDashboardService
      * 门店展示大屏（游客可读）：好评 / 复购 / 评论口碑汇总，供顾客在店查看
      */
     Map<String, Object> display();
+
+    /**
+     * AI 经营诊断官：把多源指标融合为经营健康分、五维雷达得分与自动诊断结论。
+     * 结论由规则引擎基于真实业务数据生成（不依赖外部模型），
+     * 返回的 narrative / metrics 可交给 AI 助手做进一步的流式解读。
+     *
+     * @param days 统计天数（含今天），并自动与上一个等长周期做环比
+     */
+    Map<String, Object> diagnosis(int days);
 }

@@ -180,7 +180,48 @@ async function main() {
   check('26. Esc 退出后聚光框消失', await evalJs(`!document.querySelector('.spotlight')`))
   check('27. 退出后大屏内容仍完整', (await evalJs('document.body.innerText')).includes('新增客户'))
 
-  console.log(`\n==== ${pass} PASS / ${fail} FAIL ====  截图 ${SHOT}`)
+  // ---- AI 经营诊断官（新增创新点）----
+  check('28. 诊断通栏存在', await evalJs(`!!document.querySelector('.diag-bar')`))
+  const scoreTxt = await text('.gauge-num em')
+  const scoreNum = Number(scoreTxt)
+  check('29. 健康分为 0~100 的真实数字', Number.isFinite(scoreNum) && scoreNum > 0 && scoreNum <= 100, scoreTxt)
+  check('30. 显示等级与五维名称', (await text('.gauge-num i')).includes('经营健康分')
+    && await evalJs(`document.querySelectorAll('.radar-label').length === 5`))
+  check('31. 雷达数据多边形已绘制', await evalJs(`(() => { const ps = document.querySelectorAll('.radar-svg polygon'); const last = ps[ps.length - 1]; return ps.length >= 4 && (last?.getAttribute('points') || '').trim().split(' ').length === 5; })()`))
+  check('32. 3 条自动诊断结论卡', await evalJs(`document.querySelectorAll('.diag-card').length === 3`))
+  check('33. 诊断卡含等级与可执行建议', await evalJs(`[...document.querySelectorAll('.diag-card')].every(c => c.querySelector('.dc-level') && c.querySelector('.dc-tip')?.textContent.includes('建议'))`))
+  check('34. 拉新环比标签有百分比', (await text('.diag-delta')).includes('%'), await text('.diag-delta'))
+  const diagShotFile = IS_REMOTE ? 'diagnosis-remote.png' : 'diagnosis-local.png'
+  const diagShot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
+  if (diagShot.result?.data) fs.writeFileSync(diagShotFile, Buffer.from(diagShot.result.data, 'base64'))
+
+  // ---- AI 深度解读（6s 超时自动降级，现场演示不卡住）----
+  await clickAt('.diag-ai-btn')
+  check('35. AI 解读浮层打开', await evalJs(`!!document.querySelector('.ai-panel')`))
+  await sleep(3000)
+  check('35b. 打开即有规则引擎速览（不冷场）', (await text('.ai-rule-block')).length > 30)
+  await sleep(11000)
+  const aiLlm = await text('.ai-llm-block')
+  const aiStatusTxt = await text('.ai-status')
+  check('36. AI 补充建议已流式展示（或明确降级提示）',
+    aiLlm.length > 20 || aiStatusTxt.includes('较慢'),
+    'llm=' + aiLlm.slice(0, 80).replace(/\n/g, ' '))
+  check('37. 浮层展示完整诊断列表', await evalJs(`document.querySelectorAll('.ai-list li').length >= 6`))
+  const closeRect = await rect('.ai-close')
+  const closeClicked = await clickAt('.ai-close')
+  await sleep(700)
+  const panelStill = await evalJs(`!!document.querySelector('.ai-panel')`)
+  check('38. 关闭浮层可返回大屏', !panelStill,
+    `rect=${JSON.stringify(closeRect)} clicked=${closeClicked} still=${panelStill}`)
+  if (panelStill) await evalJs(`document.querySelector('.ai-close')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); 'ok'`)
+
+  // ---- 时间范围联动 ----
+  await clickAt('.head-side.left .chip:nth-child(2)')
+  await sleep(2600)
+  const scoreAfter = await text('.gauge-num em')
+  check('39. 切换 30 天后诊断重算成功', await evalJs(`!!document.querySelector('.diag-bar')`) && Number(scoreAfter) > 0, 'score=' + scoreAfter)
+
+  console.log(`\n==== ${pass} PASS / ${fail} FAIL ====  截图 ${SHOT} / ${diagShotFile}`)
   ws.close(); chrome.kill()
   process.exit(fail ? 1 : 0)
 }
