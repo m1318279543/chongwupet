@@ -1,5 +1,5 @@
 /**
- * 零输入定位冒烟：自动定位 / 距离排序 / 商圈点选 / 导航起点
+ * 定位冒烟：零输入自动定位 / 距离排序 / 商圈点选 / 输入中文地名 / 导航起点
  * 用法：node cdp_geo_zero_input.mjs http://47.116.73.25:8083
  */
 import { spawn } from 'node:child_process'
@@ -130,7 +130,10 @@ try {
   check('7. 位置入口可打开', await clickSel('.loc-btn--text'))
   check('8. 位置弹窗已出现', await evalJs(`!!document.querySelector('.lp-card')`))
   const inputCount = await evalJs(`document.querySelectorAll('.el-dialog input, .el-dialog textarea').length`)
-  check('9. 弹窗零输入框（不用填地址/经纬度）', inputCount === 0, `input=${inputCount}`)
+  check('9. 弹窗只有 1 个中文地名输入框（无经纬度/坐标输入）',
+    inputCount === 1 && await evalJs(`!!document.querySelector('.lp-search__input')`), `input=${inputCount}`)
+  const coordLike = await evalJs(`document.querySelectorAll('.el-dialog input[placeholder*="经纬度"], .el-dialog input[placeholder*="坐标"]').length`)
+  check('9b. 输入框不索取经纬度/坐标', coordLike === 0)
   check('10. 弹窗显示定位来源', (await text('.lp-src')).length > 0, await text('.lp-src'))
   check('11. 弹窗显示当前位置名', (await text('.lp-card__name')).length > 0, await text('.lp-card__name'))
   check('12. 一键精确定位按钮存在', (await text('.lp-locate')).includes('使用我的当前位置'))
@@ -158,6 +161,43 @@ try {
   await sleep(500)
   check('19. 恢复后回到估算定位', (await text('.loc-state')).includes('估算') || (await text('.loc-state')).includes('定位'), await text('.loc-state'))
 
+  // ===== 输入中文地名定位（离线地名库，运行时无外部地图请求） =====
+  await clickSel('.loc-btn--text')
+  await sleep(400)
+  const ph = await evalJs(`document.querySelector('.lp-search__input')?.placeholder || ''`)
+  check('20. 输入框提示中文地名、不索取经纬度', /渝北区/.test(ph) && !/经纬度|坐标/.test(ph), ph)
+  const sugg0 = await evalJs(`document.querySelectorAll('.lp-sugg__item').length`)
+  check('21. 默认给出常用地点联想', sugg0 >= 5, `${sugg0} 条`)
+
+  // 真实键盘输入完整地址，验证自动命中其中的区县
+  await clickSel('.lp-search__input')
+  await send('Input.insertText', { text: '重庆市渝北区龙溪街道' })
+  await sleep(500)
+  const firstSugg = await text('.lp-sugg__item .lp-sugg__name')
+  check('22. 输入完整地址自动命中区县', firstSugg === '渝北区', firstSugg)
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+  await sleep(850)
+  const dlg2 = await evalJs(`(() => { const d = document.querySelector('.el-dialog'); if (!d) return false; const r=d.getBoundingClientRect(); return r.width>0 && r.height>0; })()`)
+  check('23. 回车确认后弹窗关闭', !dlg2)
+  const locPlace = await text('.loc-state')
+  check('24. 首页位置切换为输入地点', locPlace.includes('渝北区'), locPlace)
+  const navPlace = await evalJs(`document.querySelector('.store-btn--ghost')?.href || ''`)
+  check('25. 输入地点作为导航起点', navPlace.includes('from=106.'), navPlace.slice(0, 95))
+  const distsPlace = await evalJs(`Array.from(document.querySelectorAll('.store-dist')).map(e=>e.innerText.trim()).join('|')`)
+  check('26. 距离按输入地点重算', distsPlace.length > 0 && distsPlace !== distsTextBefore, distsPlace.slice(0, 60))
+
+  // 重开弹窗：来源标记 + 无收录地名提示
+  await clickSel('.loc-btn--text')
+  await sleep(400)
+  const srcAfter = await text('.lp-src')
+  check('27. 来源如实标记为「自定地点」', srcAfter === '自定地点', srcAfter)
+  await clickSel('.lp-search__input')
+  await send('Input.insertText', { text: '火星朝阳区' })
+  await sleep(450)
+  const emptyTxt = await text('.lp-search__empty')
+  check('28. 未收录地名给出明确提示', emptyTxt.includes('未收录'), emptyTxt.slice(0, 50))
+
   // 预约页同样默认有距离
   await send('Page.navigate', { url: BASE + '/shop/appointment' })
   await waitFor(async () => await evalJs(`document.querySelectorAll('.el-select').length >= 1`), 25000)
@@ -166,14 +206,16 @@ try {
   const apptUrl = await evalJs('location.href')
   console.log('  (预约页诊断) ' + apptUrl + ' | ' + apptText.slice(0, 150).replace(/\n/g, ' '))
   // 游客态预约表单按既有设计收起（登录后才有门店选择与位置条），这里只验证页面正常渲染
-  check('20. 预约页正常渲染（登录后可用门店定位）',
+  check('29. 预约页正常渲染（登录后可用门店定位）',
     /预约服务/.test(apptText) && /门店/.test(apptText) && !/404|系统错误|Internal Server Error/.test(apptText))
-  check('21. 无 JS 运行时异常', jsErrors.length === 0, jsErrors.slice(0, 2).join(' | '))
+  check('30. 全程无 JS 运行时异常', jsErrors.length === 0, jsErrors.slice(0, 2).join(' | '))
 
-  // 回到首页截图
+  // 回到首页截图（对准定位条 + 门店距离区，展示真实效果）
   await send('Page.navigate', { url: BASE + '/shop/home' })
   await waitFor(async () => await evalJs(`document.querySelectorAll('.store').length >= 2`), 25000)
   await sleep(900)
+  await evalJs(`document.querySelector('.loc')?.scrollIntoView({ block: 'center' })`)
+  await sleep(700)
   const shot = await send('Page.captureScreenshot', { format: 'png' })
   writeFileSync(SHOT, Buffer.from(shot.result.data, 'base64'))
 

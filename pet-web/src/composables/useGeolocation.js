@@ -7,7 +7,8 @@ import { CHONGQING_SPOTS, CITY_CENTER } from '@/utils/geo'
  * 1) 页面加载即自动尝试浏览器 Geolocation（HTTPS / localhost），顾客走动距离实时更新
  * 2) 浏览器不给权限（http 站点、拒绝授权、不支持）→ 自动用城市中心做「估算定位」，
  *    页面依然直接显示「距您多远」并按距离排序，绝不出现空白或让顾客填坐标
- * 3) 顾客想更准 → 在「我的位置」里点一下附近商圈即可，全程不需要输入地址或经纬度
+ * 3) 顾客想更准 → 在「我的位置」里输入中文地名（或点一下附近商圈）即可，
+ *    全程不需要输入经纬度，也不需要外部地图接口
  *
  * 状态放在模块作用域：首页 / 预约页 / 位置弹窗共用同一份 coords，
  * 任意一处定位成功，全站距离与导航起点立刻同步（旧实现每个组件各起一个 watcher，互不感知）。
@@ -157,6 +158,21 @@ function pickSpot(sp) {
   applySpot({ name: sp.name, lng: sp.lng, lat: sp.lat, key: sp.key, source: 'landmark' })
 }
 
+/**
+ * 顾客自己输入位置（中文地名）后选用联想结果。
+ * 这是「地点中心级」定位：坐标来自离线地名库，界面必须如实标注，不伪装成 GPS。
+ */
+function pickPlace(place) {
+  if (!place || place.lng == null || place.lat == null) return
+  applySpot({
+    name: place.name,
+    lng: Number(place.lng),
+    lat: Number(place.lat),
+    key: place.key,
+    source: 'place'
+  })
+}
+
 function applyManual(key) {
   if (!key) return applySpot(null)
   pickSpot(CHONGQING_SPOTS.find((s) => s.key === key))
@@ -186,7 +202,8 @@ function sync(e) {
   savedSpot.value = spot
   if (spot) {
     stopWatcher()
-    coords.value = fromSpot(spot, 'landmark')
+    // 保留 spot.source：自定地点 / 商圈都要能正确显示来源并作为导航起点
+    coords.value = fromSpot(spot, spot.source || 'landmark')
     status.value = 'manual'
   } else if (!watchId) {
     coords.value = fromSpot(CITY_CENTER, 'city')
@@ -211,22 +228,22 @@ export function useGeolocation() {
     active: computed(() => !!coords.value),
     isEstimated: computed(() => coords.value?.source === 'city'),
     sourceLabel: computed(() => ({
-      gps: '精确定位', landmark: '常用商圈', custom: '手动位置', city: '城市级估算'
+      gps: '精确定位', landmark: '常用商圈', place: '自定地点', custom: '手动位置', city: '城市级估算'
     }[coords.value?.source] || '自动定位')),
     hint: computed(() => {
       switch (status.value) {
         case 'locating': return '正在获取当前位置…'
         case 'granted': return '位置会随移动实时更新，门店距离自动刷新'
-        case 'insecure': return '当前是 http 站点，浏览器不允许精确定位；点一下下方附近的商圈即可'
-        case 'denied': return '定位权限被拒绝，点一下附近的商圈也能算距离'
-        case 'unsupported': return '当前浏览器不支持定位，点一下附近的商圈即可'
-        case 'error': return '暂时定位失败，已按城市中心估算，可点选商圈'
-        case 'manual': return '已按所选商圈计算距离，导航会以它为起点'
-        default: return '已按重庆主城中心估算距离，允许定位或点选商圈可更准确'
+        case 'insecure': return '当前是 http 站点，浏览器不允许精确定位；输入你的位置或点选商圈即可'
+        case 'denied': return '定位权限被拒绝，输入你的位置或点选商圈也能算距离'
+        case 'unsupported': return '当前浏览器不支持定位，输入你的位置或点选商圈即可'
+        case 'error': return '暂时定位失败，已按城市中心估算，可输入位置或点选商圈'
+        case 'manual': return '已按所选地点计算距离，导航会以它为起点'
+        default: return '已按重庆主城中心估算距离，输入你的位置可更准确'
       }
     }),
     savedSpot,
     savedSpotName: computed(() => coords.value?.label || savedSpot.value?.name || ''),
-    start, stopWatcher, autoLocate, applyManual, pickSpot, setCustom, clearSpot, relocate
+    start, stopWatcher, autoLocate, applyManual, pickSpot, pickPlace, setCustom, clearSpot, relocate
   }
 }
