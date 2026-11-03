@@ -45,4 +45,15 @@ public class PetDashboardController extends BaseController
     {
         return success(dashboardService.realtime());
     }
+
+    /**
+     * 可视化大屏专属数据：客户增长 / 转化漏斗 / 门店经营对比 / 评分满意度 / 服务模式 / 最新评价
+     * 与 /all（数据看板）内容错开，两块屏并排展示时互不重复
+     */
+    @PreAuthorize("@ss.hasPermi('pet:dashboard:view')")
+    @GetMapping("/bigscreen")
+    public AjaxResult bigscreen(@RequestParam(value = "days", defaultValue = "30") Integer days)
+    {
+        return success(dashboardService.bigscreen(days == null ? 30 : days));
+    }
 }

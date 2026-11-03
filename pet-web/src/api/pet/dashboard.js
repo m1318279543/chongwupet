@@ -23,3 +23,16 @@ export function getDashboardRealtime() {
     timeout: 30000,
   })
 }
+
+/**
+ * 可视化大屏专属数据：客户增长 / 转化漏斗 / 门店对比 / 评分满意度 / 服务模式 / 最新评价
+ * 与 /all（数据看板）内容错开
+ */
+export function getDashboardBigscreen(days) {
+  return request({
+    url: '/pet/dashboard/bigscreen',
+    method: 'get',
+    params: { days },
+    timeout: 30000,
+  })
+}

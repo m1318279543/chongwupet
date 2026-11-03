@@ -77,6 +77,122 @@ public class PetDashboardServiceImpl implements IPetDashboardService
         return result;
     }
 
+    @Override
+    public Map<String, Object> bigscreen(int days)
+    {
+        int span = Math.max(1, Math.min(days, 365));
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(span - 1L);
+        String start = startDate.atStartOfDay().format(DATETIME_FMT);
+        String end = today.plusDays(1L).atStartOfDay().format(DATETIME_FMT);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("generatedAt", LocalDateTime.now().format(DATETIME_FMT));
+        result.put("range", range(span, startDate, today));
+        result.put("kpi", bigscreenKpi(start, end));
+        result.put("userTrend", newUserTrend(startDate, today, start, end));
+        result.put("funnel", normalize(dashboardMapper.selectFunnel(start, end)));
+        result.put("storeCompare", normalize(dashboardMapper.selectStoreCompare(start, end)));
+        result.put("rating", rating(start, end));
+        result.put("serviceMode", serviceMode(start, end));
+        result.put("wallet", normalize(dashboardMapper.selectWallet()));
+        result.put("latestComments", normalize(dashboardMapper.selectLatestComments()));
+        Map<String, Object> rankOnly = new LinkedHashMap<>();
+        rankOnly.put("services", normalize(dashboardMapper.selectTopServices(start, end)));
+        result.put("ranking", rankOnly);
+        return result;
+    }
+
+    // ------------------------------------------------------------------ 大屏
+
+    private Map<String, Object> bigscreenKpi(String start, String end)
+    {
+        Map<String, Object> raw = normalize(dashboardMapper.selectBigscreenKpi(start, end));
+        long newUsers = num(raw.get("newUsers")).longValue();
+        long repeatUsers = num(raw.get("repeatUsers")).longValue();
+        long paidUsers = num(raw.get("paidUsers")).longValue();
+        long goodComments = num(raw.get("goodComments")).longValue();
+        long scoreComments = num(raw.get("scoreComments")).longValue();
+        long serviceFinished = num(raw.get("serviceFinished")).longValue();
+        long serviceTotal = num(raw.get("serviceTotal")).longValue();
+
+        Map<String, Object> k = new LinkedHashMap<>();
+        k.put("newUsers", newUsers);
+        k.put("repeatRate", paidUsers == 0 ? 0 : round(repeatUsers * 100.0 / paidUsers, 1));
+        k.put("paidUsers", paidUsers);
+        k.put("goodRate", scoreComments == 0 ? 0 : round(goodComments * 100.0 / scoreComments, 1));
+        k.put("scoreComments", scoreComments);
+        k.put("avgOrderAmount", round(num(raw.get("avgOrderAmount")).doubleValue(), 2));
+        k.put("serviceFinishRate", serviceTotal == 0 ? 0 : round(serviceFinished * 100.0 / serviceTotal, 1));
+        k.put("serviceTotal", serviceTotal);
+        return k;
+    }
+
+    private Map<String, Object> newUserTrend(LocalDate startDate, LocalDate endDate, String start, String end)
+    {
+        List<Map<String, Object>> rows = dashboardMapper.selectNewUserTrend(start, end);
+        Map<String, Map<String, Object>> byDate = new HashMap<>();
+        for (Map<String, Object> row : rows)
+        {
+            byDate.put(String.valueOf(row.get("d")), row);
+        }
+        List<String> dates = new ArrayList<>();
+        List<Long> newUsers = new ArrayList<>();
+        for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1))
+        {
+            String key = d.format(DATE_FMT);
+            Map<String, Object> row = byDate.get(key);
+            dates.add(key);
+            newUsers.add(row == null ? 0L : num(row.get("c")).longValue());
+        }
+        Map<String, Object> t = new LinkedHashMap<>();
+        t.put("dates", dates);
+        t.put("newUsers", newUsers);
+        return t;
+    }
+
+    private Map<String, Object> rating(String start, String end)
+    {
+        List<Map<String, Object>> rows = dashboardMapper.selectRatingDist(start, end);
+        Map<Integer, Long> byScore = new HashMap<>();
+        for (Map<String, Object> row : rows)
+        {
+            byScore.put(num(row.get("score")).intValue(), num(row.get("c")).longValue());
+        }
+        List<Map<String, Object>> list = new ArrayList<>();
+        long total = 0;
+        for (int score = 5; score >= 1; score--)
+        {
+            long c = byScore.getOrDefault(score, 0L);
+            total += c;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", score + " 星");
+            item.put("value", c);
+            list.add(item);
+        }
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("dist", list);
+        r.put("total", total);
+        return r;
+    }
+
+    private List<Map<String, Object>> serviceMode(String start, String end)
+    {
+        List<Map<String, Object>> rows = dashboardMapper.selectServiceMode(start, end);
+        Map<String, String> labels = new HashMap<>();
+        labels.put("1", "到店服务");
+        labels.put("2", "上门服务");
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> row : rows)
+        {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", labels.getOrDefault(String.valueOf(row.get("mode")), "其他"));
+            item.put("value", num(row.get("c")).longValue());
+            list.add(item);
+        }
+        return list;
+    }
+
     // ------------------------------------------------------------------ 汇总
 
     private Map<String, Object> overview(Map<String, Object> cur, Map<String, Object> prev)

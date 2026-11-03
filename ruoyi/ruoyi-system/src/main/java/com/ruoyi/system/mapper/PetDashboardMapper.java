@@ -186,4 +186,91 @@ public interface PetDashboardMapper
             + "     FROM pet_cancel_record WHERE del_flag = '0' ORDER BY create_time DESC LIMIT 8) "
             + ") t ORDER BY event_time DESC LIMIT 14")
     List<Map<String, Object>> selectRealtimeFeed();
+
+    // ------------------------------------------------------------------ 大屏专属（与看板内容错开）
+
+    /**
+     * 大屏 KPI：新增客户 / 复购率 / 好评率 / 服务完成率 / 客单价（区间）
+     */
+    @Select("SELECT "
+            + "(SELECT COUNT(*) FROM sys_user WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end}) AS newUsers, "
+            + "(SELECT COUNT(*) FROM (SELECT user_id FROM pet_order WHERE pay_status = '1' AND status <> '3' AND user_id IS NOT NULL "
+            + "   AND create_time >= #{start} AND create_time < #{end} GROUP BY user_id HAVING COUNT(DISTINCT order_no) >= 2) t) AS repeatUsers, "
+            + "(SELECT COUNT(DISTINCT user_id) FROM pet_order WHERE pay_status = '1' AND status <> '3' AND user_id IS NOT NULL "
+            + "   AND create_time >= #{start} AND create_time < #{end}) AS paidUsers, "
+            + "(SELECT IFNULL(SUM(CASE WHEN score >= 4 THEN 1 ELSE 0 END),0) FROM pet_comment WHERE score IS NOT NULL AND status = '0' AND del_flag = '0' "
+            + "   AND create_time >= #{start} AND create_time < #{end}) AS goodComments, "
+            + "(SELECT COUNT(*) FROM pet_comment WHERE score IS NOT NULL AND status = '0' AND del_flag = '0' "
+            + "   AND create_time >= #{start} AND create_time < #{end}) AS scoreComments, "
+            + "(SELECT IFNULL(AVG(pay_amount),0) FROM pet_order WHERE pay_status = '1' AND status <> '3' "
+            + "   AND create_time >= #{start} AND create_time < #{end}) AS avgOrderAmount, "
+            + "(SELECT IFNULL(SUM(CASE WHEN status = '2' THEN 1 ELSE 0 END),0) FROM pet_service_order WHERE status <> '3' "
+            + "   AND create_time >= #{start} AND create_time < #{end}) AS serviceFinished, "
+            + "(SELECT COUNT(*) FROM pet_service_order WHERE status <> '3' "
+            + "   AND create_time >= #{start} AND create_time < #{end}) AS serviceTotal")
+    Map<String, Object> selectBigscreenKpi(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 新增客户按天趋势（大屏：客户增长）
+     */
+    @Select("SELECT DATE(create_time) AS d, COUNT(*) AS c FROM sys_user "
+            + "WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY DATE(create_time) ORDER BY d")
+    List<Map<String, Object>> selectNewUserTrend(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 会员钱包：会员数与总余额（大屏：会员资产）
+     */
+    @Select("SELECT COUNT(*) AS users, IFNULL(SUM(balance),0) AS balance FROM pet_wallet")
+    Map<String, Object> selectWallet();
+
+    /**
+     * 经营转化漏斗：咨询 → 下单 → 支付成交（区间）
+     */
+    @Select("SELECT "
+            + "(SELECT COUNT(*) FROM pet_consult WHERE del_flag = '0' AND create_time >= #{start} AND create_time < #{end}) AS consults, "
+            + "(SELECT COUNT(*) FROM pet_order WHERE status <> '3' AND create_time >= #{start} AND create_time < #{end}) AS orders, "
+            + "(SELECT COUNT(*) FROM pet_order WHERE pay_status = '1' AND status <> '3' AND create_time >= #{start} AND create_time < #{end}) AS paidOrders")
+    Map<String, Object> selectFunnel(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 门店经营对比：各门店营业额 / 订单 / 预约 / 服务工单（大屏专属）
+     */
+    @Select("SELECT s.store_id AS storeId, s.store_name AS storeName, "
+            + "(SELECT IFNULL(SUM(o.pay_amount),0) FROM pet_order o WHERE o.store_id = s.store_id AND o.pay_status = '1' AND o.status <> '3' "
+            + "   AND o.create_time >= #{start} AND o.create_time < #{end}) AS revenue, "
+            + "(SELECT COUNT(*) FROM pet_order o WHERE o.store_id = s.store_id AND o.status <> '3' "
+            + "   AND o.create_time >= #{start} AND o.create_time < #{end}) AS orders, "
+            + "(SELECT COUNT(*) FROM pet_appointment a WHERE a.store_id = s.store_id "
+            + "   AND a.create_time >= #{start} AND a.create_time < #{end}) AS appointments, "
+            + "(SELECT COUNT(*) FROM pet_service_order so WHERE so.store_id = s.store_id "
+            + "   AND so.create_time >= #{start} AND so.create_time < #{end}) AS serviceOrders "
+            + "FROM pet_store s WHERE s.del_flag = '0' ORDER BY revenue DESC")
+    List<Map<String, Object>> selectStoreCompare(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 评分满意度分布（1~5 星，区间）
+     */
+    @Select("SELECT score, COUNT(*) AS c FROM pet_comment WHERE score IS NOT NULL AND status = '0' AND del_flag = '0' "
+            + "AND create_time >= #{start} AND create_time < #{end} GROUP BY score")
+    List<Map<String, Object>> selectRatingDist(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 服务模式占比：到店 / 上门（区间）
+     */
+    @Select("SELECT IFNULL(service_mode, '1') AS mode, COUNT(*) AS c FROM pet_service_order "
+            + "WHERE create_time >= #{start} AND create_time < #{end} GROUP BY service_mode")
+    List<Map<String, Object>> selectServiceMode(@Param("start") String start, @Param("end") String end);
+
+    /**
+     * 最新顾客评价（全类型顶级评论，大屏滚动展示）
+     */
+    @Select("SELECT c.score AS score, c.content AS content, c.create_time AS createTime, "
+            + "c.target_type AS targetType, IFNULL(u.nick_name, u.user_name) AS userName, p.pet_name AS petName "
+            + "FROM pet_comment c "
+            + "LEFT JOIN sys_user u ON u.user_id = c.user_id "
+            + "LEFT JOIN pet_info p ON p.pet_id = c.pet_id "
+            + "WHERE c.status = '0' AND c.del_flag = '0' AND c.parent_id = 0 "
+            + "ORDER BY c.comment_id DESC LIMIT 12")
+    List<Map<String, Object>> selectLatestComments();
 }

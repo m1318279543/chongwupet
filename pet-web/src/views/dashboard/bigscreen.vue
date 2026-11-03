@@ -6,8 +6,9 @@
         <div class="head-side left">
           <span class="chip" :class="{ on: days === 7 }" @click="switchDays(7)">近 7 天</span>
           <span class="chip" :class="{ on: days === 30 }" @click="switchDays(30)">近 30 天</span>
+          <span class="chip" :class="{ on: days === 90 }" @click="switchDays(90)">近 90 天</span>
         </div>
-        <h1 class="head-title">宠物之家 · 数据可视化大屏</h1>
+        <h1 class="head-title">宠物之家 · 经营监控大屏</h1>
         <div class="head-side right">
           <span class="clock">{{ clock }}</span>
           <span class="chip" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</span>
@@ -15,7 +16,7 @@
         </div>
       </header>
 
-      <!-- KPI 指标行 -->
+      <!-- KPI 指标行：客户与质量维度（看板是营收订单维度，两块屏互补） -->
       <section class="kpi-row">
         <div v-for="k in kpis" :key="k.key" class="kpi">
           <span class="kpi-label">{{ k.label }}</span>
@@ -26,73 +27,71 @@
 
       <!-- 三列主体 -->
       <section class="bs-body">
-        <!-- 左列：四环 -->
+        <!-- 左列：漏斗 + 两个环形 -->
         <div class="col">
           <div class="panel">
-            <div class="panel-title">品类销售占比</div>
-            <div ref="categoryRef" class="chart"></div>
-            <div v-if="!dist?.category?.length" class="empty center-empty">暂无数据</div>
+            <div class="panel-title">经营转化漏斗 <i>咨询 → 下单 → 成交</i></div>
+            <div ref="funnelRef" class="chart"></div>
+            <div v-if="!funnel" class="empty center-empty">暂无数据</div>
           </div>
           <div class="panel">
-            <div class="panel-title">订单状态分布</div>
-            <div ref="orderStatusRef" class="chart"></div>
+            <div class="panel-title">服务模式占比 <i>门店服务工单</i></div>
+            <div ref="serviceModeRef" class="chart"></div>
+            <div v-if="!serviceMode?.length" class="empty center-empty">区间内暂无服务工单</div>
           </div>
           <div class="panel">
-            <div class="panel-title">预约状态分布</div>
-            <div ref="aptStatusRef" class="chart"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">支付方式占比 <i>已支付有效订单</i></div>
-            <div ref="payMethodRef" class="chart"></div>
-            <div v-if="!dist?.payMethods?.length" class="empty center-empty">区间内暂无支付订单</div>
+            <div class="panel-title">会员资产 <i>钱包余额池</i></div>
+            <div class="wallet">
+              <div class="wallet-main">
+                <span class="wallet-label">会员总余额</span>
+                <em class="wallet-value">¥{{ money(wallet?.balance) }}</em>
+              </div>
+              <div class="wallet-side">
+                <div><b>{{ fmtInt(wallet?.users || 0) }}</b><i>充值会员</i></div>
+                <div><b>¥{{ money(kpi?.avgOrderAmount) }}</b><i>平均客单价</i></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- 中列 -->
+        <!-- 中列：客户增长 + 最新评价 -->
         <div class="col center">
           <div class="panel grow">
-            <div class="panel-title">业务趋势 <i>营业额 / 订单 / 预约 / 咨询</i></div>
-            <div ref="trendRef" class="chart chart-tall"></div>
+            <div class="panel-title">客户增长趋势 <i>每日新增注册（看板不看这件事）</i></div>
+            <div ref="userTrendRef" class="chart chart-tall"></div>
           </div>
           <div class="panel feed-panel">
-            <div class="panel-title">实时业务动态 <i>每 30 秒自动刷新</i></div>
+            <div class="panel-title">最新顾客评价 <i>每 30 秒自动刷新</i></div>
             <ul class="feed">
-              <li v-for="(item, idx) in feed" :key="idx + String(item.time)">
-                <span class="feed-icon">{{ typeMeta(item.type).icon }}</span>
-                <span class="feed-title">{{ item.title }}</span>
-                <span v-if="item.amount" class="feed-amount">¥{{ money(item.amount) }}</span>
-                <span class="feed-time">{{ fmtEventTime(item.time) }}</span>
+              <li v-for="(item, idx) in comments" :key="idx + String(item.createTime)">
+                <span class="feed-stars">
+                  <i v-for="n in 5" :key="n" :class="{ on: n <= (item.score || 0) }">★</i>
+                </span>
+                <span class="feed-user">{{ item.userName || '顾客' }}</span>
+                <span class="feed-content">{{ item.content }}</span>
+                <span class="feed-time">{{ fmtEventTime(item.createTime) }}</span>
               </li>
             </ul>
-            <div v-if="!feed.length" class="empty">暂无业务动态</div>
-          </div>
-          <div class="panel cancel-panel">
-            <div class="panel-title">取消原因 TOP <i>近 6 类</i></div>
-            <div ref="cancelRef" class="chart"></div>
-            <div v-if="!dist?.cancelReasons?.length" class="empty center-empty">区间内暂无取消记录</div>
+            <div v-if="!comments.length" class="empty">暂无顾客评价</div>
           </div>
         </div>
 
-        <!-- 右列 -->
+        <!-- 右列：门店对比 + 评分分布 + 服务热度 -->
         <div class="col">
           <div class="panel">
-            <div class="panel-title">热销商品 TOP · 成交额</div>
-            <div ref="topGoodsRef" class="chart"></div>
-            <div v-if="!rank?.goods?.length" class="empty center-empty">区间内暂无成交</div>
+            <div class="panel-title">门店经营对比 <i>成交金额</i></div>
+            <div ref="storeRef" class="chart"></div>
+            <div v-if="!storeCompare?.length" class="empty center-empty">区间内暂无成交</div>
           </div>
           <div class="panel">
-            <div class="panel-title">预约热度 TOP · 宠物</div>
-            <div ref="topPetsRef" class="chart"></div>
-            <div v-if="!rank?.pets?.length" class="empty center-empty">区间内暂无预约</div>
+            <div class="panel-title">评分满意度分布 <i>区间内 {{ rating?.total || 0 }} 条评分</i></div>
+            <div ref="ratingRef" class="chart"></div>
+            <div v-if="!rating?.total" class="empty center-empty">区间内暂无评分</div>
           </div>
           <div class="panel">
             <div class="panel-title">服务项目热度 TOP <i>门店服务工单</i></div>
-            <div ref="topServicesRef" class="chart"></div>
+            <div ref="serviceTopRef" class="chart"></div>
             <div v-if="!rank?.services?.length" class="empty center-empty">区间内暂无服务工单</div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">24 小时活跃分布</div>
-            <div ref="hourlyRef" class="chart"></div>
           </div>
         </div>
       </section>
@@ -104,13 +103,12 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts/core'
-import { LineChart, BarChart, PieChart } from 'echarts/charts'
+import { LineChart, BarChart, PieChart, FunnelChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 
-echarts.use([LineChart, BarChart, PieChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer])
-import { getDashboardAll, getDashboardRealtime } from '@/api/pet/dashboard'
-import { paymentOverview } from '@/api/pet/petPayment'
+echarts.use([LineChart, BarChart, PieChart, FunnelChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer])
+import { getDashboardBigscreen } from '@/api/pet/dashboard'
 
 const router = useRouter()
 
@@ -125,18 +123,24 @@ function fit() {
 
 /* ---------- 状态 ---------- */
 const days = ref(7)
-const dashboard = ref(null)
-const realtime = ref(null)
-const pay = ref({})
+const data = ref(null)
 const clock = ref('')
 const isFullscreen = ref(false)
 
 let mainTimer = null
-let rtTimer = null
 let clockTimer = null
 const charts = {}
 
-/* ---------- KPI ---------- */
+const kpi = computed(() => data.value?.kpi || null)
+const funnel = computed(() => data.value?.funnel || null)
+const wallet = computed(() => data.value?.wallet || null)
+const rating = computed(() => data.value?.rating || null)
+const serviceMode = computed(() => data.value?.serviceMode || [])
+const storeCompare = computed(() => data.value?.storeCompare || [])
+const comments = computed(() => data.value?.latestComments || [])
+const rank = computed(() => data.value?.ranking || null)
+
+/* ---------- KPI 行：客户与质量维度 ---------- */
 function money(v) {
   const n = Number(v || 0)
   return n >= 10000 ? (n / 10000).toFixed(1) + 'w' : n.toFixed(n % 1 === 0 ? 0 : 2)
@@ -147,52 +151,31 @@ function fmtInt(v) {
 
 const kpis = ref([])
 function buildKpis() {
-  const o = dashboard.value?.overview || {}
-  const t = realtime.value?.today || dashboard.value?.today || {}
-  const payRate = Number(pay.value.totalOrders || 0) > 0
-    ? (Number(pay.value.paidOrders || 0) / Number(pay.value.totalOrders)) * 100
-    : 0
+  const k = kpi.value || {}
+  const w = wallet.value || {}
+  const rangeDays = data.value?.range?.days || days.value
   kpis.value = [
-    { key: 'revenue', label: '区间营业额', value: '¥' + money(o.revenue), color: '#ffc46b', sub: `今日 ¥${money(t.todayRevenue || 0)}` },
-    { key: 'payAmount', label: '支付金额', value: '¥' + money(pay.value.paidAmount), color: '#f78e3d', sub: `成功 ${fmtInt(pay.value.paidOrders || 0)} 单` },
-    { key: 'orders', label: '订单量', value: fmtInt(o.orders), color: '#4da2ff', sub: `今日 ${t.todayOrders || 0} 单` },
-    { key: 'appointments', label: '预约量', value: fmtInt(o.appointments), color: '#3ddc97', sub: `今日 ${t.todayAppointments || 0} 单` },
-    { key: 'consults', label: '咨询量', value: fmtInt(o.consults), color: '#b58bff', sub: `今日 ${t.todayConsults || 0} 次` },
-    { key: 'payRate', label: '支付成功率', value: payRate.toFixed(1) + '%', color: '#25f0ee', sub: `失败 ${fmtInt(pay.value.failOrders || 0)} 单` },
+    { key: 'newUsers', label: '新增客户', value: fmtInt(k.newUsers || 0), color: '#25f0ee', sub: `近 ${rangeDays} 天注册` },
+    { key: 'repeat', label: '复购率', value: (k.repeatRate || 0).toFixed(1) + '%', color: '#3ddc97', sub: `成交客户 ${fmtInt(k.paidUsers || 0)} 人` },
+    { key: 'goodRate', label: '好评率', value: (k.goodRate || 0).toFixed(1) + '%', color: '#ffc46b', sub: `${fmtInt(k.scoreComments || 0)} 条评分` },
+    { key: 'finish', label: '服务完成率', value: (k.serviceFinishRate || 0).toFixed(1) + '%', color: '#4da2ff', sub: `工单 ${fmtInt(k.serviceTotal || 0)} 张` },
+    { key: 'wallet', label: '会员总余额', value: '¥' + money(w.balance), color: '#b58bff', sub: `会员 ${fmtInt(w.users || 0)} 人` },
+    { key: 'avg', label: '平均客单价', value: '¥' + money(k.avgOrderAmount), color: '#f78e3d', sub: '已支付订单' },
   ]
 }
 
-/* ---------- 实时动态 ---------- */
-const feed = ref([])
-const TYPE_META = {
-  order: { icon: '🧾' },
-  appointment: { icon: '📅' },
-  consult: { icon: '💬' },
-  cancel: { icon: '🚫' },
-  service: { icon: '🛁' },
-}
-function typeMeta(type) {
-  return TYPE_META[type] || { icon: '📌' }
-}
+/* ---------- 图表 ---------- */
+const funnelRef = ref(null)
+const serviceModeRef = ref(null)
+const userTrendRef = ref(null)
+const storeRef = ref(null)
+const ratingRef = ref(null)
+const serviceTopRef = ref(null)
+
 function fmtEventTime(time) {
   if (!time) return ''
   return String(time).slice(5, 16)
 }
-
-/* ---------- 图表 ---------- */
-const categoryRef = ref(null)
-const orderStatusRef = ref(null)
-const aptStatusRef = ref(null)
-const payMethodRef = ref(null)
-const trendRef = ref(null)
-const topGoodsRef = ref(null)
-const topPetsRef = ref(null)
-const topServicesRef = ref(null)
-const hourlyRef = ref(null)
-const cancelRef = ref(null)
-
-const dist = computed(() => dashboard.value?.distribution || null)
-const rank = computed(() => dashboard.value?.ranking || null)
 
 const TOOLTIP = {
   backgroundColor: 'rgba(8,25,50,.92)',
@@ -231,143 +214,157 @@ function ringOption(items, colors) {
   }
 }
 
-function renderCategory() {
-  const c = initChart('category', categoryRef)
-  c && c.setOption(ringOption(dashboard.value?.distribution?.category || [], ['#ffc46b', '#4da2ff', '#3ddc97', '#b58bff', '#25f0ee', '#f78e3d']), true)
-}
-function renderOrderStatus() {
-  const c = initChart('orderStatus', orderStatusRef)
-  c && c.setOption(ringOption(dashboard.value?.distribution?.orderStatus || [], ['#f78e3d', '#3d5a80']), true)
-}
-function renderAptStatus() {
-  const c = initChart('aptStatus', aptStatusRef)
-  c && c.setOption(ringOption(dashboard.value?.distribution?.appointmentStatus || [], ['#ffc46b', '#4da2ff', '#3ddc97', '#3d5a80']), true)
-}
-
-const PAY_LABELS = { alipay: '支付宝', wechat: '微信支付', balance: '余额支付', free: '免费体验', other: '其他' }
-function payName(n) {
-  return PAY_LABELS[n] || n
-}
-function renderPayMethod() {
-  const c = initChart('payMethod', payMethodRef)
-  if (!c) return
-  const items = (dashboard.value?.distribution?.payMethods || []).map((i) => ({ name: payName(i.name), value: i.value, amount: i.amount }))
-  c.setOption(ringOption(items, ['#25f0ee', '#ffc46b', '#b58bff', '#3ddc97', '#f78e3d', '#4da2ff']), true)
-}
-
-function renderTrend() {
-  const c = initChart('trend', trendRef)
-  if (!c) return
-  const t = dashboard.value?.trend || { dates: [], revenue: [], orders: [], appointments: [], consults: [] }
+function renderFunnel() {
+  const c = initChart('funnel', funnelRef)
+  if (!c || !funnel.value) return
+  const f = funnel.value
   c.setOption({
-    color: ['#ffc46b', '#4da2ff', '#3ddc97', '#b58bff'],
-    tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { top: 2, textStyle: { color: '#9cc3e8', fontSize: 11 }, itemWidth: 12, itemHeight: 8 },
-    grid: { left: 10, right: 16, top: 34, bottom: 6, containLabel: true },
+    color: ['#25f0ee', '#ffc46b', '#3ddc97'],
+    tooltip: { ...TOOLTIP, trigger: 'item', formatter: '{b}：{c}' },
+    series: [{
+      type: 'funnel',
+      left: '8%', right: '8%', top: 8, bottom: 4,
+      minSize: '32%',
+      sort: 'descending',
+      gap: 4,
+      label: { show: true, position: 'inside', color: '#04101f', fontSize: 12, fontWeight: 700, formatter: '{b}  {c}' },
+      itemStyle: { borderColor: '#081a30', borderWidth: 2 },
+      data: [
+        { name: '咨询', value: f.consults || 0 },
+        { name: '下单', value: f.orders || 0 },
+        { name: '成交', value: f.paidOrders || 0 },
+      ],
+    }],
+  }, true)
+}
+
+function renderServiceMode() {
+  const c = initChart('serviceMode', serviceModeRef)
+  if (!c) return
+  c.setOption(ringOption(serviceMode.value, ['#4da2ff', '#3ddc97', '#b58bff']), true)
+}
+
+function renderUserTrend() {
+  const c = initChart('userTrend', userTrendRef)
+  if (!c) return
+  const t = data.value?.userTrend || { dates: [], newUsers: [] }
+  c.setOption({
+    tooltip: { ...TOOLTIP, trigger: 'axis' },
+    grid: { left: 12, right: 26, top: 30, bottom: 6, containLabel: true },
     xAxis: {
       type: 'category', data: t.dates || [],
       axisTick: { show: false },
       axisLine: { lineStyle: { color: 'rgba(63,120,180,.4)' } },
       axisLabel: { ...AXIS, interval: Math.ceil((t.dates?.length || 1) / 12) },
     },
-    yAxis: [
-      { type: 'value', name: '金额¥', splitLine: SPLIT, axisLabel: AXIS, nameTextStyle: AXIS },
-      { type: 'value', name: '数量', splitLine: { show: false }, axisLabel: AXIS, nameTextStyle: AXIS },
-    ],
-    series: [
-      { name: '营业额', type: 'bar', data: t.revenue || [], barWidth: '32%',
-        itemStyle: { borderRadius: [4, 4, 0, 0], color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#ffc46b' }, { offset: 1, color: 'rgba(255,196,107,.15)' },
-        ]) } },
-      { name: '订单', type: 'line', yAxisIndex: 1, data: t.orders || [], smooth: true, symbolSize: 5, lineStyle: { width: 2 } },
-      { name: '预约', type: 'line', yAxisIndex: 1, data: t.appointments || [], smooth: true, symbolSize: 5, lineStyle: { width: 2 } },
-      { name: '咨询', type: 'line', yAxisIndex: 1, data: t.consults || [], smooth: true, symbolSize: 5, lineStyle: { width: 2 } },
-    ],
+    yAxis: { type: 'value', minInterval: 1, splitLine: SPLIT, axisLabel: AXIS },
+    series: [{
+      name: '新增客户',
+      type: 'line',
+      data: t.newUsers || [],
+      smooth: true,
+      symbolSize: 5,
+      lineStyle: { width: 2.5, color: '#25f0ee' },
+      itemStyle: { color: '#25f0ee' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(37, 240, 238, .38)' },
+          { offset: 1, color: 'rgba(37, 240, 238, .02)' },
+        ]),
+      },
+    }],
   }, true)
 }
 
-function barOption(items, valueKey, color, fmt) {
-  const list = (items || []).slice().reverse()
-  return {
-    grid: { left: 8, right: 46, top: 6, bottom: 2, containLabel: true },
+function renderStore() {
+  const c = initChart('store', storeRef)
+  if (!c) return
+  const list = (storeCompare.value || []).slice(0, 8).reverse()
+  c.setOption({
+    grid: { left: 8, right: 56, top: 8, bottom: 2, containLabel: true },
+    tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: (ps) => {
+        const p = ps[0]
+        const row = (storeCompare.value || []).find((s) => s.storeName === p.name) || {}
+        return `${p.name}<br/>成交额 ¥${money(row.revenue)}<br/>订单 ${row.orders || 0} · 预约 ${row.appointments || 0} · 工单 ${row.serviceOrders || 0}`
+      } },
+    xAxis: { type: 'value', splitLine: SPLIT, axisLabel: { ...AXIS, fontSize: 10, formatter: (v) => '¥' + money(v) } },
+    yAxis: {
+      type: 'category', data: list.map((i) => i.storeName),
+      axisTick: { show: false }, axisLine: { show: false },
+      axisLabel: { color: '#9cc3e8', fontSize: 11, width: 96, overflow: 'truncate' },
+    },
+    series: [{
+      type: 'bar', data: list.map((i) => i.revenue), barWidth: 10,
+      itemStyle: { borderRadius: [0, 5, 5, 0], color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+        { offset: 0, color: '#ffc46b' }, { offset: 1, color: 'rgba(255,196,107,.08)' },
+      ]) },
+      label: { show: true, position: 'right', color: '#7fa8cc', fontSize: 10, formatter: (p) => '¥' + money(p.value) },
+      animationDuration: 900, animationEasing: 'cubicOut',
+    }],
+  }, true)
+}
+
+function renderRating() {
+  const c = initChart('rating', ratingRef)
+  if (!c) return
+  const list = (rating.value?.dist || []).slice().reverse()
+  c.setOption({
+    grid: { left: 8, right: 44, top: 8, bottom: 2, containLabel: true },
     tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'shadow' } },
-    xAxis: { type: 'value', splitLine: SPLIT, axisLabel: { ...AXIS, fontSize: 10, formatter: fmt } },
+    xAxis: { type: 'value', minInterval: 1, splitLine: SPLIT, axisLabel: { ...AXIS, fontSize: 10 } },
+    yAxis: {
+      type: 'category', data: list.map((i) => i.name),
+      axisTick: { show: false }, axisLine: { show: false },
+      axisLabel: { color: '#9cc3e8', fontSize: 11 },
+    },
+    series: [{
+      type: 'bar', data: list.map((i) => i.value), barWidth: 10,
+      itemStyle: { borderRadius: [0, 5, 5, 0], color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+        { offset: 0, color: '#ffc46b' }, { offset: 1, color: 'rgba(255,196,107,.08)' },
+      ]) },
+      label: { show: true, position: 'right', color: '#7fa8cc', fontSize: 10 },
+      animationDuration: 900,
+    }],
+  }, true)
+}
+
+function renderServiceTop() {
+  const c = initChart('serviceTop', serviceTopRef)
+  if (!c) return
+  const list = (data.value?.ranking?.services || []).slice(0, 8).reverse()
+  c.setOption({
+    grid: { left: 8, right: 46, top: 8, bottom: 2, containLabel: true },
+    tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'shadow' } },
+    xAxis: { type: 'value', minInterval: 1, splitLine: SPLIT, axisLabel: { ...AXIS, fontSize: 10 } },
     yAxis: {
       type: 'category', data: list.map((i) => i.name),
       axisTick: { show: false }, axisLine: { show: false },
       axisLabel: { color: '#9cc3e8', fontSize: 10, width: 92, overflow: 'truncate' },
     },
     series: [{
-      type: 'bar', data: list.map((i) => i[valueKey]), barWidth: 8,
+      type: 'bar', data: list.map((i) => i.value), barWidth: 8,
       itemStyle: { borderRadius: [0, 4, 4, 0], color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-        { offset: 0, color }, { offset: 1, color: 'rgba(37,240,238,.08)' },
+        { offset: 0, color: '#3ddc97' }, { offset: 1, color: 'rgba(61,220,151,.08)' },
       ]) },
-      label: { show: true, position: 'right', color: '#7fa8cc', fontSize: 10, formatter: (p) => fmt(p.value) },
-      animationDuration: 900, animationEasing: 'cubicOut',
+      label: { show: true, position: 'right', color: '#7fa8cc', fontSize: 10, formatter: (p) => p.value + ' 单' },
+      animationDuration: 900,
     }],
-  }
-}
-function renderTopGoods() {
-  const c = initChart('topGoods', topGoodsRef)
-  c && c.setOption(barOption(dashboard.value?.ranking?.goods, 'amount', '#ffc46b', (v) => '¥' + Number(v).toFixed(0)), true)
-}
-function renderTopPets() {
-  const c = initChart('topPets', topPetsRef)
-  c && c.setOption(barOption(dashboard.value?.ranking?.pets, 'value', '#4da2ff', (v) => v + ' 次'), true)
-}
-function renderTopServices() {
-  const c = initChart('topServices', topServicesRef)
-  c && c.setOption(barOption(dashboard.value?.ranking?.services, 'value', '#3ddc97', (v) => v + ' 单'), true)
-}
-function renderCancelReasons() {
-  const c = initChart('cancel', cancelRef)
-  c && c.setOption(barOption(dashboard.value?.distribution?.cancelReasons, 'value', '#f78e3d', (v) => v + ' 次'), true)
-}
-
-function renderHourly() {
-  const c = initChart('hourly', hourlyRef)
-  if (!c) return
-  const h = dashboard.value?.hourly || { hours: [], orders: [], appointments: [] }
-  c.setOption({
-    color: ['#ffc46b', '#4da2ff'],
-    tooltip: { ...TOOLTIP, trigger: 'axis' },
-    legend: { top: 0, textStyle: { color: '#9cc3e8', fontSize: 10 }, itemWidth: 10, itemHeight: 7 },
-    grid: { left: 8, right: 10, top: 26, bottom: 4, containLabel: true },
-    xAxis: {
-      type: 'category', data: h.hours || [],
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: 'rgba(63,120,180,.4)' } },
-      axisLabel: { ...AXIS, interval: 2 },
-    },
-    yAxis: { type: 'value', splitLine: SPLIT, axisLabel: AXIS },
-    series: [
-      { name: '下单', type: 'line', data: h.orders || [], smooth: true, symbolSize: 4,
-        areaStyle: { color: 'rgba(255,196,107,.15)' }, lineStyle: { width: 2 } },
-      { name: '预约', type: 'line', data: h.appointments || [], smooth: true, symbolSize: 4,
-        areaStyle: { color: 'rgba(77,162,255,.15)' }, lineStyle: { width: 2 } },
-    ],
   }, true)
 }
 
 function renderAll() {
-  renderCategory(); renderOrderStatus(); renderAptStatus(); renderPayMethod()
-  renderTrend(); renderTopGoods(); renderTopPets(); renderTopServices()
-  renderHourly(); renderCancelReasons()
   buildKpis()
+  renderFunnel(); renderServiceMode(); renderUserTrend()
+  renderStore(); renderRating(); renderServiceTop()
 }
 
 /* ---------- 数据加载 ---------- */
 async function loadAll() {
-  const [all, payRes] = await Promise.all([getDashboardAll(days.value), paymentOverview()])
-  dashboard.value = all.data
-  pay.value = payRes.data || {}
+  const res = await getDashboardBigscreen(days.value)
+  data.value = res.data
+  await nextTick()
   renderAll()
-}
-async function loadRealtime() {
-  const res = await getDashboardRealtime()
-  realtime.value = res.data
-  feed.value = res.data?.feed || []
-  buildKpis()
 }
 
 function switchDays(d) {
@@ -406,14 +403,13 @@ onMounted(async () => {
   tick()
   clockTimer = setInterval(tick, 1000)
   await nextTick()
-  await Promise.all([loadAll(), loadRealtime()])
-  mainTimer = setInterval(loadAll, 60_000)
-  rtTimer = setInterval(loadRealtime, 30_000)
+  await loadAll()
+  mainTimer = setInterval(loadAll, 30_000)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fit)
   document.removeEventListener('fullscreenchange', onFsChange)
-  clearInterval(mainTimer); clearInterval(rtTimer); clearInterval(clockTimer)
+  clearInterval(mainTimer); clearInterval(clockTimer)
   Object.values(charts).forEach((c) => c && c.dispose())
 })
 </script>
@@ -568,10 +564,10 @@ onBeforeUnmount(() => {
 }
 .col {
   display: grid;
-  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 12px;
   min-height: 0;
-  &.center { grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr) 138px; }
+  &.center { grid-template-rows: minmax(0, 1.7fr) minmax(0, 1fr); }
 }
 .panel {
   position: relative;
@@ -590,7 +586,7 @@ onBeforeUnmount(() => {
     pointer-events: none;
     background-repeat: no-repeat;
   }
-  /* 四角科技描边：上两角 + 下两角 */
+  /* 四角科技描边 */
   &::before {
     background-image:
       linear-gradient(#25f0ee, #25f0ee), linear-gradient(#25f0ee, #25f0ee),
@@ -641,6 +637,44 @@ onBeforeUnmount(() => {
 }
 .chart-tall { min-height: 0; }
 
+/* 会员资产卡 */
+.wallet {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0;
+}
+.wallet-main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  .wallet-label { font-size: 13px; color: #9cc3e8; }
+  .wallet-value {
+    font-style: normal;
+    font-size: 38px;
+    font-weight: 800;
+    color: #b58bff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 20px rgba(181, 139, 255, .5);
+  }
+}
+.wallet-side {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  > div {
+    padding: 8px 12px;
+    border: 1px solid rgba(37, 240, 238, .12);
+    border-radius: 8px;
+    background: rgba(20, 55, 95, .3);
+    b { display: block; font-size: 20px; color: #d8ecff; font-variant-numeric: tabular-nums; }
+    i { font-style: normal; font-size: 11px; color: #5f86ad; }
+  }
+}
+
+/* 最新评价 */
 .feed-panel { overflow: hidden; }
 .feed {
   list-style: none;
@@ -652,7 +686,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 4px;
+    padding: 8px 4px;
     border-bottom: 1px dashed rgba(63, 120, 180, .2);
     font-size: 13px;
     animation: feed-in .45s ease both;
@@ -662,24 +696,28 @@ onBeforeUnmount(() => {
   from { opacity: 0; transform: translateX(18px); }
   to { opacity: 1; transform: translateX(0); }
 }
-.feed-icon {
-  width: 26px; height: 26px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  background: rgba(37, 240, 238, .12);
+.feed-stars {
   flex-shrink: 0;
-  font-size: 14px;
+  i { font-style: normal; font-size: 13px; color: rgba(255, 196, 107, .22); }
+  i.on { color: #ffc46b; text-shadow: 0 0 6px rgba(255, 196, 107, .5); }
 }
-.feed-title {
+.feed-user {
+  flex-shrink: 0;
+  color: #9cc3e8;
+  font-weight: 600;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feed-content {
   flex: 1;
   color: #c4dcf5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.feed-amount { color: #ffc46b; font-weight: 600; font-variant-numeric: tabular-nums; }
-.feed-time { color: #5f86ad; font-size: 12px; font-variant-numeric: tabular-nums; }
+.feed-time { color: #5f86ad; font-size: 12px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .empty { color: #5f86ad; font-size: 13px; padding: 16px 4px; }
 .center-empty {
   position: absolute;
@@ -688,5 +726,4 @@ onBeforeUnmount(() => {
   place-items: center;
   padding: 0;
 }
-.cancel-panel { overflow: hidden; }
 </style>
