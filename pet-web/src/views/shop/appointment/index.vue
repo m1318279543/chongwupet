@@ -366,11 +366,12 @@
             <div class="rv-item__ava" :style="{ background: avatarBg(rv.userName) }">{{ (rv.userName || '客').charAt(0).toUpperCase() }}</div>
             <div class="rv-item__main">
               <p class="rv-item__head">
-                <span class="rv-item__name">{{ rv.userName || '顾客' }}</span>
+                <span class="rv-item__name" :style="{ color: nameColor(rv.userName) }">{{ rv.userName || '顾客' }}</span>
+                <span class="rv-item__badge" :class="rv.userId === 1 ? 'rv-item__badge--admin' : 'rv-item__badge--lv' + lvOf(rv.userId)">{{ rv.userId === 1 ? '管理员' : 'LV' + lvOf(rv.userId) }}</span>
                 <el-rate :model-value="rv.score" disabled size="small" />
-                <span class="rv-item__time">{{ fmtTime(rv.createTime) }}</span>
               </p>
               <p class="rv-item__content">{{ rv.content }}</p>
+              <p class="rv-item__foot">{{ fmtTime(rv.createTime) }}</p>
             </div>
           </div>
         </div>
@@ -913,6 +914,19 @@ function avatarBg(name) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
   return palette[h % palette.length]
 }
+// B 站风：昵称按名字稳定取色 + 等级徽章（演示装饰，按 userId 稳定分级）
+const RV_NAME_COLORS = ['#fb7299', '#00a1d6', '#ff7f24', '#6bc46d', '#c08bff']
+function nameColor(name) {
+  let h = 0
+  const s = String(name || '')
+  for (let i = 0; i < s.length; i++) h = (h * 131 + s.charCodeAt(i)) % 99991
+  return RV_NAME_COLORS[h % RV_NAME_COLORS.length]
+}
+function lvOf(userId) {
+  const n = Number(userId)
+  if (!n || n <= 0) return 2
+  return 2 + (n % 5)
+}
 </script>
 
 <style scoped lang="scss">
@@ -1181,8 +1195,23 @@ function avatarBg(name) {
     gap: 8px;
     flex-wrap: wrap;
   }
-  &__name { font-size: 13.5px; font-weight: 600; color: var(--text-1); }
-  &__time { font-size: 12px; color: var(--text-3); margin-left: auto; }
+  &__name { font-size: 13.5px; font-weight: 600; }
+  &__badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 3px 5px;
+    border-radius: 4px;
+    color: #fff;
+    letter-spacing: .3px;
+    &--lv2 { background: #98c6a2; }
+    &--admin { background: linear-gradient(135deg, #ff5c7c, #fb7299); }
+    &--lv3 { background: #58b3c9; }
+    &--lv4 { background: #f0a450; }
+    &--lv5 { background: linear-gradient(135deg, #ff6b6b, #fb7299); }
+    &--lv6 { background: linear-gradient(135deg, #ff2e63, #ff6b6b); }
+  }
+  &__foot { margin: 4px 0 0; font-size: 12px; color: var(--text-3); }
   &__content {
     margin: 4px 0 0;
     font-size: 13.5px;

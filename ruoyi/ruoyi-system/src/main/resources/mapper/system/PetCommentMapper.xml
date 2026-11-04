@@ -22,12 +22,14 @@
         <result property="petName"    column="pet_name"    />
         <result property="image"      column="image"       />
         <result property="score"      column="score"       />
+        <result property="likeCount"  column="like_count"  />
     </resultMap>
 
     <sql id="selectPetCommentVo">
         select c.comment_id, c.pet_id, c.target_type, c.user_id, c.parent_id, c.reply_user, c.content, c.status, c.del_flag,
                c.create_by, c.create_time, c.update_by, c.update_time, c.remark,
                c.score,
+               c.like_count,
                u.user_name as user_name, u.avatar as avatar, p.pet_name as pet_name, p.image as image
         from pet_comment c
         left join sys_user u on u.user_id = c.user_id

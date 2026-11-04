@@ -106,7 +106,7 @@ public class SecurityConfig
                     // 宠物前台浏览接口：游客可看列表和详情（增删改仍需权限）
                     .requestMatchers(HttpMethod.GET, "/pet/info/list", "/pet/category/list", "/pet/info/*").permitAll()
                     // 宠物社交互动：游客可浏览点赞数与评论内容（点赞/发表评论仍需登录）
-                    .requestMatchers(HttpMethod.GET, "/pet/like/status/**", "/pet/comment/list", "/pet/comment/stat", "/pet/comment/statGroup").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/pet/like/status/**", "/pet/comment/list", "/pet/comment/stat", "/pet/comment/statGroup", "/pet/comment/likedIds").permitAll()
                     // 宠物健康服务档案：游客可读，后台维护需权限
                     .requestMatchers(HttpMethod.GET, "/pet/health/**").permitAll()
                     // 宠物喜好：游客可读，后台维护需权限

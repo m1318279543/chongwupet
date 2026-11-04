@@ -118,6 +118,32 @@ public class PetCommentController extends BaseController
     }
 
     /**
+     * 评论点赞切换（登录即可）：已赞则取消、未赞则点赞，返回 {liked, count}
+     */
+    @PostMapping("/like/{commentId}")
+    public AjaxResult toggleLike(@PathVariable("commentId") Long commentId)
+    {
+        return success(petCommentService.toggleLike(SecurityUtils.getUserId(), commentId));
+    }
+
+    /**
+     * 当前用户在目标下点过赞的评论ID集合（游客返回空集合）
+     */
+    @GetMapping("/likedIds")
+    public AjaxResult likedIds(@RequestParam("petId") Long petId,
+                               @RequestParam(value = "targetType", defaultValue = "pet") String targetType)
+    {
+        try
+        {
+            return success(petCommentService.likedCommentIds(SecurityUtils.getUserId(), petId, targetType));
+        }
+        catch (Exception e)
+        {
+            return success(new java.util.ArrayList<Long>());
+        }
+    }
+
+    /**
      * 删除评论：自己的可以删，管理员可以删任意
      */
     @DeleteMapping("/{commentId}")

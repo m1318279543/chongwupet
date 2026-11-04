@@ -63,6 +63,9 @@ public class PetComment extends BaseEntity
     /** 评分（1-5，仅顶级评论） */
     private Integer score;
 
+    /** 点赞数（冗余计数，pet_comment_like 同步增减） */
+    private Integer likeCount;
+
     /** 目标图片（冗余展示用） */
     private String image;
 
@@ -178,6 +181,9 @@ public class PetComment extends BaseEntity
 
     public Integer getScore() { return score; }
     public void setScore(Integer score) { this.score = score; }
+
+    public Integer getLikeCount() { return likeCount; }
+    public void setLikeCount(Integer likeCount) { this.likeCount = likeCount; }
 
     public String getImage()
     {

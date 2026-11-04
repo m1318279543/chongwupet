@@ -69,3 +69,20 @@ export function delPetCommentBatch(commentIds) {
     method: "delete",
   });
 }
+
+// 评论点赞切换（已赞则取消）：返回 {liked, count}
+export function likeComment(commentId) {
+  return request({
+    url: "/pet/comment/like/" + commentId,
+    method: "post",
+  });
+}
+
+// 当前用户在某目标下点过赞的评论ID集合（游客为空）
+export function listLikedCommentIds(petId, targetType) {
+  return request({
+    url: "/pet/comment/likedIds",
+    method: "get",
+    params: { petId, targetType: targetType || "pet" },
+  });
+}
