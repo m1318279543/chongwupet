@@ -23,9 +23,9 @@
       <el-table-column label="点赞ID" align="center" prop="likeId" width="80" />
       <el-table-column label="宠物" align="center" width="220">
         <template #default="scope">
-          <div class="pet-cell">
-            <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="pet-img" />
-            <span v-else class="pet-emoji">—</span>
+          <div class="ui-pet-cell">
+            <img v-if="scope.row.image && scope.row.image.indexOf('/') === 0" :src="scope.row.image" class="ui-pet-cell__img" alt="宠物图片" />
+            <span v-else class="ui-pet-cell__emoji">—</span>
             <span>{{ scope.row.petName }}</span>
           </div>
         </template>
@@ -82,7 +82,5 @@ getList();
 </script>
 
 <style scoped>
-.pet-cell { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.pet-img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
-.pet-emoji { font-size: 24px; }
+/* 宠物单元复用全局 .ui-pet-cell（与评论/客户管理一致：图片左对齐固定，行间纵向对齐） */
 </style>
