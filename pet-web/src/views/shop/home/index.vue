@@ -137,7 +137,8 @@
           </router-link>
         </div>
         <div class="food-grid">
-          <article class="food-card" v-for="p in foodList" :key="p.goodsId" @click="router.push('/shop/food')">
+          <!-- 点卡片直达这款粮的详情（?gid= 由宠物粮页直开详情弹窗），不再笼统跳专区 -->
+          <article class="food-card" v-for="p in foodList" :key="p.goodsId" @click="router.push({ path: '/shop/food', query: { gid: p.goodsId } })">
             <div class="thumb"><img :src="p.image" :alt="p.name" loading="lazy" /></div>
             <div class="body">
               <div class="name">{{ p.name }}</div>

@@ -69,7 +69,7 @@
           <template v-if="recFood.length">
             <p class="ce-sub">宠物粮</p>
             <div class="ce-grid">
-              <article class="ce-food" v-for="g in recFood" :key="g.id" @click="$router.push('/shop/food')">
+              <article class="ce-food" v-for="g in recFood" :key="g.id" @click="$router.push({ path: '/shop/food', query: { gid: g.goodsId } })">
                 <div class="ce-food__thumb"><img :src="g.image" :alt="g.name" loading="lazy" /></div>
                 <div class="ce-food__body">
                   <div class="ce-food__name">{{ g.name }}</div>

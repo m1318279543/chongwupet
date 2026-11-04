@@ -108,7 +108,7 @@
 <script setup>
 import { ref, computed, inject, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
 import { listGoods } from '@/api/pet/petGoods'
 import { useCartStore } from '@/store/modules/cart'
@@ -116,6 +116,7 @@ import PetSocial from '@/components/PetSocial/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
 
 const cartStore = useCartStore()
+const route = useRoute()
 const router = useRouter()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
 
@@ -195,7 +196,7 @@ async function loadRatings() {
 }
 onMounted(() => {
   loadRatings()
-  loadGoods()
+  loadGoods().then(openFromQuery)
 })
 
 const detailVisible = ref(false)
@@ -204,7 +205,29 @@ const currentCat = computed(() => categories.value.find(c => c.id === detail.val
 function openDetail(p) {
   detail.value = p
   detailVisible.value = true
+  // URL 带上 gid：首页卡片「详情」、分享链接都能直达这款粮
+  if (String(route.query.gid || '') !== String(p.goodsId)) {
+    router.replace({ query: { ...route.query, gid: p.goodsId } })
+  }
 }
+// 关闭弹窗时清掉 gid，刷新页面不再莫名弹出
+watch(detailVisible, (v) => {
+  if (!v && route.query.gid) {
+    const q = { ...route.query }
+    delete q.gid
+    router.replace({ query: q })
+  }
+})
+// /shop/food?gid=<goodsId>：目录加载完直开对应宠物粮详情
+function openFromQuery() {
+  const gid = Number(route.query.gid)
+  if (!gid) return
+  const hit = goodsList.value.find((g) => Number(g.goodsId) === gid)
+  if (hit) openDetail(hit)
+}
+watch(() => route.query.gid, () => {
+  if (goodsList.value.length) openFromQuery()
+})
 
 // 加入购物车：写入 store（持久化）
 function addToCart(p) {
