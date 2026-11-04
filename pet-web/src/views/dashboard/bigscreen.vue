@@ -370,7 +370,7 @@ function ruleAdvice() {
   const head = diag.value?.narrative || '暂无诊断数据'
   const body = urgent.length
     ? '\n\n【优先处置】\n' + urgent.map((f, i) => `${i + 1}. ${f.title}：${f.suggestion}`).join('\n')
-    : '\n\n【优先处置】\n各项指标健康，建议保持当前节奏，并把优质口碑同步到前台展示大屏。'
+    : '\n\n【优先处置】\n各项指标健康，建议保持当前节奏，并把优质口碑同步到门店前台。'
   return head + body
 }
 const aiRuleText = computed(() => ruleAdvice())
@@ -742,7 +742,7 @@ const STEPS = [
     points: [
       '/pet/dashboard/bigscreen 独立接口 + pet:dashboard:view 权限，游客不可见',
       'ECharts 按需引入（仅 Line / Bar / Pie / Funnel），30 秒轮询、卸载即 dispose',
-      '前台另有游客可见的口碑大屏 /shop/display，共用同一套聚合逻辑',
+      '前台商城与后台大屏共用同一套聚合逻辑，经营指标仅后台可见',
       '讲解结束，按 Esc 返回大屏 —— 谢谢老师',
     ],
   },

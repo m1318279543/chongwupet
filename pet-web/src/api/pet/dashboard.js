@@ -49,14 +49,3 @@ export function getDashboardDiagnosis(days) {
     timeout: 30000,
   })
 }
-
-/**
- * 门店展示大屏（游客可读）：好评 / 复购 / 评论口碑聚合数据
- */
-export function getDisplayScreen() {
-  return request({
-    url: '/pet/dashboard/display',
-    method: 'get',
-    timeout: 30000,
-  })
-}
