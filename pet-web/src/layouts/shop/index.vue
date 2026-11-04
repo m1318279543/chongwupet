@@ -293,7 +293,12 @@ onMounted(() => {
   document.addEventListener('visibilitychange', refreshUserInfo)
   window.addEventListener('focus', refreshUserInfo)
   window.addEventListener('pet-assistant-open', onAssistantOpen)
+  // 购物车按账号持久化：进站即同步一次，任意页面（详情页/宠物粮专区）加购才会直接落到服务端，
+  // 顶栏角标也才是服务端真实件数（此前只有进购物车页才同步）
+  cartStore.sync()
 })
+// 登录 / 登出后重新对账：登录时把游客本地条目合并进账号
+watch(() => userStore.token, () => { cartStore.sync() })
 onBeforeUnmount(() => {
   mql.removeEventListener('change', onMqlChange)
   document.removeEventListener('visibilitychange', refreshUserInfo)

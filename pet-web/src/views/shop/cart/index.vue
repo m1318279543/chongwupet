@@ -436,9 +436,9 @@ function maybeAutoPay() {
   }
 }
 
-/* ---------- 选择逻辑：购物车独立勾选（只作用于宠物粮，宠物不进购物车） ---------- */
-// 购物车只放宠物粮：itemType='2' 的活体（历史残留）不进购物车列表，也不参与结算
-const cartRows = computed(() => cartStore.items.filter((i) => i.itemType !== '2'))
+/* ---------- 选择逻辑：购物车可同时放宠物粮与活体，各自独立勾选 ---------- */
+// 购物车条目：宠物粮（itemType='1'）+ 活体（itemType='2'，一只一条），可同单结算
+const cartRows = computed(() => cartStore.items)
 const cartAll = computed(() => cartRows.value.length > 0 && cartRows.value.every((i) => i.checked))
 
 function toggleCartAll(val) {
@@ -449,18 +449,24 @@ const cartSelectedRows = computed(() => cartRows.value.filter((i) => i.checked).
 const cartSelectedQty = computed(() => cartRows.value.filter((i) => i.checked).reduce((n, i) => n + i.qty, 0))
 const cartSelectedPrice = computed(() => cartRows.value.filter((i) => i.checked).reduce((s, i) => s + i.price * i.qty, 0))
 
-/* ---------- 分组：购物车只放宠物粮；活体走「立即购买」直接成单，不混进购物车 ---------- */
+/* ---------- 分组：活体与宠物粮下单规则不同（宠物一只一条），分组勾选、同单结算 ---------- */
+const GROUP_PET = 'M12 5.5c-2 0-3.4 1-4.2 2.4-.9-.4-2.2-.2-3 .9-.9 1.3-.6 3 .3 3.9.6.5 1.5.5 2.3-.1C8.3 14.8 10 16.4 12 16.4s3.7-1.6 4.6-3.8c.8.6 1.7.6 2.3.1.9-.9 1.2-2.6.3-3.9-.8-1.1-2.1-1.3-3-.9C15.4 6.5 14 5.5 12 5.5zM9.4 17.4c-1.4 0-2.6.9-2.6 2.1 0 1.2 1.2 2.1 2.6 2.1s2.6-.9 2.6-2.1c0-1.2-1.2-2.1-2.6-2.1zm5.2 0c-1.4 0-2.6.9-2.6 2.1 0 1.2 1.2 2.1 2.6 2.1s2.6-.9 2.6-2.1c0-1.2-1.2-2.1-2.6-2.1z'
 const GROUP_FOOD = 'M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8zM9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10'
 
 const cartGroups = computed(() => {
-  const goods = cartRows.value
+  const pets = cartRows.value.filter(isPet)
+  const goods = cartRows.value.filter((i) => !isPet(i))
   const build = (key, label, note, icon, items) => ({
     key, label, note, icon, items,
     allChecked: items.every((i) => i.checked),
     qty: items.reduce((n, i) => n + i.qty, 0),
     sum: items.reduce((s, i) => s + i.price * i.qty, 0)
   })
-  return goods.length ? [build('goods', '宠物粮', '可与同单其它宠物粮合并结算', GROUP_FOOD, goods)] : []
+  const out = []
+  // 宠物一只一条；勾选宠物与宠物粮后可同单结算
+  if (pets.length) out.push(build('pet', '在售宠物', '活体商品，一只一条', GROUP_PET, pets))
+  if (goods.length) out.push(build('goods', '宠物粮', '可与宠物一起结算', GROUP_FOOD, goods))
+  return out
 })
 
 function toggleGroup(grp, val) {
@@ -535,7 +541,7 @@ function openCashier() {
   cashierTotal.value = cartSelectedPrice.value
   payDetail.value = cartRows.value.filter((i) => i.checked).map((i) => ({
     name: i.name,
-    qtyLabel: `×${i.qty}`,
+    qtyLabel: i.itemType === '2' ? '1 只' : `×${i.qty}`,
     amount: i.price * i.qty
   }))
   paySuccess.value = false
@@ -582,10 +588,12 @@ async function doPay() {
       // 待支付订单：直接支付（立即购买落地或历史未付订单）
       await payPetCart(payOrderNo.value, payMethod.value)
     } else {
-      // 勾选商品先成单，再立即支付该单（购物车只有宠物粮，活体走「立即购买」）
+      // 勾选商品先成单，再立即支付该单（宠物粮与活体可同单，活体由服务端锁宠）
       const items = cartRows.value
         .filter((i) => i.checked)
-        .map((i) => ({ itemType: '1', goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
+        .map((i) => (i.itemType === '2'
+          ? { itemType: '2', petId: i.petId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: 1 }
+          : { itemType: '1', goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
       const res = await submitPetCart(items)
       const orderNo = res?.data?.orderNo
       if (orderNo) await payPetCart(orderNo, payMethod.value)

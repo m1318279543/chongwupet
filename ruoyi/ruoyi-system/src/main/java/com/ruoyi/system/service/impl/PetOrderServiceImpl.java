@@ -111,6 +111,44 @@ public class PetOrderServiceImpl implements IPetOrderService
         int count = 0;
         for (PetCart row : items)
         {
+            // 活体行（itemType='2'）：价格取宠物档案，下单即 CAS 锁宠，一只一单
+            if ("2".equals(row.getItemType()))
+            {
+                if (row.getPetId() == null)
+                {
+                    throw new ServiceException("宠物信息缺失，请在购物车移除后重新加入");
+                }
+                PetInfo pet = petInfoMapper.selectPetInfoByPetId(row.getPetId());
+                if (pet == null)
+                {
+                    throw new ServiceException("「" + row.getGoodsName() + "」已下架，请移除后重新下单");
+                }
+                if (!"0".equals(pet.getStatus()))
+                {
+                    throw new ServiceException("「" + pet.getPetName() + "」已经被订走了，请从购物车移除");
+                }
+                if (petInfoMapper.lockPet(pet.getPetId()) == 0)
+                {
+                    throw new ServiceException("手慢了，「" + pet.getPetName() + "」刚被其他人订走");
+                }
+                BigDecimal petPrice = pet.getPrice() == null ? BigDecimal.ZERO : pet.getPrice();
+                PetOrderItem petLine = new PetOrderItem();
+                petLine.setOrderNo(orderNo);
+                petLine.setItemType("2");
+                petLine.setPetId(pet.getPetId());
+                petLine.setGoodsName(pet.getPetName());
+                petLine.setGoodsImage(pet.getImage());
+                petLine.setGoodsSpec(pet.getBreed());
+                petLine.setPrice(petPrice);
+                petLine.setQty(1);
+                petLine.setAmount(petPrice);
+                lines.add(petLine);
+
+                total = total.add(petPrice);
+                count += 1;
+                continue;
+            }
+
             PetGoods goods = resolveGoods(row);
             if (goods == null)
             {
@@ -155,8 +193,11 @@ public class PetOrderServiceImpl implements IPetOrderService
         {
             line.setOrderId(order.getOrderId());
             petOrderMapper.insertPetOrderItem(line);
-            // 下单只校验库存是否够（真正扣减在支付时），不足则整单回滚
-            petGoodsService.checkStock(line.getGoodsId(), line.getSkuId(), line.getQty(), line.getGoodsName());
+            // 活体行下单即锁宠，不校验商品库存；商品行只校验库存是否够（真正扣减在支付时）
+            if (!"2".equals(line.getItemType()) && line.getGoodsId() != null)
+            {
+                petGoodsService.checkStock(line.getGoodsId(), line.getSkuId(), line.getQty(), line.getGoodsName());
+            }
         }
         order.setItems(lines);
         return order;

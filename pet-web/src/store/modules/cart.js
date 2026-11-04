@@ -54,9 +54,9 @@ function toServerItem(i) {
 export const useCartStore = defineStore('cart', {
   state: () => ({
     items: loadItems(),
-    serverSynced: false // 登录后是否已与服务器同步（同步过则本地存储不再使用）
-  }),
-  getters: {
+    serverSynced: false, // 登录后是否已与服务器同步（同步过则本地存储不再使用）
+    syncing: false       // 同步进行中（防重复请求，也让加购知道条目还没上传）
+  }),  getters: {
     isEmpty: (s) => s.items.length === 0,
     totalCount: (s) => s.items.reduce((n, i) => n + i.qty, 0),
     totalPrice: (s) => s.items.reduce((sum, i) => sum + i.price * i.qty, 0),
@@ -85,20 +85,33 @@ export const useCartStore = defineStore('cart', {
         }
         return
       }
-      if (this.serverSynced) return
+      if (this.serverSynced || this.syncing) return
+      this.syncing = true
       try {
         const local = this.items
+        const localIds = local.map((i) => i.id)
+        let merged
         if (local.length) {
           const res = await mergeCartItems(local.map(toServerItem))
-          this.items = (res.data || []).map(mapServerItem)
+          merged = (res.data || []).map(mapServerItem)
           localStorage.removeItem(STORAGE_KEY)
         } else {
           const res = await listCartItems()
-          this.items = (res.data || []).map(mapServerItem)
+          merged = (res.data || []).map(mapServerItem)
         }
+        // 同步期间用户可能又加购了（如详情页点「加入购物车」）：这批条目还没上传，
+        // 若直接用服务端结果覆盖就会丢，所以补传一次再落地。
+        const extra = this.items.filter((i) => !localIds.includes(i.id))
+        if (extra.length) {
+          const res2 = await mergeCartItems(extra.map(toServerItem))
+          merged = (res2.data || []).map(mapServerItem)
+        }
+        this.items = merged
         this.serverSynced = true
       } catch (e) {
         // 同步失败保持本地模式，下次再试
+      } finally {
+        this.syncing = false
       }
     },
     // 加入购物车：同 id 累加数量并选中；宠物是活的，一只一条，重复加只改回选中不加量

@@ -63,11 +63,21 @@
           <p>{{ pet.description }}</p>
         </div>
         <div class="actions">
-          <el-button size="large" type="primary" round :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
+          <!-- 加购：先进购物车，可与宠物粮同单结算；已在车里则直接跳购物车 -->
+          <el-button
+            class="btn-cart" :class="{ 'is-in': inCart }"
+            size="large" round
+            :disabled="pet.status !== '0'" @click="addToCart"
+          >
+            <span v-if="inCart" class="btn-cart__in" aria-hidden="true">✓</span>
+            {{ inCart ? '已在购物车 · 去结算' : '加入购物车' }}
+          </el-button>
+          <el-button class="btn-buy" size="large" type="primary" round :loading="buying" :disabled="pet.status !== '0'" @click="buyNow">
             {{ pet.status === '0' ? '立即购买' : '已被订走' }}
           </el-button>
           <el-button size="large" round @click="openAppoint">立即预约看宠</el-button>
           <button type="button" class="ai-link" @click="askAi">它适合我吗？问 AI ›</button>
+          <p class="actions-tip" v-if="pet.status === '0'">加入购物车后可与宠物粮一起结算，一只宠物限购一只。</p>
         </div>
       </div>
     </div>
@@ -217,11 +227,13 @@ import { storeOptions } from '@/api/pet/petStore'
 import { getPetHealth } from '@/api/pet/petHealth'
 import { getPetPreference } from '@/api/pet/petPreference'
 import { useUserStore } from '@/store/modules/user'
+import { useCartStore } from '@/store/modules/cart'
 import PetSocial from '@/components/PetSocial/index.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const cartStore = useCartStore()
 const openAuth = inject('openAuth', () => {})  // 未登录触发顶栏登录对话框
 
 const pet = ref({})
@@ -419,6 +431,39 @@ async function loadSlots() {
   }
 }
 
+/** 该宠物是否已在购物车中（itemType='2'，一只一条，id 与购物车 store 同口径） */
+const inCart = computed(() =>
+  cartStore.items.some((i) => i.itemType === '2' && Number(i.petId) === Number(pet.value.petId))
+)
+
+/**
+ * 加入购物车：与宠物粮共用同一辆购物车，可一次结算。
+ * 游客也能加（存本地，登录时自动合并到账号），与宠物粮加购行为一致；未登录结算时才要求登录。
+ */
+function addToCart() {
+  if (pet.value.status !== '0') {
+    ElMessage.warning('这只宠物已经被订走了')
+    return
+  }
+  if (inCart.value) {
+    router.push('/shop/cart')
+    return
+  }
+  cartStore.addItem({
+    id: `pet-${pet.value.petId}`,
+    itemType: '2',
+    petId: pet.value.petId,
+    name: pet.value.petName,
+    image: pet.value.image,
+    spec: pet.value.breed || '',
+    price: Number(pet.value.price || 0)
+  })
+  ElMessage.success({
+    message: `已将「${pet.value.petName}」加入购物车，可与宠物粮一起结算`,
+    duration: 2200
+  })
+}
+
 /** 立即购买：下单即锁定宠物，支付走订单收银台 */
 async function buyNow() {
   if (!userStore.token) {
@@ -577,6 +622,16 @@ onMounted(() => {
     p { color: var(--text-2); line-height: 1.8; }
   }
   .actions { display: flex; align-items: center; gap: 16px; margin-top: 32px; flex-wrap: wrap;
+    /* 加购是次主操作：白底 + 品牌色描边，和实心「立即购买」拉开层级 */
+    .btn-cart {
+      color: var(--brand-700);
+      border-color: var(--brand-300);
+      background: #fff;
+      &:hover { color: var(--brand-700); border-color: var(--brand-500); background: var(--brand-50); }
+      &.is-in { background: var(--brand-50); border-color: var(--brand-500); }
+      .btn-cart__in { margin-right: 4px; font-weight: 700; }
+    }
+    .actions-tip { flex: 1 1 100%; margin: 0; font-size: 12.5px; color: var(--text-3); }
     .ai-link { border: 0; background: none; padding: 4px 0; cursor: pointer; font-family: inherit;
       font-size: 13.5px; font-weight: 600; color: var(--text-3); transition: color .16s;
       &:hover { color: var(--brand-700); }
@@ -665,8 +720,11 @@ onMounted(() => {
       .amount { font-size: 22px; }
     }
     .actions { gap: 10px; margin-top: 20px;
+      /* 手机端：加购/立即购买各占半行，预约整行，AI 链接最后一行 */
       .el-button { flex: 1 1 40%; min-width: 0; padding-left: 8px; padding-right: 8px; }
+      .btn-cart, .btn-buy { flex: 1 1 45%; }
       .ai-link { flex: 1 1 100%; order: 3; }
+      .actions-tip { order: 2; }
     }
   }
   .health-panel, .pref-panel { padding: 18px 0 0; margin-top: 24px;
