@@ -549,8 +549,14 @@ function handleCommand(cmd) {
   .footer {
     padding: 40px 0 0;
     .foot-inner { padding: 0 16px; }
-    .foot-grid { grid-template-columns: 1fr; gap: 24px; }
-    .foot-bot { margin-top: 24px; font-size: 11.5px; }
+    /* 品牌块占满整行，两组链接并排两列，避免全部单列竖排把页面拉长 */
+    .foot-grid { grid-template-columns: 1fr 1fr; gap: 26px 16px; }
+    .foot-brand { grid-column: 1 / -1; }
+    .foot-bot {
+      margin-top: 26px; font-size: 11.5px;
+      /* 竖排左对齐：避免右侧被 AI 悬浮球压住标语 */
+      flex-direction: column; align-items: flex-start; gap: 5px;
+    }
     /* 给固定底栏让位，避免最后一行被盖住 */
     padding-bottom: calc(66px + env(safe-area-inset-bottom));
   }
