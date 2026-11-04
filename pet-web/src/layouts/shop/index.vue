@@ -32,8 +32,7 @@
           </router-link>
           <!-- 站内消息铃铛（登录后显示，桌面/手机共用） -->
           <NotificationBell v-if="isLogged" more-path="/shop/order" />
-          <!-- AI 助手入口（来自 platform-v2：点开右侧全高抽屉） -->
-          <AssistantEntry scene="shop" />
+          <!-- AI 助手入口已统一收敛到右下角悬浮球（AssistantDock），顶栏不再放星星图标 -->
           <!-- 手机端：购物车快捷入口 + 汉堡按钮 -->
           <router-link to="/shop/cart" class="m-cart" aria-label="购物车">
             <el-icon :size="21"><ShoppingCart /></el-icon>
@@ -183,7 +182,7 @@
 
     <!-- 登录注册对话框 -->
     <AuthDialog ref="authRef" @success="onAuthSuccess" />
-    <!-- AI 助手：右上角数字人悬浮球（可拖拽）+ 悬浮聊天窗；顶栏 AssistantEntry 为备用入口 -->
+    <!-- AI 助手：右下角数字人悬浮球（可拖拽）+ 悬浮聊天窗，顶栏不再重复放入口 -->
     <AssistantDock />
   </div>
 </template>
@@ -198,7 +197,6 @@ import { useCartStore } from '@/store/modules/cart'
 import AuthDialog from '@/components/AuthDialog.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 import AssistantDock from '@/components/assistant/AssistantDock.vue'
-import AssistantEntry from '@/components/assistant/AssistantEntry.vue'
 import { useAssistant } from '@/components/assistant/useAssistant'
 
 const route = useRoute()

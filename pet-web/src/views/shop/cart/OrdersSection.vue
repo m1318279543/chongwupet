@@ -18,6 +18,7 @@
             </div>
             <div class="order__act">
               <span class="order__time">{{ g.createTime }}</span>
+              <button v-if="g.unpaid" type="button" class="ui-btn ui-btn--solid ui-btn--sm" @click="emit('pay', g)">去支付</button>
               <button type="button" class="ui-linkbtn" @click="askAssistant(g)">遇到问题</button>
               <button
                 v-if="canRefund(g)"
@@ -83,28 +84,32 @@ import { money } from '@/utils/money'
 // 待支付订单不再展示（立即购买靠 ?pay=orderNo 直接唤起收银台，不经此列表）。
 const props = defineProps({
   groups: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  emptyTitle: { type: String, default: '还没有已支付的订单' },
+  emptyDesc: { type: String, default: '付款完成的订单会自动归档到这里。' }
 })
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'pay'])
 
 const openAuth = inject('openAuth', () => {})
 const refundingNo = ref(null)
 
 const shownGroups = computed(() => props.groups)
-const emptyTitle = computed(() => '还没有已支付的订单')
-const emptyDesc = computed(() => '付款完成的订单会自动归档到这里。')
+const emptyTitle = computed(() => props.emptyTitle)
+const emptyDesc = computed(() => props.emptyDesc)
 
 // 状态文案 / 样式：用 1px 描边标签代替实心 el-tag
 function statusText(g) {
   if (g.refund && g.refund.status === '1') return '已退款'
   if (g.refund && g.refund.status === '0') return '退款审核中'
   if (g.canceled) return '已取消'
+  if (g.unpaid) return '待支付'
   if (g.shipped) return g.isPet ? '已支付 · 待接宠' : '已支付 · 待发货'
   return '已完成'
 }
 function chipClass(g) {
   if (g.refund && g.refund.status === '0') return 'ui-chip--warn'
   if (g.canceled || (g.refund && g.refund.status === '1')) return ''
+  if (g.unpaid) return 'ui-chip--warn'
   if (g.shipped) return 'ui-chip--brand'
   return 'ui-chip--ok'
 }
