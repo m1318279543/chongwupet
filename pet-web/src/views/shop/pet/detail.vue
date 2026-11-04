@@ -336,17 +336,25 @@ const FROM_LABELS = {
 const backLabel = computed(() => FROM_LABELS[String(route.query.from || '')] || '')
 function goBack() {
   const from = String(route.query.from || '')
-  if (from && FROM_LABELS[from]) return router.push(from)
+  if (from && FROM_LABELS[from]) {
+    // 来源页要求恢复现场时（智能选宠：返回要看到推荐结果，而不是重新答题），
+    // 必须把 restore 原样带回去——只 push(from) 会丢掉它，选宠页就按「导航进入」清空重开。
+    return router.push({ path: from, query: route.query.restore ? { restore: String(route.query.restore) } : {} })
+  }
   if (window.history.state && window.history.state.back) return router.back()
   router.push('/shop/pets')
 }
 
 async function loadPet() {
   loading.value = true
+  // 进页先固定本次的 petId：若用户在健康档案等请求返回前就返回上一页，
+  // route.params.id 会变成新路由的参数（选宠页没有 id），拿它发请求就是 /pet/health/undefined
+  const petId = route.params.id
   try {
-    const res = await getPetInfo(route.params.id)
+    const res = await getPetInfo(petId)
+    if (String(petId) !== String(route.params.id)) return  // 已经离开本页，丢弃过期结果
     pet.value = res.data || {}
-    await Promise.all([loadFavStatus(), loadHealth(), loadPreference()])
+    await Promise.all([loadFavStatus(petId), loadHealth(petId), loadPreference(petId)])
   } catch (e) {
     ElMessage.error('加载失败')
   } finally {
@@ -354,28 +362,28 @@ async function loadPet() {
   }
 }
 
-async function loadHealth() {
+async function loadHealth(petId) {
   try {
-    const res = await getPetHealth(route.params.id)
+    const res = await getPetHealth(petId)
     health.value = (res.data && res.data.healthId) ? res.data : {}
   } catch (e) {
     health.value = {}
   }
 }
 
-async function loadPreference() {
+async function loadPreference(petId) {
   try {
-    const res = await getPetPreference(route.params.id)
+    const res = await getPetPreference(petId)
     preference.value = (res.data && res.data.preferenceId) ? res.data : {}
   } catch (e) {
     preference.value = {}
   }
 }
 
-async function loadFavStatus() {
+async function loadFavStatus(petId) {
   if (!userStore.token) { isFav.value = false; return }  // 未登录不查收藏状态
   try {
-    const res = await listPetFavorite({ userId: userStore.userId, petId: route.params.id })
+    const res = await listPetFavorite({ userId: userStore.userId, petId })
     isFav.value = (res.rows || []).length > 0
   } catch (e) {}
 }

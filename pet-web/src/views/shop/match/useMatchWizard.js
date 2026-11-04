@@ -227,10 +227,13 @@ export function useMatchWizard() {
   }
 
   /* ---------- 跳转 / 收藏 ---------- */
-  function goDetail(id) {
-    // from 供详情页返回与导航高亮使用；restore 标记「这个来源页要恢复现场」，
-    // 详情页的返回按钮会把它原样带回来。其余页面（首页/在售/收藏）不带，
-    // 所以从那些页面进详情再返回，不会误恢复选宠状态。
+  async function goDetail(id) {
+    // 去详情前先把「恢复现场」写进本页 URL：
+    // 这样无论点详情页的「返回」还是按浏览器后退，回到选宠页都还是原来那批推荐，
+    // 不用从头再答 10 题。从导航进来的 /shop/match 不带 restore，仍是干净的新测评。
+    if (route.query.restore !== '1') {
+      await router.replace({ query: { ...route.query, restore: '1' } })
+    }
     router.push({ path: '/shop/pet/' + id, query: { from: '/shop/match', restore: '1' } })
   }
   function goConsult() {
