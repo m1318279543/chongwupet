@@ -87,3 +87,4 @@ ai-test-report.json
 /*-report*.json
 mobile-*.json
 .zcode/
+.env.local

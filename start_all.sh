@@ -39,10 +39,12 @@ echo "redis: $(./redis-cli.exe ping 2>&1 | head -1)"
 
 # 2) 后端 8081
 cd "$ROOT/ruoyi/ruoyi-admin/target"
+# 本地库密码走 .env.local（不入库），避免 yml 默认 root 连不上
+[ -f "$ROOT/.env.local" ] && . "$ROOT/.env.local"
 if [ "$(curl -s --noproxy "*" -o NUL -w "%{http_code}" --max-time 3 http://localhost:8081/pet/category/list)" = "200" ]; then
   echo "  :8081 已在运行，跳过"
 else
-"$JAVA" -jar ruoyi-admin.jar --server.port=8081 > /tmp/backend-8081.log 2>&1 &
+DB_PASSWORD="${DB_PASSWORD:-123456}" "$JAVA" -jar ruoyi-admin.jar --server.port=8081 > /tmp/backend-8081.log 2>&1 &
 echo "backend launching..."
 for i in $(seq 1 45); do
   c=$(curl -s --noproxy '*' -o NUL -w '%{http_code}' --max-time 4 "http://localhost:8081/pet/category/list")

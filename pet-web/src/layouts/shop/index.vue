@@ -144,7 +144,15 @@
             <h6>售后与联系</h6>
             <router-link to="/shop/order">我的订单 / 退款</router-link>
             <router-link to="/shop/consult">联系客服</router-link>
-            <a href="tel:02388880001">客服 023-8888 0001</a>
+            <a class="foot-tel" href="tel:02388880001">
+              <span class="tel-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+              </span>
+              <span class="tel-txt">
+                <em>客服热线（9:00–21:00）</em>
+                <b>023-8888-0001</b>
+              </span>
+            </a>
             <router-link to="/shop/home">门店地址</router-link>
           </div>
         </div>
@@ -530,6 +538,19 @@ function handleCommand(cmd) {
     h6 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; letter-spacing: .02em; }
     a { font-size: 13px; color: #c7c4c2; transition: color .16s;
       &:hover { color: #fff; } }
+
+    /* 客服热线：图标 + 双行（说明 + 号码），可点击拨打 */
+    .foot-tel { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px;
+      .tel-ico { flex: 0 0 32px; width: 32px; height: 32px; border-radius: 10px;
+        display: grid; place-items: center; background: var(--grad-brand);
+        svg { width: 16px; height: 16px; fill: #fff; } }
+      .tel-txt { display: flex; flex-direction: column; gap: 1px;
+        em { font-style: normal; font-size: 11px; color: #a8a5a2; letter-spacing: .02em; }
+        b { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: .04em;
+          font-variant-numeric: tabular-nums; } }
+      &:hover .tel-ico { filter: brightness(1.12); }
+      &:hover .tel-txt b { color: var(--brand-300, #f0a450); }
+    }
   }
   .foot-bot {
     margin-top: 48px; border-top: 1px solid rgba(255, 255, 255, .09); padding: 20px 0;
