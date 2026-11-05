@@ -66,6 +66,18 @@
   border-bottom: var(--rule);
 }
 .ui-head__main { min-width: 0; }
+// 页面级返回入口：专区/列表页顶部统一的「返回首页」胶囊按钮
+.ui-back {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 0 0 14px; padding: 6px 12px 6px 8px;
+  border: 1px solid var(--border-1); background: var(--bg-card);
+  cursor: pointer; font-family: inherit;
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 600; color: var(--text-3);
+  transition: color .16s, border-color .16s, background .16s;
+  svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  &:hover { color: var(--brand-700); border-color: var(--brand-200); background: var(--brand-50); }
+}
 .ui-eyebrow {
   display: flex;
   align-items: center;

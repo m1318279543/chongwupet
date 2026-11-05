@@ -1,5 +1,10 @@
 <template>
   <div class="ui-page ui-page--lg food-page">
+    <!-- 返回首页：从首页「进入宠物粮专区」过来后，页面内给一个明确的回程入口 -->
+    <button type="button" class="ui-back" @click="router.push('/shop/home')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      返回首页
+    </button>
     <!-- 页面头：与其他前台页同一套 ui-head 语言，1px 线收口 -->
     <header class="ui-head">
       <div class="ui-head__main">
