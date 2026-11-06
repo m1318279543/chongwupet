@@ -137,8 +137,8 @@
           </router-link>
         </div>
         <div class="food-grid">
-          <!-- 点卡片直达这款粮的详情（?gid= 由宠物粮页直开详情弹窗），不再笼统跳专区 -->
-          <article class="food-card" v-for="p in foodList" :key="p.goodsId" @click="router.push({ path: '/shop/food', query: { gid: p.goodsId } })">
+          <!-- 点卡片就地弹详情卡片（X 或遮罩关闭，不跳页）；「进入宠物粮专区」才去专区页 -->
+          <article class="food-card" v-for="p in foodList" :key="p.goodsId" @click="openFood(p)">
             <div class="thumb"><img :src="p.image" :alt="p.name" loading="lazy" /></div>
             <div class="body">
               <div class="name">{{ p.name }}</div>
@@ -236,6 +236,9 @@
 
     <!-- 我的位置：零输入自动定位 / 商圈点选（不需要地址或经纬度） -->
     <LocationPicker v-model="locOpen" />
+
+    <!-- 宠物粮详情卡片：就地弹出，与专区页共用同一组件 -->
+    <FoodDetailDialog v-model="foodOpen" :goods-id="foodPicked?.goodsId" :fallback="foodPicked" @auth="openAuth" />
   </div>
 </template>
 
@@ -255,6 +258,7 @@ import { money } from '@/utils/money'
 import { amapNavUrl, distanceMeters, formatDistance } from '@/utils/geo'
 import { useGeolocation } from '@/composables/useGeolocation'
 import LocationPicker from '@/components/LocationPicker.vue'
+import FoodDetailDialog from '@/components/FoodDetailDialog/index.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -330,6 +334,14 @@ async function loadFood() {
       cat: g.cat
     })).filter((g) => g.price > 0)
   } catch (e) { /* 接口不可用时不摆空壳 */ }
+}
+
+// 点粮卡就地弹详情卡片（完整信息由弹窗组件按 goodsId 补齐，卡片数据先兜底渲染）
+const foodOpen = ref(false)
+const foodPicked = ref(null)
+function openFood(p) {
+  foodPicked.value = p
+  foodOpen.value = true
 }
 
 async function loadOverview() {

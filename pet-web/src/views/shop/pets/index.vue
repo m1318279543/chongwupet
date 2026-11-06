@@ -24,9 +24,20 @@
       </button>
     </nav>
 
-    <!-- 组合筛选（搜索/选了品类时出现） -->
-    <div class="filter-bar" v-if="total > 0 && showResult">
-      <span class="kw-note" v-if="keyword">搜索「{{ keyword }}」</span>
+    <!-- 组合筛选（搜索/选了品类时出现；0 结果也保留，方便直接换个词重搜） -->
+    <div class="filter-bar" v-if="showResult">
+      <div class="fb-item kw-edit">
+        <el-input
+          v-model="kwDraft"
+          size="small"
+          style="width: 150px"
+          placeholder="换个品种搜一搜"
+          clearable
+          @keyup.enter="applyKw"
+          @clear="applyKw"
+        />
+        <button type="button" class="ui-linkbtn" @click="applyKw">搜索</button>
+      </div>
       <div class="fb-item">
         <span class="fb-label">性别</span>
         <el-radio-group v-model="fGender" size="small">
@@ -155,6 +166,18 @@ const categories = computed(() => {
 
 const activeFilter = computed(() => activeType.value !== '')
 const showResult = computed(() => !!keyword.value.trim() || activeFilter.value)
+
+// 页内改搜：搜索框草稿与生效关键词分离，回车/点「搜索」才触发新查询
+const kwDraft = ref(keyword.value)
+watch(keyword, (v) => { kwDraft.value = v })
+function applyKw() {
+  const kw = kwDraft.value.trim()
+  if (kw === keyword.value.trim()) return
+  keyword.value = kw   // 既有 watch 会回到第一页并重新加载
+  const q = { ...route.query }
+  if (kw) q.kw = kw; else delete q.kw
+  router.replace({ query: q })
+}
 
 // 服务端筛选：条件全部拼进请求，前端只负责展示当前页
 function buildQuery() {
@@ -293,7 +316,10 @@ onMounted(() => {
   border-bottom: var(--rule);
   .fb-item { display: flex; align-items: center; gap: 8px; }
   .fb-label { font-size: var(--fs-4); color: var(--text-3); flex-shrink: 0; }
-  .kw-note { font-size: var(--fs-4); color: var(--brand-700); font-weight: 700; }
+  // 页内改搜：输入框 + 搜索按钮，回车即可换品种重搜
+  .kw-edit {
+    .ui-linkbtn { flex-shrink: 0; }
+  }
 }
 
 /* 网格：auto-fill 自适应，390 两列 / 1000 三列 / 1200 四列，无断点跳变 */

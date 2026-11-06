@@ -66,47 +66,8 @@
       </p>
     </section>
 
-    <!-- 宠物粮详情弹窗 -->
-    <el-dialog v-model="detailVisible" width="760px" top="6vh" class="food-detail-dialog" :show-close="true">
-      <div class="food-detail-scroll" v-if="detail">
-      <div class="detail" v-if="detail">
-        <div class="detail-left">
-          <img :src="detail.image" :alt="detail.name" />
-        </div>
-        <div class="detail-right">
-          <div class="detail-cat">
-            <span class="emoji">{{ currentCat.emoji }}</span>{{ currentCat.name }}专区
-          </div>
-          <h2 class="detail-name">{{ detail.name }}</h2>
-          <div class="detail-price">¥{{ detail.price }}<span class="unit">起</span></div>
-          <div class="detail-tags">
-            <el-tag v-for="t in detail.tags" :key="t" size="small" type="warning" effect="plain">{{ t }}</el-tag>
-          </div>
-          <ul class="detail-list">
-            <li><span class="k">规格</span><span class="v">{{ detail.spec }}</span></li>
-            <li><span class="k">适用阶段</span><span class="v">{{ detail.stage }}</span></li>
-            <li><span class="k">营养指标</span><span class="v">{{ detail.nutrition }}</span></li>
-            <li><span class="k">商品简介</span><span class="v">{{ detail.desc }}</span></li>
-            <li><span class="k">喂食建议</span><span class="v">{{ detail.feeding }}</span></li>
-            <li><span class="k">储存方式</span><span class="v">{{ detail.storage }}</span></li>
-          </ul>
-          <div class="detail-actions">
-            <el-button type="primary" size="large" round :disabled="detail && detail.stock === 0" @click="addToCart(detail)">
-              {{ detail && detail.stock === 0 ? '暂时缺货' : '加入购物车' }}
-            </el-button>
-            <el-button size="large" round :disabled="detail && detail.stock === 0" @click="buyNow(detail)">立即购买</el-button>
-            <span class="stock-hint" v-if="detail">
-              {{ detail.stock > 0 ? '现货 ' + detail.stock + ' 件' : '补货中，可先咨询客服' }}
-            </span>
-          </div>
-        </div>
-      </div>
-      <!-- 点赞 + 评论区 -->
-      <div class="food-social">
-        <PetSocial :pet-id="detail.fid" target-type="food" @auth="openAuth" />
-      </div>
-      </div>
-    </el-dialog>
+    <!-- 宠物粮详情弹窗：与首页「宠物粮精选」共用同一组件 -->
+    <FoodDetailDialog v-model="detailVisible" :goods-id="detail?.goodsId" :fallback="detail" @auth="openAuth" />
   </div>
 </template>
 
@@ -114,10 +75,9 @@
 import { ref, computed, inject, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { FOOD_CATEGORIES, FOOD_LIST } from './foodData.js'
-import { listGoods } from '@/api/pet/petGoods'
+import { FOOD_CATEGORIES, adaptGoods, loadAllGoods } from './foodShared.js'
 import { useCartStore } from '@/store/modules/cart'
-import PetSocial from '@/components/PetSocial/index.vue'
+import FoodDetailDialog from '@/components/FoodDetailDialog/index.vue'
 import { commentStatGroup } from '@/api/pet/petComment'
 
 const cartStore = useCartStore()
@@ -129,39 +89,9 @@ const active = ref('cat')
 
 // 商品目录来自后端（价格与库存都由后台维护），接口不可用时退回静态数据兜底
 const goodsList = ref([])
-const fidByCode = {}
-FOOD_LIST.forEach((f) => { fidByCode[f.id] = f.fid })
-
-function adaptGoods(g) {
-  const fallback = FOOD_LIST.find((f) => f.id === g.goodsCode) || {}
-  return {
-    id: g.goodsCode,
-    goodsId: g.goodsId,
-    skuId: g.skus && g.skus.length ? g.skus[0].skuId : null,
-    fid: fallback.fid || fidByCode[g.goodsCode],
-    cat: g.cat,
-    image: g.image,
-    name: g.goodsName,
-    spec: g.spec,
-    price: Number(g.price),
-    stock: g.stock == null ? 0 : Number(g.stock),
-    stage: g.stage,
-    desc: g.description,
-    tags: g.tagList || [],
-    nutrition: g.nutrition,
-    feeding: g.feeding,
-    storage: g.storage
-  }
-}
 
 async function loadGoods() {
-  try {
-    const res = await listGoods({ status: '0', pageNum: 1, pageSize: 200 })
-    const rows = res.rows || []
-    goodsList.value = rows.length ? rows.map(adaptGoods) : FOOD_LIST
-  } catch (e) {
-    goodsList.value = FOOD_LIST
-  }
+  goodsList.value = await loadAllGoods()
 }
 
 const filtered = computed(() => goodsList.value.filter(p => p.cat === active.value))
@@ -206,7 +136,6 @@ onMounted(() => {
 
 const detailVisible = ref(false)
 const detail = ref(null)
-const currentCat = computed(() => categories.value.find(c => c.id === detail.value?.cat) || {})
 function openDetail(p) {
   detail.value = p
   detailVisible.value = true
@@ -243,17 +172,9 @@ function addToCart(p) {
   cartStore.addItem(p)
   ElMessage.success(`已将「${p.name}」加入购物车`)
 }
-
-// 立即购买：加购后直接去购物车结算
-function buyNow(p) {
-  addToCart(p)
-  router.push('/shop/cart')
-}
 </script>
 
 <style scoped lang="scss">
-.stock-hint { margin-left: 12px; font-size: 12px; color: var(--text-3); }
-
 .food-page { padding-top: 40px; }
 /* 页头复用 ui-head（自带 1px 收口线），这里只控制筛选行与列表的间距 */
 .cat-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 24px; }
@@ -324,43 +245,8 @@ function buyNow(p) {
   p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.7; }
 }
 
-/* 详情弹窗 */
-.food-detail-dialog {
-  :deep(.el-dialog__body) { padding: 0; }
-  .food-detail-scroll { max-height: 86vh; overflow-y: auto; }
-  .food-social { padding: 0 18px 20px;
-    :deep(.pet-social) { margin-top: 0; }
-  }
-  .detail { display: flex; gap: 0; min-height: 360px;
-    .detail-left { width: 320px; flex-shrink: 0; background: var(--bg-page);
-      img { width: 100%; height: 100%; max-height: 420px; object-fit: cover; display: block; }
-    }
-    .detail-right { flex: 1; padding: 24px 28px; }
-    .detail-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--brand-700);
-      background: var(--brand-50); padding: 3px 12px; border-radius: var(--radius-pill); margin-bottom: 12px;
-      .emoji { font-size: 16px; }
-    }
-    .detail-name { font-size: 22px; color: var(--text-1); margin: 0 0 10px; }
-    .detail-price { color: var(--price); font-size: 26px; font-weight: 700; margin-bottom: 12px;
-      .unit { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 3px; }
-    }
-    .detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-    .detail-list { list-style: none; margin: 0 0 20px; padding: 0;
-      li { display: flex; gap: 14px; padding: 10px 0; border-bottom: var(--rule-soft); font-size: 14px;
-        .k { color: var(--text-3); width: 76px; flex-shrink: 0; }
-        .v { color: var(--text-1); line-height: 1.6; flex: 1; }
-      }
-    }
-    .detail-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
-      .el-button { flex: 1; min-width: 140px; font-weight: 600; }
-    }
-  }
-}
+/* 详情弹窗样式已抽到共享组件 components/FoodDetailDialog */
 @media (max-width: 768px) {
-  .food-detail-dialog .detail { flex-direction: column;
-    .detail-left { width: 100%; img { max-height: min(240px, 30vh); } }
-  }
-
   /* 手机端：两列小卡，图片等比（1:1），一屏可见多款 */
   .food-page { padding: 24px 12px 60px; }
   .cat-tabs { gap: 8px; margin: 18px 0 16px; }
