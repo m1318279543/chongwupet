@@ -88,3 +88,7 @@ ai-test-report.json
 mobile-*.json
 .zcode/
 .env.local
+
+# 本地构建包与截图产物
+*.tar.gz
+shots/
