@@ -21,18 +21,32 @@
       </div>
     </div>
 
-    <!-- 单据类型：商品订单 / 服务预约（两类分开存储，但都算"我的订单"） -->
-    <div class="scope-bar" v-if="isLogged">
-      <button type="button" class="scope-btn" :class="{ on: scope === 'goods' }" @click="switchScope('goods')">
-        商品订单<span class="scope-n">{{ groups.length }}</span>
+    <!-- 一级 Tab：商品订单 / 服务预约（两类分开存储，但都算"我的订单"） -->
+    <div class="scope-tabs" v-if="isLogged" role="tablist" aria-label="单据类型">
+      <button
+        type="button"
+        class="scope-tab"
+        :class="{ on: scope === 'goods' }"
+        role="tab"
+        :aria-selected="scope === 'goods'"
+        @click="switchScope('goods')"
+      >
+        商品订单<span class="scope-tab__n">{{ groups.length }}</span>
       </button>
-      <button type="button" class="scope-btn" :class="{ on: scope === 'service' }" @click="switchScope('service')">
-        服务预约<span class="scope-n">{{ serviceRows.length }}</span>
+      <button
+        type="button"
+        class="scope-tab"
+        :class="{ on: scope === 'service' }"
+        role="tab"
+        :aria-selected="scope === 'service'"
+        @click="switchScope('service')"
+      >
+        服务预约<span class="scope-tab__n">{{ serviceRows.length }}</span>
       </button>
     </div>
 
     <template v-if="isLogged && scope === 'goods'">
-      <!-- 状态筛选：文本标签页 + 计数，选中态用 2px 下划线（比按钮组安静） -->
+      <!-- 二级：状态筛选（全部 / 待支付 …），计数随「商品类型」联动 -->
       <nav class="tabs" v-if="groups.length" aria-label="订单状态筛选">
         <button
           v-for="t in tabs"
@@ -46,17 +60,30 @@
         </button>
       </nav>
 
+      <!-- 商品类型筛选：活体与用品混在不同的订单里，按类型收窄列表 -->
+      <div class="filter-row" v-if="groups.length">
+        <span class="filter-row__hint">按商品类型筛选订单</span>
+        <label class="type-filter">
+          <span class="type-filter__label">商品类型</span>
+          <el-select v-model="goodsType" class="type-filter__select" aria-label="按商品类型筛选订单">
+            <el-option label="全部类型" value="all" />
+            <el-option label="活体宠物" value="pet" />
+            <el-option label="宠物用品" value="goods" />
+          </el-select>
+        </label>
+      </div>
+
       <!-- 空态 -->
       <div class="ui-empty" v-if="shownGroups.length === 0">
-        <p class="ui-empty__title">还没有下单记录</p>
-        <p class="ui-empty__desc">挑点好粮给毛孩子吧，结算后会在这里生成订单。</p>
-        <div class="ui-empty__act">
+        <p class="ui-empty__title">{{ emptyTitle }}</p>
+        <p class="ui-empty__desc">{{ emptyDesc }}</p>
+        <div class="ui-empty__act" v-if="goodsType === 'all'">
           <button type="button" class="ui-btn ui-btn--line" @click="goShop">去挑选宠物粮</button>
         </div>
       </div>
 
       <!-- 订单列表：定高区（每页 3 单），超出靠底部翻页 -->
-      <div class="ui-box order-box" v-else v-loading="loading">
+      <div class="ui-box order-box order-card" v-else v-loading="loading">
         <div class="ui-box__body">
           <article class="order" v-for="g in pagedGroups" :key="g.orderNo" :class="{ 'is-muted': g.canceled }">
           <!-- 订单头：单号 + 状态在左，时间与操作在右 -->
@@ -72,14 +99,14 @@
               <button
                 v-if="canRefund(g)"
                 type="button"
-                class="ui-linkbtn"
+                class="ui-btn ui-btn--outline ui-btn--sm"
                 :disabled="refundingNo === g.orderNo"
                 @click="askRefund(g)"
               >{{ refundingNo === g.orderNo ? '提交中…' : '申请退款' }}</button>
               <button
                 v-if="g.unpaid"
                 type="button"
-                class="ui-linkbtn ui-linkbtn--danger"
+                class="ui-btn ui-btn--outline-danger ui-btn--sm"
                 :disabled="cancelingId === g.orderNo"
                 @click="cancelOrder(g)"
               >{{ cancelingId === g.orderNo ? '取消中…' : '取消订单' }}</button>
@@ -150,7 +177,7 @@
         </div>
       </div>
 
-      <div class="ui-box order-box" v-else v-loading="svcLoading">
+      <div class="ui-box order-box order-card" v-else v-loading="svcLoading">
         <div class="ui-box__body">
           <article class="order" v-for="s in pagedSvc" :key="s.serviceNo" :class="{ 'is-muted': s.status === '4' }">
             <header class="order__head">
@@ -165,7 +192,7 @@
                 <button
                   v-if="canCancelSvc(s)"
                   type="button"
-                  class="ui-linkbtn ui-linkbtn--danger"
+                  class="ui-btn ui-btn--outline-danger ui-btn--sm"
                   :disabled="cancelingSvc === s.serviceNo"
                   @click="cancelSvc(s)"
                 >{{ cancelingSvc === s.serviceNo ? '取消中…' : '取消预约' }}</button>
@@ -173,7 +200,7 @@
             </header>
 
             <ul class="items">
-              <li class="item">
+              <li class="item item--solo">
                 <div class="item__main">
                   <div class="item__name">
                     {{ s.itemName }}
@@ -282,6 +309,8 @@ const isLogged = computed(() => !!userStore.token)
 const rows = ref([])
 const loading = ref(false)
 const filter = ref('all')
+// 商品类型：all / pet（活体）/ goods（用品）
+const goodsType = ref('all')
 const cancelingId = ref(null)
 const refundingNo = ref(null)
 const refundMap = ref({})
@@ -475,20 +504,37 @@ const groups = computed(() => rows.value.map((o) => ({
   refund: refundMap.value[o.orderNo] || null
 })))
 
-const shownGroups = computed(() => {
-  if (filter.value === 'all') return groups.value
-  if (filter.value === 'unpaid') return groups.value.filter((g) => g.unpaid)
-  if (filter.value === 'paid') return groups.value.filter((g) => g.paid)
-  return groups.value.filter((g) => g.canceled)
+// 先按商品类型收窄，再按状态筛选；状态标签的计数也基于类型结果，避免「切了类型计数还不变」
+const typedGroups = computed(() => {
+  if (goodsType.value === 'pet') return groups.value.filter((g) => g.isPet)
+  if (goodsType.value === 'goods') return groups.value.filter((g) => !g.isPet)
+  return groups.value
 })
 
-// 状态标签页：计数直接从 groups 派生，避免再请求一次
+const shownGroups = computed(() => {
+  if (filter.value === 'all') return typedGroups.value
+  if (filter.value === 'unpaid') return typedGroups.value.filter((g) => g.unpaid)
+  if (filter.value === 'paid') return typedGroups.value.filter((g) => g.paid)
+  return typedGroups.value.filter((g) => g.canceled)
+})
+
+// 状态标签页：计数直接从 typedGroups 派生，避免再请求一次
 const tabs = computed(() => [
-  { key: 'all', label: '全部', count: groups.value.length },
-  { key: 'unpaid', label: '待支付', count: groups.value.filter((g) => g.unpaid).length },
-  { key: 'paid', label: '已支付', count: groups.value.filter((g) => g.paid).length },
-  { key: 'canceled', label: '已取消', count: groups.value.filter((g) => g.canceled).length }
+  { key: 'all', label: '全部', count: typedGroups.value.length },
+  { key: 'unpaid', label: '待支付', count: typedGroups.value.filter((g) => g.unpaid).length },
+  { key: 'paid', label: '已支付', count: typedGroups.value.filter((g) => g.paid).length },
+  { key: 'canceled', label: '已取消', count: typedGroups.value.filter((g) => g.canceled).length }
 ])
+
+// 空态文案跟随类型筛选：切到「活体宠物」却提示「还没有下单记录」会误导
+const emptyTitle = computed(() => {
+  if (goodsType.value === 'pet') return '没有活体宠物订单'
+  if (goodsType.value === 'goods') return '没有宠物用品订单'
+  return '还没有下单记录'
+})
+const emptyDesc = computed(() => (goodsType.value === 'all'
+  ? '挑点好粮给毛孩子吧，结算后会在这里生成订单。'
+  : '当前筛选下没有订单，切回「全部类型」可以看其他订单。'))
 
 // 状态文案 / 样式：优先级与原来一致，用 1px 描边标签代替实心 el-tag
 function statusText(g) {
@@ -515,6 +561,7 @@ const pagedSvc = computed(() => shownSvc.value.slice((svcPage.value - 1) * PAGE_
 const rangeStart = computed(() => (shownGroups.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
 const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, shownGroups.value.length))
 watch(filter, () => { page.value = 1 })
+watch(goodsType, () => { page.value = 1 })
 // 取消/退款后总数变少时，避免停在空页
 watch(() => shownGroups.value.length, (len) => {
   if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
@@ -737,37 +784,68 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-// 页头 / 空态 / 标签来自 .ui-* 基元；本页新增「状态标签页」「订单区块」「商品行」三段结构。
+// 页头 / 空态 / 标签来自 .ui-* 基元；本页新增「一级单据类型」「二级状态标签」「商品行」三层结构。
 
-/* ---------- 单据类型切换：商品订单 / 服务预约 ---------- */
-.scope-bar { display: flex; gap: 10px; margin-top: 18px; }
-.scope-btn {
+/* ---------- 页面底：与购物车同一层品牌洗，两个页面切换不跳色 ---------- */
+.ui-page {
+  background-color: var(--bg-page);
+  background-image: linear-gradient(180deg, var(--brand-50) 0%, rgba(255, 255, 255, 0) 340px);
+  background-repeat: no-repeat;
+}
+
+/* ---------- 一级 Tab：商品订单 / 服务预约（分段控件，白底浮起表示当前所在分区） ---------- */
+.scope-tabs {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
+  gap: 4px;
+  margin-top: 20px;
+  padding: 4px;
   border: 1px solid var(--border-1);
-  border-radius: 999px;
-  background: var(--bg-card);
-  font-size: 13.5px;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: color .15s ease, border-color .15s ease, background .15s ease;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
 }
-.scope-btn.on {
-  border-color: var(--brand-500, #6366f1);
-  background: var(--brand-50);
-  color: var(--brand-700);
+.scope-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-5);
   font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
+  &:hover { color: var(--text-1); }
+  &.on {
+    background: var(--bg-card);
+    color: var(--brand-700);
+    box-shadow: var(--shadow-sm);
+  }
 }
-.scope-n { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.scope-btn.on .scope-n { color: var(--brand-600); }
+.scope-tab__n {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / .75);
+  font-size: var(--fs-1);
+  font-weight: 700;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.scope-tab.on .scope-tab__n { background: var(--brand-50); color: var(--brand-700); }
 
-/* ---------- 状态筛选：文本标签页 ---------- */
+/* ---------- 二级：状态筛选（文本标签页，字号降一档让层级低于一级 Tab） ---------- */
 .tabs {
   display: flex;
   gap: 26px;
-  margin-top: 18px;
+  margin-top: 20px;
   border-bottom: 1px solid var(--border-1);
   overflow-x: auto;
   scrollbar-width: none;
@@ -783,15 +861,15 @@ onBeforeUnmount(() => {
   border: 0;
   background: none;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-4);
   color: var(--text-3);
   cursor: pointer;
   transition: color .16s ease;
   &:hover { color: var(--text-1); }
   &.on {
     color: var(--text-1);
-    font-weight: 600;
-    // 选中态：底部 2px 线，压在标签栏的 1px 线上
+    font-weight: 700;
+    // 选中态：底部 2px 品牌线，压在标签栏的 1px 线上
     &::after {
       content: '';
       position: absolute;
@@ -799,16 +877,45 @@ onBeforeUnmount(() => {
       right: 0;
       bottom: -1px;
       height: 2px;
-      background: var(--text-1);
+      background: var(--brand-600);
     }
   }
 }
 .tab__n {
-  font-size: 12px;
+  font-size: var(--fs-2);
   color: var(--text-4);
   font-variant-numeric: tabular-nums;
 }
 .tab.on .tab__n { color: var(--brand-600); }
+
+/* ---------- 商品类型筛选：与状态标签同一区块，右对齐不抢视觉 ---------- */
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+.filter-row__hint { font-size: var(--fs-3); color: var(--text-3); }
+.type-filter { display: inline-flex; align-items: center; gap: 8px; }
+.type-filter__label {
+  font-size: var(--fs-3);
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.type-filter__select { width: 136px; }
+
+/* ---------- 列表卡片：与购物车 .cart-sheet 同一边框 / 圆角 / 阴影 ---------- */
+.order-card {
+  margin-top: 12px;
+  padding: 2px 20px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+.order-card .order:last-child { border-bottom: 0; }
 
 /* ---------- 订单区块 ---------- */
 .orders { margin-top: 4px; }
@@ -884,6 +991,8 @@ onBeforeUnmount(() => {
   border-radius: var(--r-2);
   background: var(--bg-sunken);
 }
+// 服务预约没有缩略图：不占首列，否则文字会被挤在 56px 宽的第一格里折行
+.item--solo { grid-template-columns: minmax(0, 1fr) auto; }
 .item__main { min-width: 0; }
 .item__name {
   display: flex;
@@ -1022,6 +1131,12 @@ onBeforeUnmount(() => {
 
 /* ---------- 手机端 ---------- */
 @media (max-width: 768px) {
+  .scope-tabs { display: flex; width: 100%; }
+  .scope-tab { flex: 1; justify-content: center; padding: 0 12px; }
+  .filter-row { margin-top: 12px; }
+  .filter-row__hint { display: none; }
+  .type-filter { margin-left: auto; }
+  .order-card { margin-top: 10px; padding: 2px 14px 12px; }
   .tabs { gap: 18px; }
   .order { padding: 18px 0; }
   .order__act {
@@ -1036,6 +1151,7 @@ onBeforeUnmount(() => {
     gap: 12px;
     padding: 10px 0;
   }
+  .item--solo { grid-template-columns: minmax(0, 1fr) auto; }
   .item__thumb { width: 48px; height: 48px; }
   .item__sum { font-size: 15px; }
 

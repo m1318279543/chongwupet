@@ -1,24 +1,23 @@
 <template>
   <div class="ui-page">
-    <!-- 顶部标签栏：购物车 / 待支付 / 已支付 / 已取消，各分区独立查看（游客只有购物车，不显示标签） -->
-    <nav class="ui-tabs" v-if="userStore.token" aria-label="购物车分区">
-      <button
-        v-for="t in topTabs"
-        :key="t.key"
-        type="button"
-        class="ui-tab"
-        :class="{ on: activeTab === t.key }"
-        @click="activeTab = t.key"
-      >
-        {{ t.label }}<span class="ui-tab__n">{{ t.count }}</span>
-      </button>
-    </nav>
+    <!-- 页面头：购物车只承载待结算商品，订单进度统一去「我的订单」看 -->
+    <header class="ui-head">
+      <div class="ui-head__main">
+        <p class="ui-eyebrow">Cart</p>
+        <h1 class="ui-title">购物车</h1>
+        <p class="ui-sub">这里只放还没结算的商品，付款后可在「我的订单」查看进度。</p>
+      </div>
+      <div class="ui-head__aside">
+        <span class="ui-count" v-if="cartRows.length"><b>{{ cartRows.length }}</b>项待结算</span>
+        <router-link class="head-link" to="/shop/order">
+          我的订单
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </router-link>
+      </div>
+    </header>
 
-    <!-- 两个标签共用同一块定高面板：切换时页面高度稳定 -->
-    <div class="tab-panel">
-      <!-- ========== 购物车：只放未下单的商品，清空即空 ========== -->
-      <template v-if="activeTab === 'cart'">
-
+    <!-- 不切标签，页面高度由内容决定：结算条始终贴在卡片底部 -->
+    <div class="cart-body">
       <!-- 空态：居中一句话 + 一个主行动（对齐参考稿），下方「为你推荐」给出现在就逛的路径 -->
       <div class="cart-empty" v-if="cartRows.length === 0">
         <div class="cart-empty__hero">
@@ -89,9 +88,8 @@
           </template>
         </section>
       </div>
-      <template v-else>
-        <!-- 内容装进白色卡片：页面的绿灰底从卡片四周透出来，纯白区域不再铺满整屏 -->
-        <div class="cart-sheet">
+      <!-- 待结算商品：内容装进白色卡片，页面的绿灰底从卡片四周透出来 -->
+      <div class="cart-sheet" v-else>
           <table class="ui-table cart-table">
           <thead>
             <tr>
@@ -158,7 +156,7 @@
             </tr>
             <tr class="group-sum">
               <td colspan="6">
-                数量小计：<b>{{ grp.qty }}</b>
+                数量小计：<b>{{ grp.qty }} {{ grp.unit }}</b>
                 <i class="sep"></i>
                 金额小计：<b class="ui-price ui-price--sm">¥{{ money(grp.sum) }}</b>
               </td>
@@ -174,7 +172,12 @@
               <button type="button" class="ui-linkbtn ui-linkbtn--muted clear-cart" @click="clearCart">清空购物车</button>
             </div>
             <div class="checkout__right">
-              <span class="checkout__count">已选 <b>{{ cartSelectedRows }}</b>/{{ cartRows.length }} 项 · 数量总计 <b>{{ cartSelectedQty }}</b> 件</span>
+              <!-- 活体按「只」、用品按「件」分别计数：笼统加总会出现「16 件」这种错单位 -->
+              <span class="checkout__count">
+                已选 <b>{{ cartSelectedRows }}</b> 项
+                <template v-if="cartSelectedPetQty"><i class="dot">·</i>宠物 <b>{{ cartSelectedPetQty }}</b> 只</template>
+                <template v-if="cartSelectedGoodsQty"><i class="dot">·</i>商品 <b>{{ cartSelectedGoodsQty }}</b> 件</template>
+              </span>
               <span class="checkout__sum">
                 <i>商品金额合计</i>
                 <span class="ui-price ui-price--lg">¥{{ money(cartSelectedPrice) }}</span>
@@ -185,29 +188,9 @@
             </div>
           </div>
         </div>
-      </template>
-      </template>
-
-    <!-- ========== 订单区：待支付 / 已支付 / 已取消（商品单与宠物单都在这里，完整管理去「我的订单」） ========== -->
-    <div class="cart-sheet order-sheet" v-else>
-      <div class="order-sheet__head">
-        {{ tabTitle }}<span class="order-sheet__n">{{ tabGroups.length }}</span>
-        <router-link class="order-sheet__more" to="/shop/order">我的订单 →</router-link>
-      </div>
-      <div class="order-sheet__body">
-        <OrdersSection
-          :groups="tabGroups"
-          :loading="ordersLoading"
-          :empty-title="activeTab === 'unpaid' ? '没有待支付的订单' : activeTab === 'canceled' ? '没有已取消的订单' : '还没有已支付的订单'"
-          :empty-desc="activeTab === 'unpaid' ? '下单后未完成付款的订单会放在这里，可直接继续支付。' : activeTab === 'canceled' ? '取消的订单会留档在这里，宠物会被放回在售。' : '付款完成的订单会自动归档到这里。'"
-          @refresh="getOrders"
-          @pay="openCashierForOrder"
-        />
-      </div>
-    </div>
     </div>
 
-    <!-- 收银台：一次支付所有勾选项（购物车商品自动先下单，再与勾选订单合并付款） -->
+    <!-- 收银台：勾选商品先成单再支付，支付完成即清空已购条目 -->
     <el-dialog v-model="cashierOpen" width="420px" align-center :show-close="!paySuccess" class="cashier-dialog"
                :close-on-click-modal="false">
       <template #header>
@@ -256,7 +239,7 @@
         <div class="s-icon"><el-icon><CircleCheckFilled /></el-icon></div>
         <h3>支付成功</h3>
         <p class="s-amount">¥{{ money(cashierTotal) }}</p>
-        <p class="s-tip">支付进度可在「已支付」标签中查看</p>
+        <p class="s-tip">支付进度可在「我的订单」中查看</p>
         <button type="button" class="ui-btn ui-btn--solid" @click="cashierOpen = false">完成</button>
       </div>
     </el-dialog>
@@ -265,17 +248,14 @@
 
 <script setup>
 import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, CircleCheckFilled, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { useCartStore } from '@/store/modules/cart'
 import { submitPetCart, payPetCart } from '@/api/pet/petCart'
-import { listMyOrders } from '@/api/pet/petOrder'
-import { listMyRefunds } from '@/api/pet/petRefund'
 import { getPetOverview } from '@/api/pet/petInfo'
 import { listGoods } from '@/api/pet/petGoods'
-import OrdersSection from './OrdersSection.vue'
 import PetCard from '@/views/shop/home/PetCard.vue'
 import { usePetFavorite } from '@/composables/usePetFavorite'
 import { usePetRatings } from '@/composables/usePetRatings'
@@ -286,14 +266,11 @@ import { adaptGoods } from '@/utils/goodsAdapter'
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const router = useRouter()
-const route = useRoute()
 const openAuth = inject('openAuth', () => {})
 
 // 购物车按账号绑定：登录后把服务端数据拉下来（本地条目自动合并上传），登出回到本地模式
-onMounted(() => { cartStore.sync(); getOrders(); loadRecs() })
-watch(() => userStore.token, () => { cartStore.sync(); getOrders() })
-// 登出时标签栏消失，强制回到购物车标签
-watch(() => userStore.token, (t) => { if (!t) activeTab.value = 'cart' })
+onMounted(() => { cartStore.sync(); loadRecs() })
+watch(() => userStore.token, () => { cartStore.sync() })
 
 /* ---------- 空态推荐：宠物精选 + 宠物粮精选（均免登录，接口不可用时不摆空壳） ---------- */
 const recPets = ref([])
@@ -345,99 +322,13 @@ function addFoodToCart(g) {
   ElMessage.success({ message: `已将「${g.name}」加入购物车`, duration: 1500 })
 }
 
-// itemType '2' 是宠物（旧数据没有该字段，一律按宠物粮处理）；只用于行内徽标与数量锁定
+// itemType '2' 是宠物（旧数据没有该字段，一律按商品处理）；只用于行内徽标与数量锁定
 function isPet(item) {
   return item.itemType === '2'
 }
 
-/* ---------- 顶部标签栏 ---------- */
-const activeTab = ref('cart')
-
-/* ---------- 订单数据：已支付/已取消进归档区 ---------- */
-const rows = ref([])
-const refundMap = ref({})
-const ordersLoading = ref(false)
-
-const groups = computed(() => rows.value.map((o) => ({
-  orderNo: o.orderNo,
-  items: o.items || [],
-  canceled: o.status === '3',
-  unpaid: o.payStatus === '0' && o.status === '0',
-  paid: o.payStatus === '1',
-  shipped: o.status === '1',
-  isPet: o.orderType === '2' || (o.items || []).some((it) => it.itemType === '2'),
-  createTime: String(o.createTime || '').replace('T', ' ').slice(5, 16),
-  total: Number(o.payAmount || 0),
-  refund: refundMap.value[o.orderNo] || null
-})))
-
-// 行内展示用的封面与首件名（一单多件只列首件 + 件数）
-// 已支付归档区：付款完成且未取消（已取消不再单独展示）
-const paidGroups = computed(() => groups.value.filter((g) => g.paid && !g.canceled))
-
-// 待支付订单（立即购买 / 结算后未完成支付）：宠物单大多停在这一步，必须能在购物车页看到并继续支付
-const unpaidGroups = computed(() => groups.value.filter((g) => g.unpaid && !g.canceled))
-// 已取消：宠物单取消后宠物会放回「在售」，留档便于核对
-const canceledGroups = computed(() => groups.value.filter((g) => g.canceled))
-
-// 标签：购物车只放宠物粮；订单按状态分区，商品单与宠物单一视同仁
-const topTabs = computed(() => [
-  { key: 'cart', label: '购物车', count: cartRows.value.length },
-  { key: 'unpaid', label: '待支付', count: unpaidGroups.value.length },
-  { key: 'paid', label: '已支付', count: paidGroups.value.length },
-  { key: 'canceled', label: '已取消', count: canceledGroups.value.length }
-])
-
-const tabTitle = computed(() => ({
-  unpaid: '待支付订单',
-  paid: '已支付订单',
-  canceled: '已取消订单'
-})[activeTab.value] || '订单')
-
-const tabGroups = computed(() => {
-  if (activeTab.value === 'unpaid') return unpaidGroups.value
-  if (activeTab.value === 'canceled') return canceledGroups.value
-  return paidGroups.value
-})
-
-function getOrders() {
-  if (!userStore.token) { rows.value = []; refundMap.value = {}; return }
-  ordersLoading.value = true
-  Promise.all([listMyOrders(), listMyRefunds()])
-    .then(([res, rf]) => {
-      rows.value = res.data || []
-      const map = {}
-      // 同一订单可能有多条退款记录（被拒后可再申请），接口按 id 倒序，取第一条即最新
-      for (const r of (rf.data || [])) {
-        if (!map[r.orderNo]) map[r.orderNo] = r
-      }
-      refundMap.value = map
-      ordersLoading.value = false
-      maybeAutoPay()
-    })
-    .catch(() => { ordersLoading.value = false })
-}
-
-/* ---------- 立即购买落地：详情页带 ?pay=orderNo 跳转过来，自动弹出收银台（只触发一次） ---------- */
-const autoPayDone = ref(false)
-function maybeAutoPay() {
-  if (autoPayDone.value) return
-  const payNo = String(route.query.pay || '')
-  if (!payNo) return
-  autoPayDone.value = true
-  // 摘掉地址栏参数，刷新/后退不再重复弹窗
-  router.replace({ path: '/shop/cart' })
-  const g = unpaidGroups.value.find((o) => o.orderNo === payNo)
-  if (g) {
-    // 收银台直接盖在当前页上（待支付订单就展示在购物车标签内，无需再切标签）
-    openCashierForOrder(g)
-  } else {
-    ElMessage.info(groups.value.some((o) => o.orderNo === payNo) ? '该订单已支付或已取消' : '未找到对应订单')
-  }
-}
-
-/* ---------- 选择逻辑：购物车可同时放宠物粮与活体，各自独立勾选 ---------- */
-// 购物车条目：宠物粮（itemType='1'）+ 活体（itemType='2'，一只一条），可同单结算
+/* ---------- 选择逻辑：购物车可同时放用品与活体，各自独立勾选 ---------- */
+// 购物车条目：用品（itemType='1'，可多件）+ 活体（itemType='2'，一只一条），可同单结算
 const cartRows = computed(() => cartStore.items)
 const cartAll = computed(() => cartRows.value.length > 0 && cartRows.value.every((i) => i.checked))
 
@@ -445,27 +336,30 @@ function toggleCartAll(val) {
   cartRows.value.forEach((i) => cartStore.setChecked(i.id, val))
 }
 
-const cartSelectedRows = computed(() => cartRows.value.filter((i) => i.checked).length)
-const cartSelectedQty = computed(() => cartRows.value.filter((i) => i.checked).reduce((n, i) => n + i.qty, 0))
-const cartSelectedPrice = computed(() => cartRows.value.filter((i) => i.checked).reduce((s, i) => s + i.price * i.qty, 0))
+const cartSelectedItems = computed(() => cartRows.value.filter((i) => i.checked))
+// 已选「项」按条目数算；数量按单位拆开：活体一只一条，用品按件累加
+const cartSelectedRows = computed(() => cartSelectedItems.value.length)
+const cartSelectedPetQty = computed(() => cartSelectedItems.value.filter(isPet).reduce((n, i) => n + i.qty, 0))
+const cartSelectedGoodsQty = computed(() => cartSelectedItems.value.filter((i) => !isPet(i)).reduce((n, i) => n + i.qty, 0))
+const cartSelectedPrice = computed(() => cartSelectedItems.value.reduce((s, i) => s + i.price * i.qty, 0))
 
-/* ---------- 分组：活体与宠物粮下单规则不同（宠物一只一条），分组勾选、同单结算 ---------- */
+/* ---------- 分组：活体与用品下单规则不同（宠物一只一条），分组勾选、同单结算 ---------- */
 const GROUP_PET = 'M12 5.5c-2 0-3.4 1-4.2 2.4-.9-.4-2.2-.2-3 .9-.9 1.3-.6 3 .3 3.9.6.5 1.5.5 2.3-.1C8.3 14.8 10 16.4 12 16.4s3.7-1.6 4.6-3.8c.8.6 1.7.6 2.3.1.9-.9 1.2-2.6.3-3.9-.8-1.1-2.1-1.3-3-.9C15.4 6.5 14 5.5 12 5.5zM9.4 17.4c-1.4 0-2.6.9-2.6 2.1 0 1.2 1.2 2.1 2.6 2.1s2.6-.9 2.6-2.1c0-1.2-1.2-2.1-2.6-2.1zm5.2 0c-1.4 0-2.6.9-2.6 2.1 0 1.2 1.2 2.1 2.6 2.1s2.6-.9 2.6-2.1c0-1.2-1.2-2.1-2.6-2.1z'
 const GROUP_FOOD = 'M6.5 8h11l-.9 11.2a1.6 1.6 0 01-1.6 1.3H9a1.6 1.6 0 01-1.6-1.3L6.5 8zM9 10V6.8A3 3 0 0112 4a3 3 0 013 2.8V10'
 
 const cartGroups = computed(() => {
   const pets = cartRows.value.filter(isPet)
   const goods = cartRows.value.filter((i) => !isPet(i))
-  const build = (key, label, note, icon, items) => ({
-    key, label, note, icon, items,
+  const build = (key, label, note, icon, unit, items) => ({
+    key, label, note, icon, unit, items,
     allChecked: items.every((i) => i.checked),
     qty: items.reduce((n, i) => n + i.qty, 0),
     sum: items.reduce((s, i) => s + i.price * i.qty, 0)
   })
   const out = []
-  // 宠物一只一条；勾选宠物与宠物粮后可同单结算
-  if (pets.length) out.push(build('pet', '在售宠物', '活体商品，一只一条', GROUP_PET, pets))
-  if (goods.length) out.push(build('goods', '宠物粮', '可与宠物一起结算', GROUP_FOOD, goods))
+  // 宠物按「只」、用品按「件」：分组小计各用各的单位
+  if (pets.length) out.push(build('pet', '活体宠物', '一只一条，结账后到店接宠', GROUP_PET, '只', pets))
+  if (goods.length) out.push(build('goods', '宠物用品', '可与宠物一起结算', GROUP_FOOD, '件', goods))
   return out
 })
 
@@ -516,8 +410,6 @@ const payMethod = ref('alipay')
 const payDetail = ref([])
 const cashierTotal = ref(0)
 const countdown = ref(0)
-// 非空表示正在支付一笔已存在的待支付订单（立即购买落地 / 待支付标签进入）
-const payOrderNo = ref(null)
 let countdownTimer = null
 
 const methods = [
@@ -539,27 +431,11 @@ function openCashier() {
     return
   }
   cashierTotal.value = cartSelectedPrice.value
-  payDetail.value = cartRows.value.filter((i) => i.checked).map((i) => ({
+  payDetail.value = cartSelectedItems.value.map((i) => ({
     name: i.name,
-    qtyLabel: i.itemType === '2' ? '1 只' : `×${i.qty}`,
+    qtyLabel: isPet(i) ? '1 只' : `×${i.qty}`,
     amount: i.price * i.qty
   }))
-  paySuccess.value = false
-  payMethod.value = 'alipay'
-  payOrderNo.value = null
-  cashierOpen.value = true
-  startCountdown()
-}
-
-/** 待支付订单的收银台：直接支付已有订单，不重新成单 */
-function openCashierForOrder(g) {
-  cashierTotal.value = Number(g.total || 0)
-  payDetail.value = (g.items || []).map((i) => ({
-    name: i.goodsName,
-    qtyLabel: i.itemType === '2' ? '1 只' : `×${i.qty}`,
-    amount: i.amount != null ? Number(i.amount) : Number(i.price) * Number(i.qty)
-  }))
-  payOrderNo.value = g.orderNo
   paySuccess.value = false
   payMethod.value = 'alipay'
   cashierOpen.value = true
@@ -584,28 +460,19 @@ async function doPay() {
   if (paying.value) return
   paying.value = true
   try {
-    if (payOrderNo.value) {
-      // 待支付订单：直接支付（立即购买落地或历史未付订单）
-      await payPetCart(payOrderNo.value, payMethod.value)
-    } else {
-      // 勾选商品先成单，再立即支付该单（宠物粮与活体可同单，活体由服务端锁宠）
-      const items = cartRows.value
-        .filter((i) => i.checked)
-        .map((i) => (i.itemType === '2'
-          ? { itemType: '2', petId: i.petId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: 1 }
-          : { itemType: '1', goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
-      const res = await submitPetCart(items)
-      const orderNo = res?.data?.orderNo
-      if (orderNo) await payPetCart(orderNo, payMethod.value)
-      // 清空已购条目：先等服务端删除完成再回填，避免 GET 抢在 DELETE 前把旧条目刷回来
-      await cartStore.clearAfterCheckout()
-    }
+    // 勾选商品先成单，再立即支付该单（用品与活体可同单，活体由服务端锁宠）
+    const items = cartSelectedItems.value.map((i) => (isPet(i)
+      ? { itemType: '2', petId: i.petId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: 1 }
+      : { itemType: '1', goodsId: i.goodsId, skuId: i.skuId, goodsName: i.name, goodsImage: i.image, goodsSpec: i.spec, price: i.price, qty: i.qty }))
+    const res = await submitPetCart(items)
+    const orderNo = res?.data?.orderNo
+    if (orderNo) await payPetCart(orderNo, payMethod.value)
+    // 清空已购条目：先等服务端删除完成再回填，避免 GET 抢在 DELETE 前把旧条目刷回来
+    await cartStore.clearAfterCheckout()
     paySuccess.value = true
     if (countdownTimer) clearInterval(countdownTimer)
-    getOrders()
     // 支付成功会生成站内通知，通知铃铛立即刷新
     window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
-    payOrderNo.value = null
   } catch (e) {
     ElMessage.error(e?.msg || e?.message || '支付失败，请稍后再试')
   } finally {
@@ -619,8 +486,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-// 表格骨架来自 .ui-table；标签栏来自 flat.scss 的 .ui-tabs 基元。
-// 这里只定义列宽与页面特有内容（商品/订单单元、结算条、收银台）。
+// 表格骨架来自 .ui-table；页头来自 flat.scss 的 .ui-head 基元。
+// 这里只定义列宽与页面特有内容（商品单元、结算条、收银台）。
 
 /* ---------- 页面背景：顶部一层品牌色渐变洗，压住大面积白底的刺眼感 ---------- */
 .ui-page {
@@ -643,49 +510,18 @@ onBeforeUnmount(() => {
   overflow: hidden; // 圆角裁掉首尾行贴边
 }
 
-/* ---------- 订单卡片（待支付/已支付/已取消）：与购物车表格同一张卡的语言 ---------- */
-.order-sheet {
-  // 撑满定高面板，OrdersSection 的翻页条吸到卡底
-  flex: 1;
-}
-// 「我的订单 →」：购物车页只看概览，完整管理回订单页
-.order-sheet__more {
-  margin-left: auto;
-  font-size: var(--fs-3);
+/* ---------- 页面头右侧：回到「我的订单」 ---------- */
+.head-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-4);
+  font-weight: 700;
   color: var(--brand-700);
   text-decoration: none;
-  &:hover { text-decoration: underline; }
-}
-.order-sheet__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px 16px;
-  border-bottom: var(--rule);
-  background: var(--brand-50); // 与表格分组头同一层浅绿底
-  font-size: var(--fs-5);
-  font-weight: 700;
-  color: var(--text-1);
-}
-.order-sheet__n {
-  min-width: 20px;
-  height: 18px;
-  padding: 0 6px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: var(--radius-pill);
-  background: var(--brand-600);
-  color: var(--on-accent);
-  font-size: var(--fs-1);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.order-sheet__body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 0 16px;
+  white-space: nowrap;
+  svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .16s; }
+  &:hover svg { transform: translateX(3px); }
 }
 
 .cart-table {
@@ -870,16 +706,13 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-// 定高面板：三个标签共用同一高度（= 购物车 5 行满页的高度），切换标签不再忽高忽低；
-// 面板自身也是 flex 列，结算条在面板内继续靠 margin-top:auto 压底
-.tab-panel {
+// 内容区：flex 列吸收页面剩余高度，列表装不满时结算条仍压在卡片底部
+.cart-body {
   display: flex;
   flex-direction: column;
   min-height: 560px;
-  // 吸收页面剩余高度，结算条才落到底部而不是停在半空（页脚已移除，没有别的收束元素）
   flex: 1;
 }
-// 已支付/已取消的订单区在 OrdersSection 内部用 flex 撑满面板，翻页条自行吸底
 
 .checkout {
   margin-top: auto;
@@ -911,9 +744,16 @@ onBeforeUnmount(() => {
   font-size: var(--fs-4);
   color: var(--text-3);
   b {
+    margin: 0 2px;
     font-weight: 700;
     color: var(--text-1);
     font-variant-numeric: tabular-nums;
+  }
+  // 「·」只作分隔，不与数字争夺注意力
+  .dot {
+    margin: 0 6px;
+    font-style: normal;
+    color: var(--text-4);
   }
 }
 .checkout__sum {
@@ -1055,8 +895,6 @@ onBeforeUnmount(() => {
    手机端：表格折成两行式条目（仍是一行一条 + 1px 分割线）
    ============================================================ */
 @media (max-width: 768px) {
-  .ui-tabs { gap: 18px; }
-
   // 空态：居中排布天然适配窄屏，只压上下留白；按钮换行并三等分，避免挤在一行点不准
   .cart-empty__hero { padding: 36px 0 4px; gap: 12px; }
   .ce-act { width: 100%; gap: 8px;
@@ -1127,15 +965,22 @@ onBeforeUnmount(() => {
   .goods { gap: 12px; }
   .goods__name { font-size: var(--fs-5); }
 
-  // 结算条：左右两栏压缩，价格与按钮占一行
+  // 结算条：左栏操作一行，右栏计数独占一行、合计与结算并排
   .checkout {
     flex-wrap: wrap;
     gap: 10px;
     padding: 12px;
   }
   .checkout__left { gap: 14px; }
-  .checkout__right { gap: 12px; margin-left: auto; }
-  .checkout__count { display: none; } // 窄屏省掉重复计数，只留合计
+  .checkout__right {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 12px;
+    margin-left: 0;
+  }
+  // 窄屏也保留「按单位分开计数」：活体件数混算最容易被误读
+  .checkout__count { flex: 1 1 100%; order: -1; font-size: var(--fs-3); }
   .checkout__sum .ui-price { font-size: var(--fs-8); }
   // 结算主按钮触控热区加高，避免误触
   .checkout__go { min-width: 0; min-height: 40px; padding: 8px 22px; font-size: var(--fs-5); }

@@ -394,6 +394,19 @@
 // 三级高度：32（表格行内）/ 40（默认）/ 48（首屏主行动）
 .ui-btn--sm { height: 32px; padding: 0 12px; font-size: var(--fs-4); }
 .ui-btn--lg { height: 48px; padding: 0 24px; font-size: var(--fs-6); }
+// 描边次级操作：需要「看得见、点得准」但不与主行动抢位（申请退款 / 取消订单等）
+// 纯文字链在这些位置既容易被忽略、又容易误触，行内操作一律用它。
+.ui-btn--outline { border-color: var(--border-1); background: var(--bg-card); color: var(--text-2); }
+.ui-btn--outline:hover { border-color: var(--brand-300); background: var(--brand-50); color: var(--brand-700); }
+.ui-btn--outline-danger { border-color: var(--danger-100); background: var(--bg-card); color: var(--danger-600); }
+.ui-btn--outline-danger:hover { border-color: var(--danger-500); background: var(--danger-50); color: var(--danger-600); }
+.ui-btn--outline[disabled],
+.ui-btn--outline-danger[disabled] {
+  border-color: var(--border-1);
+  background: var(--bg-card);
+  color: var(--text-4);
+  cursor: not-allowed;
+}
 
 .ui-linkbtn {
   appearance: none;

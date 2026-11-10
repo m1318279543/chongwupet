@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-page ui-page--md">
+  <div class="ui-page ui-page--md apt-page">
     <!-- 页面头 -->
     <header class="ui-head">
       <div class="ui-head__main">
@@ -54,71 +54,82 @@
           <div class="svc-item__foot">
             <span class="svc-item__price">{{ Number(it.price) > 0 ? '¥' + it.price : '免费' }}</span>
             <span class="svc-item__dur" v-if="it.duration">约 {{ durText(it.duration) }}</span>
-            <button type="button" class="ui-linkbtn" @click="openBooking(it)">立即预约</button>
+            <button type="button" class="svc-item__cta" @click="openBooking(it)">立即预约</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 我的服务预约（独立下单、独立结算） -->
+    <!-- 我的预约：新旧两个来源合并为一个列表，Tab + 搜索实时过滤 -->
     <section class="apt-body" v-loading="loading">
       <div class="apt-sec">
-        <h3 class="apt-sec__title">我的服务预约</h3>
-        <span class="apt-sec__hint" v-if="unpaidCount">{{ unpaidCount }} 笔待支付</span>
+        <h3 class="apt-sec__title">我的预约</h3>
+        <span class="apt-sec__hint">共 {{ appointments.length }} 条 · 按预约时间倒序</span>
       </div>
 
-      <div v-if="orders.length" class="bk-list">
-        <article class="bk-card" v-for="o in pagedOrders" :key="o.serviceId">
-          <div class="bk-card__main">
-            <div class="bk-card__head">
-              <span class="bk-name">
-                {{ o.itemName || '服务项目' }}
-                <em v-if="Number(o.qty) > 1">×{{ o.qty }}</em>
-              </span>
-              <span class="ui-chip" :class="orderChip(o)">{{ orderStatusText(o) }}</span>
-            </div>
+      <div class="apt-tools">
+        <div class="apt-tabs" role="tablist" aria-label="按状态筛选预约">
+          <button
+            v-for="t in TABS"
+            :key="t.key"
+            type="button"
+            role="tab"
+            class="apt-tab"
+            :class="{ 'is-on': tab === t.key }"
+            :aria-selected="tab === t.key"
+            @click="tab = t.key"
+          >
+            {{ t.label }}
+            <em v-if="tabCount(t.key)">{{ tabCount(t.key) }}</em>
+          </button>
+        </div>
 
-            <div class="bk-meta">
-              <span class="bk-meta__i" v-if="o.storeName"><el-icon><OfficeBuilding /></el-icon>{{ o.storeName }}</span>
-              <span class="bk-meta__i"><el-icon><Timer /></el-icon>{{ fmtTime(o.appointTime) }}</span>
-              <span class="bk-meta__i"><el-icon><Van /></el-icon>{{ modeText(o.serviceMode) }}</span>
-              <span class="bk-meta__i"><el-icon><User /></el-icon>{{ o.contactName || '—' }} {{ o.contactPhone }}</span>
-              <span class="bk-meta__i bk-meta__addr" v-if="o.address" :title="o.address">
-                <el-icon><Location /></el-icon>{{ o.address }}
-              </span>
-            </div>
-
-            <div class="bk-sub">
-              <span class="bk-no">单号 {{ o.serviceNo }}</span>
-              <span v-if="o.staffName">执行 · {{ o.staffName }}</span>
-              <span v-if="o.remark" class="bk-remark" :title="o.remark">备注：{{ o.remark }}</span>
-              <span class="bk-score" v-if="o.score">已评 {{ o.score }} 分</span>
-            </div>
-          </div>
-
-          <div class="bk-card__end">
-            <span class="bk-amount">¥{{ money(amountOf(o)) }}</span>
-            <span class="bk-paytag" :class="{ 'bk-paytag--ok': o.payStatus === '1' }">
-              {{ payTag(o) }}
-            </span>
-            <div class="bk-acts">
-              <button v-if="canPay(o)" type="button" class="ui-btn ui-btn--solid bk-btn" @click="openPay(o)">去支付</button>
-              <button v-if="canCancelOrder(o)" type="button" class="ui-linkbtn ui-linkbtn--danger" @click="cancelOrder(o)">取消预约</button>
-              <button v-if="o.status === '3' && !o.score" type="button" class="ui-linkbtn" @click="openEval(o)">评价服务</button>
-            </div>
-          </div>
-        </article>
+        <label class="apt-search">
+          <el-icon class="apt-search__icon"><Search /></el-icon>
+          <input
+            v-model="keyword"
+            class="apt-search__input"
+            type="search"
+            placeholder="搜索宠物名称或手机号"
+            aria-label="搜索宠物名称或手机号"
+          />
+          <button v-if="keyword" type="button" class="apt-search__clear" aria-label="清空搜索" @click="keyword = ''">
+            <el-icon><Close /></el-icon>
+          </button>
+        </label>
       </div>
 
-      <div v-else-if="!loading" class="ui-empty">
-        <p class="ui-empty__title">还没有服务预约</p>
-        <p class="ui-empty__desc">在上方挑一个服务项目，选好时间就能下单，支付后门店会接单。</p>
+      <!-- 列表白面：有数据放预约行，没数据放空态；下面统一跟「第 X–Y 条 / 共 N 条」分页信息行 -->
+      <div class="ap-list">
+        <template v-if="visibleAppointments.length">
+          <AppointmentCard
+            v-for="item in pagedAppointments"
+            :key="item.id"
+            :appointment="item"
+            :busy="cancelingId === item.id"
+            @cancel="askCancel"
+            @pay="openPayFromCard"
+            @evaluate="openEvalFromCard"
+          />
+        </template>
+
+        <div v-else-if="!loading" class="ui-empty">
+          <template v-if="appointments.length">
+            <p class="ui-empty__title">没有匹配的预约</p>
+            <p class="ui-empty__desc">换个宠物名或手机号试试，也可以切回「全部」。</p>
+            <button type="button" class="ui-linkbtn ap-empty-reset" @click="resetFilters">清空筛选条件</button>
+          </template>
+          <template v-else>
+            <p class="ui-empty__title">还没有服务预约</p>
+            <p class="ui-empty__desc">在上方挑一个服务项目，选好时间就能下单，支付后门店会接单。</p>
+          </template>
+        </div>
       </div>
 
-      <div class="apt-pager" v-if="orders.length > PAGE_SIZE">
-        <span class="ui-box__count">第 {{ rangeStart }}–{{ rangeEnd }} 条 / 共 {{ orders.length }} 条</span>
+      <div class="apt-pager" v-if="visibleAppointments.length">
+        <span class="ui-box__count">第 {{ rangeStart }}–{{ rangeEnd }} 条 / 共 {{ visibleAppointments.length }} 条</span>
         <Pagination
-          :total="orders.length"
+          :total="visibleAppointments.length"
           v-model:page="page"
           :limit="PAGE_SIZE"
           :page-sizes="[PAGE_SIZE]"
@@ -127,29 +138,6 @@
           :auto-scroll="false"
         />
       </div>
-    </section>
-
-    <!-- 历史：绑定宠物的旧版预约记录，只做查看与取消 -->
-    <section class="apt-legacy" v-if="list.length">
-      <div class="apt-sec">
-        <h3 class="apt-sec__title">宠物档案预约记录</h3>
-        <span class="apt-sec__hint">旧版按宠物提交的预约，可在门店工单里同步进度</span>
-      </div>
-      <ul class="lg-list">
-        <li v-for="item in list" :key="item.appointmentId" class="lg-row">
-          <span class="lg-pet">{{ item.petName || '原宠物已下架' }}</span>
-          <span class="ui-chip" :class="statusClass(item.status)">{{ statusText(item.status) }}</span>
-          <span class="lg-time">{{ fmtTime(item.appointmentDate) }}</span>
-          <span class="lg-phone">{{ item.contactPhone }}</span>
-          <button
-            v-if="canCancel(item.status)"
-            type="button"
-            class="ui-linkbtn ui-linkbtn--danger lg-act"
-            :disabled="cancelingId === item.appointmentId"
-            @click="cancelApt(item)"
-          >{{ cancelingId === item.appointmentId ? '取消中…' : '取消预约' }}</button>
-        </li>
-      </ul>
     </section>
 
     <!-- 预约下单弹窗 -->
@@ -386,7 +374,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Timer, Van, User, Location, InfoFilled, Check, CircleCheckFilled, OfficeBuilding, StarFilled } from '@element-plus/icons-vue'
+import { InfoFilled, Check, CircleCheckFilled, StarFilled, Search, Close } from '@element-plus/icons-vue'
 import { listMyAppointments, cancelPetAppointment } from '@/api/pet/petAppointment'
 import { serviceRatingStat, submitServiceRating } from '@/api/pet/petServiceRating'
 import { listPetComment } from '@/api/pet/petComment'
@@ -405,6 +393,16 @@ import { useGeolocation } from '@/composables/useGeolocation'
 import LocationPicker from '@/components/LocationPicker.vue'
 import { useUserStore } from '@/store/modules/user'
 import Pagination from '@/components/Pagination/index.vue'
+import AppointmentCard from './components/AppointmentCard.vue'
+import { APPT_STATUS } from './appointmentStatus'
+import { MOCK_APPOINTMENTS } from './mockAppointments'
+import {
+  TABS,
+  adaptAppointment,
+  countByTab,
+  filterAppointments,
+  sortByAppointTimeDesc
+} from './appointmentModel'
 
 const userStore = useUserStore()
 const openAuth = inject('openAuth', () => {})
@@ -572,11 +570,11 @@ async function submitBooking() {
       } catch (e) {
         ElMessage.warning(e?.msg || '预约已创建，请在列表中查看')
       }
-      await loadOrders()
+      await loadAppointments()
       return
     }
     ElMessage.success('预约已创建，请完成支付')
-    await loadOrders()
+    await loadAppointments()
     openPay(order)
   } catch (e) {
     ElMessage.error(e?.msg || e?.message || '预约提交失败')
@@ -585,78 +583,102 @@ async function submitBooking() {
   }
 }
 
-// ---------------- 我的服务预约 ----------------
-const orders = ref([])
-const PAGE_SIZE = 5
+// ---------------- 我的预约列表 ----------------
+/**
+ * 数据源开关：true 用本地 mock（新旧来源已合并），false 走真实接口。
+ * 真实接口模式下两个来源仍合并进同一个列表，只是不再单独占用一个模块。
+ */
+const USE_MOCK_DATA = true
+const PAGE_SIZE = 6
+
+const appointments = ref([])
+const tab = ref(TABS[0].key)
+const keyword = ref('')
 const page = ref(1)
-const pagedOrders = computed(() => orders.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
-const rangeStart = computed(() => (orders.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, orders.value.length))
-const unpaidCount = computed(() => orders.value.filter((o) => o.payStatus === '0' && o.status !== '4' && o.source === '2').length)
-watch(() => orders.value.length, (len) => {
-  if ((page.value - 1) * PAGE_SIZE >= len) page.value = 1
+const cancelingId = ref(null)
+
+// 过滤 → 分页都用 computed：数据或筛选条件一变就重算，页面不再手动调用刷新
+const visibleAppointments = computed(() => filterAppointments(appointments.value, tab.value, keyword.value))
+const pagedAppointments = computed(() =>
+  visibleAppointments.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE)
+)
+const rangeStart = computed(() => (visibleAppointments.value.length ? (page.value - 1) * PAGE_SIZE + 1 : 0))
+const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, visibleAppointments.value.length))
+
+function tabCount(key) {
+  return countByTab(appointments.value, key)
+}
+
+// 换 Tab / 改搜索词都回到第一页，否则会停在空页
+watch([tab, keyword], () => { page.value = 1 })
+watch(() => visibleAppointments.value.length, (len) => {
+  const maxPage = Math.max(1, Math.ceil(len / PAGE_SIZE))
+  if (page.value > maxPage) page.value = maxPage
 })
+
+function resetFilters() {
+  tab.value = TABS[0].key
+  keyword.value = ''
+  page.value = 1
+}
 
 function amountOf(o) {
   const total = Number(o.totalAmount)
   if (total > 0) return total
   return (Number(o.price) || 0) * (Number(o.qty) || 1)
 }
-function modeText(m) { return m === '2' ? '上门服务' : '到店服务' }
-function payMethodText(m) { return { alipay: '支付宝', wechat: '微信', balance: '余额', free: '免费' }[m] || '已支付' }
-function payTag(o) {
-  if (o.payStatus === '1') return o.payMethod === 'free' ? '免费' : '已支付'
-  // 旧版到店预约本来就是门店收款，别显示成「待支付」
-  return o.source === '2' ? '待支付' : '门店收款'
-}
-function orderStatusText(o) {
-  if (o.status === '4') return '已取消'
-  if (o.status === '3') return '已完成'
-  if (o.status === '2') return '服务中'
-  if (o.status === '1') return '已接单'
-  // 自助预约未付款是「待支付」；旧版到店预约本来就是门店收款，不能误导成待支付
-  if (o.source === '2') return o.payStatus === '1' ? '待接单' : '待支付'
-  return '待接单'
-}
-function orderChip(o) {
-  if (o.status === '4') return 'ui-chip--danger'
-  if (o.status === '3') return 'ui-chip--ok'
-  if (o.payStatus === '1') return 'ui-chip--brand'
-  return 'ui-chip--warn'
-}
-// 只有自助预约单支持在线支付/自助取消；旧版预约单在门店收费
-function canPay(o) { return o.source === '2' && o.payStatus === '0' && o.status !== '4' }
-function canCancelOrder(o) { return o.source === '2' && (o.status === '0' || o.status === '1') }
 
-async function loadOrders() {
-  if (!userStore.token) { orders.value = []; return }
+async function loadAppointments() {
+  if (USE_MOCK_DATA) {
+    // mock 单没有真实服务端可支付，隐藏「去支付」避免点了必然失败
+    appointments.value = sortByAppointTimeDesc(
+      MOCK_APPOINTMENTS.map((raw, index) => adaptAppointment(raw, index))
+    ).map((item) => ({ ...item, canPay: false }))
+    return
+  }
+
+  if (!userStore.token) { appointments.value = []; return }
+
+  // 两个接口互不依赖：任一失败不影响另一个来源的展示
+  const [orderResult, legacyResult] = await Promise.allSettled([listMyServiceOrders(), listMyAppointments()])
+  const orders = orderResult.status === 'fulfilled' ? orderResult.value.data || [] : []
+  const legacy = legacyResult.status === 'fulfilled' ? legacyResult.value.data || [] : []
+
+  appointments.value = sortByAppointTimeDesc([
+    ...orders.map((raw, index) => adaptAppointment({ ...raw, source: 'ORDER' }, index)),
+    ...legacy.map((raw, index) => adaptAppointment({ ...raw, source: 'LEGACY' }, index))
+  ])
+}
+
+/** 卡片上的取消入口：window.confirm 二次确认，取消成功后只改本地状态，列表不整页刷新 */
+async function askCancel(item) {
+  const confirmed = window.confirm(`确认取消「${item.serviceName}」的预约吗？取消后不可恢复。`)
+  if (!confirmed) return
+
+  cancelingId.value = item.id
   try {
-    const res = await listMyServiceOrders()
-    orders.value = res.data || []
+    if (USE_MOCK_DATA) {
+      item.status = APPT_STATUS.CANCELED
+      item.canCancel = false
+      item.canPay = false
+      ElMessage.success('预约已取消')
+    } else {
+      const res = item.source === 'LEGACY'
+        ? await cancelPetAppointment(item.raw.appointmentId, '')
+        : await cancelServiceBooking(item.raw.serviceId, '')
+      ElMessage.success(res?.msg || '预约已取消')
+      await loadAppointments()
+    }
   } catch (e) {
-    orders.value = []
+    ElMessage.error(e?.msg || e?.message || '取消失败')
+  } finally {
+    cancelingId.value = null
   }
 }
 
-async function cancelOrder(o) {
-  try {
-    const { value } = await ElMessageBox.prompt(
-      `确认取消「${o.itemName}」的预约吗？${o.payStatus === '1' ? '已支付金额将退回平台余额。' : ''}`,
-      '取消预约',
-      {
-        confirmButtonText: '确认取消',
-        cancelButtonText: '再想想',
-        inputPlaceholder: '如：时间冲突 / 暂时不需要了（选填）',
-        type: 'warning'
-      }
-    )
-    const res = await cancelServiceBooking(o.serviceId, value || '')
-    ElMessage.success(res.msg || '预约已取消')
-    await loadOrders()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.msg || e?.message || '取消失败')
-  }
-}
+// 卡片只负责抛事件，支付/评价仍复用原有弹窗与接口
+function openPayFromCard(item) { openPay(item.raw) }
+function openEvalFromCard(item) { openEval(item.raw) }
 
 // ---------------- 收银台 ----------------
 const cashierOpen = ref(false)
@@ -702,7 +724,7 @@ async function doPay() {
     const d = res.data || {}
     if (d.balance != null) walletBalance.value = Number(d.balance)
     paySuccess.value = true
-    await loadOrders()
+    await loadAppointments()
     // 支付成功后同步刷新顶栏消息
     window.dispatchEvent(new CustomEvent('pet-notify-refresh'))
   } catch (e) {
@@ -755,54 +777,17 @@ function submitEval() {
     .then((res) => {
       ElMessage.success(res.msg || '感谢你的评价')
       evalOpen.value = false
-      return loadOrders()
+      return loadAppointments()
     })
     .catch((e) => ElMessage.error(e?.msg || e?.message || '评价失败'))
     .finally(() => { evalSubmitting.value = false })
 }
 
-// ---------------- 旧版宠物预约记录 ----------------
-const list = ref([])
-const cancelingId = ref(null)
-function statusText(s) { return ['待处理', '已确认', '已完成', '已取消'][s] || '未知' }
-function statusClass(s) { return { 0: 'ui-chip--warn', 1: 'ui-chip--brand', 2: 'ui-chip--ok' }[s] || '' }
-function canCancel(s) { return s === '0' || s === '1' }
+// ---------------- 通用格式化 ----------------
+// 评价列表等处仍在用（只展示到「月-日 时:分」）
 function fmtTime(v) {
   if (!v) return '—'
   return String(v).replace('T', ' ').slice(5, 16)
-}
-
-function cancelApt(item) {
-  ElMessageBox.prompt(
-    `确认取消对「${item.petName || '该宠物'}」的预约吗？可填写取消原因：`,
-    '取消预约',
-    {
-      confirmButtonText: '确认取消',
-      cancelButtonText: '再想想',
-      inputPlaceholder: '如：时间冲突 / 暂时不需要了（选填）',
-      inputValue: '',
-      type: 'warning'
-    }
-  ).then(({ value }) => {
-    cancelingId.value = item.appointmentId
-    return cancelPetAppointment(item.appointmentId, value || '')
-      .then((res) => {
-        ElMessage.success(res.msg || '预约已取消')
-        return loadLegacy()
-      })
-      .catch((e) => ElMessage.error(e?.msg || e?.message || '取消失败'))
-      .finally(() => { cancelingId.value = null })
-  }).catch(() => {})
-}
-
-async function loadLegacy() {
-  if (!userStore.token) { list.value = []; return }
-  try {
-    const res = await listMyAppointments()
-    list.value = res.data || []
-  } catch (e) {
-    list.value = []
-  }
 }
 
 onMounted(async () => {
@@ -810,10 +795,11 @@ onMounted(async () => {
   loadServiceItems()
   loadStores()
   loadServiceRating()
-  if (!userStore.token) return
+  // mock 模式不依赖登录态，方便未登录时也能验收列表与筛选
+  if (!USE_MOCK_DATA && !userStore.token) return
   loading.value = true
   try {
-    await Promise.all([loadOrders(), loadLegacy()])
+    await loadAppointments()
   } finally {
     loading.value = false
   }
@@ -1008,62 +994,193 @@ function lvOf(userId) {
 .svc-item__foot { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
 .svc-item__price { font-weight: 700; color: var(--brand-700); }
 .svc-item__dur { font-size: 12px; color: var(--text-3); }
-.svc-item__foot .ui-linkbtn { margin-left: auto; }
+/* 「立即预约」：按钮化，带 hover / focus 反馈 */
+.svc-item__cta {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--brand-200);
+  border-radius: var(--radius-pill);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
 
-/* 我的服务预约 */
-.apt-body { margin-top: 26px; min-height: 180px; }
+  &:hover {
+    background: var(--brand-600);
+    border-color: var(--brand-600);
+    color: #fff;
+  }
+
+  &:active { transform: translateY(1px); }
+
+  &:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+  }
+}
+
+/* 我的预约 */
+/* 页面不再参与拉伸（对齐「全部」Tab 的自然收口）：
+   内容多高页面就多高，视口更高时由布局骨架的 min-height 把页脚压到屏幕底 */
+.apt-page {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  /* 底部间距交给列表卡/分页行自己的 margin，页面不再额外垫内边距 */
+  padding-bottom: 0;
+}
+.apt-body {
+  margin-top: 26px;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.apt-sec, .apt-tools { flex: 0 0 auto; }
 .apt-sec { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
 .apt-sec__title { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-1); }
 .apt-sec__hint { font-size: 12px; color: var(--text-3); }
 
-.bk-list { display: flex; flex-direction: column; gap: 10px; }
-.bk-card {
-  display: flex; align-items: stretch; gap: 16px;
-  border: 1px solid var(--border-1); border-radius: var(--radius-md); background: var(--bg-card);
-  padding: 14px 16px;
+/* 筛选工具条：分段 Tab + 搜索框 */
+.apt-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
 }
-.bk-card__main { flex: 1; min-width: 0; }
-.bk-card__head { display: flex; align-items: center; gap: 10px; }
-.bk-name { font-size: 14.5px; font-weight: 600; color: var(--text-1);
-  em { font-style: normal; font-weight: 500; color: var(--text-3); margin-left: 4px; } }
-.bk-meta {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px;
-  font-size: 12.5px; color: var(--text-3);
-}
-.bk-meta__i { display: inline-flex; align-items: center; gap: 5px; min-width: 0;
-  .el-icon { font-size: 13px; color: var(--text-4); } }
-.bk-meta__addr { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.bk-sub {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px;
-  font-size: 12px; color: var(--text-3);
-  .bk-remark { max-width: 320px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-}
-.bk-no { font-variant-numeric: tabular-nums; color: var(--text-3); }
-.bk-score { color: var(--warning-500); }
 
-.bk-card__end {
-  display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 6px;
-  flex-shrink: 0; padding-left: 16px; border-left: 1px dashed var(--border-1);
+.apt-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
 }
-.bk-amount { font-size: 17px; font-weight: 700; color: var(--brand-700); font-variant-numeric: tabular-nums; }
-.bk-paytag { font-size: 11px; color: var(--warning-600, #b45309); border: 1px solid currentColor; border-radius: 999px; padding: 0 7px; }
-.bk-paytag--ok { color: var(--success-600, #15803d); }
-.bk-acts { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
-.bk-btn { padding: 6px 14px; font-size: 13px; }
 
-.apt-pager { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+.apt-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
 
-/* 旧版宠物预约：弱化为单行清单 */
-.apt-legacy { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--border-1); }
-.lg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.lg-row {
-  display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--radius-sm, 6px);
-  font-size: 12.5px; color: var(--text-2);
-  &:hover { background: var(--bg-hover, rgba(0, 0, 0, 0.02)); }
+  em {
+    font-style: normal;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-3);
+  }
+
+  &:hover { color: var(--brand-700); }
+
+  &.is-on {
+    background: var(--bg-card);
+    color: var(--brand-700);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgb(22 33 29 / .08);
+
+    em { color: var(--brand-500); }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 1px;
+  }
 }
-.lg-pet { font-weight: 600; color: var(--text-1); }
-.lg-time, .lg-phone { color: var(--text-3); font-variant-numeric: tabular-nums; }
-.lg-act { margin-left: auto; }
+
+.apt-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 250px;
+  max-width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  transition: border-color .15s ease, box-shadow .15s ease;
+
+  &:focus-within {
+    border-color: var(--brand-400);
+    box-shadow: 0 0 0 3px rgb(var(--brand-600-rgb) / .08);
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    font-size: 14px;
+    color: var(--text-4);
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    background: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-1);
+
+    &::placeholder { color: var(--text-4); }
+    &::-webkit-search-cancel-button { display: none; }
+  }
+
+  &__clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--bg-sunken);
+    color: var(--text-3);
+    font-size: 11px;
+    cursor: pointer;
+
+    &:hover { background: var(--border-1); color: var(--text-1); }
+  }
+}
+
+/* 列表容器：一张白卡（口径对齐「我的订单」页的行式列表），行与行之间用分隔线。
+   高度统一：分页固定每页 6 行（PAGE_SIZE），卡片按「一页 6 行」的实际高度预留 min-height，
+   行数不足时由卡内空白补位 —— 切 Tab / 翻页时页面总高度恒定，不再随数据量缩短 */
+.ap-list {
+  flex: 0 1 auto;
+  margin-bottom: var(--sp-4);
+  min-height: 672px; /* = 每页 6 行的真实高度（行高约 112px），PAGE_SIZE 变了要同步调 */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-card);
+  border: var(--rule);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.ap-empty-reset { margin-top: var(--sp-2); }
+/* 空态在白卡内部，不再自带卡片描边（面由 .ap-list 提供），保底高度交给 .ui-empty 自己的 min-height */
+.ap-list .ui-empty { flex: 0 0 auto; }
+
+.apt-pager { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; margin-top: 0; margin-bottom: var(--sp-4); }
 
 /* 下单弹窗 */
 .bkd-head { display: flex; align-items: baseline; gap: 10px; font-size: 16px; font-weight: 600; color: var(--text-1); }
@@ -1223,15 +1340,12 @@ function lvOf(userId) {
 
 @media (max-width: 768px) {
   .svc-price__grid { grid-template-columns: 1fr; }
-  .bk-card { flex-direction: column; gap: 10px; }
-  .bk-card__end {
-    flex-direction: row; align-items: center; justify-content: space-between;
-    padding-left: 0; padding-top: 10px; border-left: 0; border-top: 1px dashed var(--border-1);
-  }
-  .bk-acts { margin-top: 0; }
+  .apt-tools { flex-direction: column; align-items: stretch; }
+  .apt-tabs { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+  .apt-search { width: 100%; }
   .apt-pager { flex-direction: column; gap: 8px; }
-  .lg-row { flex-wrap: wrap; gap: 8px; }
-  .lg-act { margin-left: 0; }
   .bkd-row { flex-direction: column; }
+  /* 手机端行会换行变高，按 6 行的实际最大高度预留，保证各 Tab 高度也一致 */
+  .ap-list { min-height: 810px; }
 }
 </style>

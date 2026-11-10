@@ -23,7 +23,7 @@
               <button
                 v-if="canRefund(g)"
                 type="button"
-                class="ui-linkbtn"
+                class="ui-btn ui-btn--outline ui-btn--sm"
                 :disabled="refundingNo === g.orderNo"
                 @click="askRefund(g)"
               >{{ refundingNo === g.orderNo ? '提交中…' : '申请退款' }}</button>
@@ -80,8 +80,9 @@ import Pagination from '@/components/Pagination/index.vue'
 import { useClientPaging } from '@/composables/usePagedList'
 import { money } from '@/utils/money'
 
-// 已支付订单归档列表：父组件已按「已支付且未取消」筛好传入；
-// 待支付订单不再展示（立即购买靠 ?pay=orderNo 直接唤起收银台，不经此列表）。
+// 订单卡列表（可复用）。
+// 注意：购物车页已不再挂载本组件——订单记录统一收进「我的订单」（含一级 Tab 与商品类型筛选），
+// 这里保留给需要「订单概览」的其他场景；样式与订单页保持同一套行内按钮口径。
 const props = defineProps({
   groups: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },

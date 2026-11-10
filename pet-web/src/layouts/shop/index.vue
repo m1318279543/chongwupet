@@ -348,11 +348,20 @@ function handleCommand(cmd) {
 </script>
 
 <style scoped lang="scss">
-.shop-layout { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg-page); }
+/* 页面骨架：撑满视口 → 内容区吃满剩余高度 → 页脚永远贴在内容之后/视口底部。
+   min-height 用 dvh 兜底：移动端地址栏收起时 100vh 会多算一截，dvh 才是当前可见高度。 */
+.shop-layout {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page);
+}
 
 /* ===== 顶栏 ===== */
 .topbar {
   position: sticky; top: 0; z-index: 100;
+  flex: 0 0 auto;                 /* 顶栏高度固定，不参与压缩 */
   background: rgba(255, 255, 255, .92);
   backdrop-filter: saturate(1.6) blur(12px);
   border-bottom: 1px solid var(--border-1);
@@ -515,11 +524,12 @@ function handleCommand(cmd) {
 
 /* ===== 内容区 ===== */
 // 子页面作为拉伸项填满剩余高度，页面自己不再写 min-height:100vh
-.content { flex: 1; display: flex; flex-direction: column; }
+.content { flex: 1 0 auto; display: flex; flex-direction: column; }
 .content > * { flex: 1 0 auto; min-width: 0; }
 
 /* ===== 页脚 ===== */
 .footer {
+  flex: 0 0 auto;                 /* 页脚按内容高度排在最后，不会被内容区挤扁 */
   background: var(--text-1); color: #d6d3d1; padding: 56px 0 0;
   .foot-inner { max-width: var(--container-lg); margin: 0 auto; padding: 0 24px; }
   .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 48px; }
